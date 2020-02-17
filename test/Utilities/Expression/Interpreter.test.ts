@@ -20,7 +20,6 @@ describe("ExpressionInterpreter", function () {
             let lexingResult = lexer.tokenize("test[1][2]().hello");
             parser.input = lexingResult.tokens;
             let cst = parser.expression();
-            console.log(JSON.stringify(cst));
             let value = await interpreter.visit(cst, new Dictionary({
                 hello: {
                     world: async () => {

@@ -1,0 +1,9 @@
+{
+    "defaultChannels": ["fifitido"],
+    "identities": {
+        "default": {
+            "username": "",
+            "password": ""
+        }
+    }
+}

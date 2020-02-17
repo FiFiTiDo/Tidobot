@@ -1,0 +1,14 @@
+{
+    "defaultChannels": ["fifitido"],
+    "identities": {
+        "default": {
+            "username": "",
+            "password": ""
+        }
+    },
+    "api": {
+        "callbackUrl": "",
+        "clientId": "",
+        "clientSecret": ""
+    }
+}

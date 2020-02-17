@@ -1,0 +1,14 @@
+{
+    "version": "0.3.0",
+    "lang": "en",
+    "cache": {
+        "api": {
+            "length": 5,
+            "unit": "minutes"
+        },
+        "users": {
+            "length": 30,
+            "unit": "seconds"
+        }
+    }
+}

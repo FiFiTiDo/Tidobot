@@ -4,5 +4,6 @@
 /data/
 /logs/
 /.idea/
+/config/
 Tidobot.iml
 package-lock.json

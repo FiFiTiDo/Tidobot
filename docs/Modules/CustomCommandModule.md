@@ -5,9 +5,9 @@
     1. [In-line expressions](#adding-in-line-expressions)
 2. [Deleting a command]()
 3. [Editing a command]()
-    3. [Condition](#editing-the-condition)
+    1. [Condition](#editing-the-condition)
     2. [Trigger](#editing-the-trigger)
-    1. [Response](#editing-the-response)
+    3. [Response](#editing-the-response)
     4. [Price](#editing-the-price)
     5. [Cooldown](#editing-the-cooldown)
     

@@ -1,0 +1,18 @@
+place:
+  invalid_option: "That isn't a valid option"
+  low_balance: "You don't have enough %s to place that bet"
+  too_low: "That bet is below the set minimum bet"
+  too_high: "That bet is above the set maximum bet"
+  placed: "Placed %s on %s"
+  failed: "Failed to place the bet"
+open:
+  successful: "%s? (Options: %s) Place your bets!"
+  already_open: "There is already a running bet"
+closed:
+  successful: "\"%s?\" is now closed for betting. The winning option was %s, winners will receive %s"
+  not_open: "There is no open bet"
+  invalid_option: "That isn't a valid option"
+check:
+  no_recent: "There haven't been any recent bets"
+  part: "Option %s, %s (%f\\%)"
+  current_stats: "Current stats: %s"

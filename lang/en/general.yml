@@ -1,0 +1,49 @@
+invalid_syntax: "Invalid syntax, usage: %s"
+invalid_argument: "Invalid argument %s given: %s, usage: %s"
+invalid_argument_new: "Expected argument #%d to be %s but was given %s, usage: %s"
+expected_cli_arg: "Expected argument %s, usage: %s"
+invalid_cli_arg: "Expected argument %s to be %s but was given %s, usage: %s"
+cooldown_alert: "Whoa! You're doing that too quickly, try again later."
+confirmation_expired: "It seems like there is no confirmation, maybe it expired?"
+generic_errors:
+  - "Oh no! An error occurred while attempting to perform the action."
+  - "Uh Oh! Something happened preventing me from helping you with that."
+  - "Oops! Seems like an error has occurred while performing the action."
+shutdown:
+  - "OH NO! It's past my bed time, time for me to go to sleep!"
+  - "Shutting down, goodbye!"
+  - "Gotta blast! B)"
+  - "I gtg, but don't cry! I'll be back later :)"
+  - "You can't stop me!! Oh wait... you can."
+  - "Hey! That tickles! *shutsdown*"
+failed_to_eval: "An error occurred while evaluating the expression"
+pong: "%s: Pong!"
+user:
+  unknown: "Hmm... I don't seem to know the user: %s"
+regular:
+  add:
+    already_banned: "%s is already a regular"
+    successful: "%s is now a regular"
+    failed: "Failed to make %s a regular"
+  remove:
+    not_banned: "%s is not a regular"
+    successful: "%s is no longer a regular"
+    failed: "Failed to remove %s as a regular"
+ban:
+  add:
+    already_a_regular: "%s is already banned"
+    successful: "%s is now banned from using the bot"
+    failed: "Failed to ban %s"
+  remove:
+    not_a_regular: "%s is not banned"
+    successful: "%s is no longer banned from using the bot"
+    failed: "Failed to unban %s"
+ignore:
+  add:
+    already_ignored: "Already ignoring %s"
+    successful: "Now ignoring %s"
+    failed: "Failed to set ignore for %s"
+  remove:
+    not_ignored: "I'm not ignoring %s"
+    successful: "No longer ignoring %s"
+    failed: "Failed to set ignore for %s"

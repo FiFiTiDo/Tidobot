@@ -1,0 +1,13 @@
+does_not_exist: "There has not been a recent raffle"
+illegal_setting: "The setting %s is not currently set to %s value"
+open:
+  already_open: "There is already a raffle running"
+  successful: "The raffle is now accepting new entries type \"%s\" to enter."
+close:
+  not_open: "There is no running raffle"
+  successful: "THe raffle is now closed for new entries"
+reset:
+  successful: "Cleared all raffle entries"
+pull:
+  lead_up: "And the winner is..."
+  failed: "There are no more entries to select from!"

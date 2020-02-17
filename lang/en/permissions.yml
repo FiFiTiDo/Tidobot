@@ -1,0 +1,66 @@
+illegal_action: "You are not permitted to do this action"
+user:
+  permission:
+    granted:
+      successful: "Granted permission %s to the user %s"
+      failed: "Oops! I was unable to grant the permission %s to the user %s"
+    denied:
+      successful: "Denied the user %s access to the permission %s"
+      failed: "Uh Oh! An error occurred preventing me from denying the permission %s for the user %s"
+    failed_to_delete: "An error occurred while trying to remove the permission %s for the user %s"
+    delete: "Successfully deleted the permission %s for the user %s"
+    failed_to_delete_all: "An error occurred while trying to delete all of the permissions for the user %s"
+    delete_all: "Successfully deleted all of the permissions for the user %s"
+    confirm_delete_all: "Are you sure you want to delete all permissions for the user %s?"
+group:
+  unknown: "Could not find the group: %s"
+  create:
+    already_exists: "%s is already an existing group"
+    successful: "Created the group %s"
+    failed: "An error occurred while creating the group %s"
+  delete:
+    successful: "Deleted the group %s"
+    failed: "Failed to delete the group %s"
+    confirmation: "Are you sure you want to delete the group %s?"
+  user:
+    already_a_member: "%s is already a member of %s"
+    not_a_member: "%s is not a member of %s"
+    failed_to_remove: "An error occurred while trying to remove %s from %s"
+    failed_to_add: "An error occurred while trying to add %s to %s"
+    added: "Added %s to the group %s"
+    removed: "Removed %s from the group %s"
+  permission:
+    granted:
+      successful: "Granted permission %s to the group %s"
+      failed: "Oops! I was unable to grant the permission %s to the group %s"
+    denied:
+      successful: "Denied the group %s access to the permission %s"
+      failed: "Uh Oh! An error occurred preventing me from denying the permission %s for the group %s"
+    failed_to_delete: "An error occurred while trying to remove the permission %s from the group %s"
+    delete: "Successfully deleted the permission %s from the group %s"
+    failed_to_delete_all: "An error occurred while trying to delete all of the permissions for the group %s"
+    delete_all: "Successfully deleted all of the permissions for the group %s"
+    confirm_delete_all: "Are you sure you want to delete all permissions for the group %s?"
+permission:
+  unknown: "Unknown permission: %s"
+  invalid_level: "Invalid permission level: %s"
+  delete:
+    successful: "Deleted the permission %s"
+    failed: "An error occurred while trying to delete the permission %s"
+    not_allowed: "Oops! Looks like you're not permitted to delete that permission"
+  reset:
+    successful: "Reset the permission %s back to it's default value"
+    failed: "Oh no! An error prevented me from resetting the permission's value"
+    not_allowed: "Uh... you're not allowed to reset that permission"
+  set:
+    successful: "Set the permission level for %s to %s"
+    failed: "Failed to set the permission level for %s"
+    not_allowed: "...What? Oh, i see, you're not allowed to set that permission's level"
+  grant:
+    successful: "Granted permission %s to %s"
+    failed: "Oops! Something happened and I was unable to grant the permission %s to %s"
+    not_allowed: "Hmm... It seems like you're not permitted to grant that permission"
+  deny:
+    successful: "Denied %s the permission %s"
+    failed: "Whoops! I was unable to deny %s the permission %s"
+    not_allowed: "Hmm... It seems like you're not permitted to deny that permission"

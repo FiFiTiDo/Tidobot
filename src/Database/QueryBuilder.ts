@@ -1,7 +1,8 @@
-import Database, {DatabaseError} from "./Database";
+import Database from "./Database";
 import {TableBuilder, TableBuilderCallback} from "./Table";
 import {Where} from "./BooleanOperations";
 import {PreparedColumn, PreparedRow} from "./PreparedData";
+import {DatabaseError, QueryError} from "./DatabaseErrors";
 
 export type RowData = { [key: string]: any };
 export default class QueryBuilder {
@@ -89,9 +90,7 @@ export abstract class AbstractQuery {
                 let sql = this.toSql();
                 this.db.getClient().exec(sql, (err) => {
                     if (err) {
-                        console.error("SQL Query: " + sql);
-                        console.trace();
-                        reject(err)
+                        reject(new QueryError(sql, err));
                     } else {
                         resolve();
                     }
@@ -126,9 +125,7 @@ abstract class PreparedQuery<T extends PreparedQuery<T>> extends WhereQuery<T> {
                 let sql = this.toSql();
                 this.db.getClient().run(sql, this.getPreparedValues(), (err) => {
                     if (err) {
-                        console.error("SQL Query: " + sql);
-                        console.trace();
-                        reject(err)
+                        reject(new QueryError(sql, err));
                     } else {
                         resolve();
                     }
@@ -163,9 +160,7 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
                 let sql = this.toSql();
                 this.db.getClient().all(sql, this.getPreparedValues(), (err, rows) => {
                     if (err) {
-                        console.error("SQL Query: " + sql);
-                        console.trace();
-                        reject(err)
+                        reject(new QueryError(sql, err));
                     } else {
                         resolve(rows.map(this.postExecute.bind(this)));
                     }
@@ -182,9 +177,7 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
                 let sql = this.toSql();
                 this.db.getClient().get(sql, this.getPreparedValues(), (err, row) => {
                     if (err) {
-                        console.error("SQL Query: " + sql);
-                        console.trace();
-                        reject(err)
+                        reject(new QueryError(sql, err));
                     } else {
                         resolve(typeof row === "undefined" ? null : this.postExecute(row));
                     }
@@ -286,18 +279,14 @@ class InsertQuery extends WhereQuery<InsertQuery> {
                 let stmt = this.db.getClient().prepare(sql);
                 for (let row of this.data) stmt.run(this.getPreparedValuesForRow(row), function (err) {
                     if (err) {
-                        console.error("SQL Query: " + sql);
-                        console.trace();
-                        reject(err);
+                        reject(new QueryError(sql, err));
                     } else {
                         ids.push(this.lastID);
                     }
                 });
                 stmt.finalize((err) => {
                     if (err) {
-                        console.error("SQL Query: " + sql);
-                        console.trace();
-                        reject(err)
+                        reject(new QueryError(sql, err));
                     } else {
                         resolve(ids);
                     }

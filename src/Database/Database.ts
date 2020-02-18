@@ -78,5 +78,3 @@ export default class Database {
         return Promise.all(ops);
     }
 }
-
-export class DatabaseError extends Error {}

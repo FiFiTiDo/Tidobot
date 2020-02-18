@@ -1,6 +1,7 @@
 import {QueryBuilderError, RowData} from "./QueryBuilder";
-import {DatabaseError, DataTypes} from "./Database";
+import {DataTypes} from "./Database";
 import moment from "moment";
+import { DatabaseError } from "./DatabaseErrors";
 
 export type TableBuilderCallback = (table: TableBuilder) => void;
 type ColumnSettings = { name: string, datatype: DataTypes, primary?: boolean, null?: boolean, unique?: boolean, increment?: boolean, references?: string, enum?: string[] };

@@ -8,7 +8,7 @@ describe("QueryBuilder", function () {
     let users = [];
 
     function getRandomUser() {
-        let index = Math.floor(users.length * Math.random());
+        let index = Math.floor((users.length - 1) * Math.random());
         let user = users[index];
         return {index, user};
     }
@@ -93,7 +93,7 @@ describe("QueryBuilder", function () {
     describe("#delete", function () {
         it("should delete a user", async function() {
             let { index, user } = getRandomUser();
-            delete users[index];
+            users.splice(index, 1);
 
             let query = db.table("users").delete().where().eq("id", user.id).done();
             query.toSql().should.eq("DELETE FROM users WHERE id = $id;");
@@ -106,8 +106,8 @@ describe("QueryBuilder", function () {
         it("should delete multiple users", async function() {
             let randomUser1 = getRandomUser();
             let randomUser2 = getRandomUser();
-            delete users[randomUser1.index];
-            delete users[randomUser2.index];
+            users.splice(randomUser1.index, 1);
+            users.splice(randomUser2.index, 1);
 
             let orClause = where => {
                 where.eq("id", randomUser1.user.id);
@@ -136,38 +136,37 @@ describe("QueryBuilder", function () {
             let row = await db.table("users").select().where().eq("id", id).done().first();
             row.name.should.eq(name);
         });
-    });
 
-    it("should insert non-existent user", async function() {
-        let id = faker.random.uuid();
-        let name = faker.internet.userName();
-        users.push({ id, name });
+        it("should insert non-existent user", async function() {
+            let id = faker.random.uuid();
+            let name = faker.internet.userName();
+            users.push({ id, name });
 
-        let query = db.table("users").insert({ id, name }).or("REPLACE");
-        query.toSql().should.eq("INSERT OR REPLACE INTO users (id, name) VALUES ($id, $name);");
-        await query.exec();
+            let query = db.table("users").insert({ id, name }).or("REPLACE");
+            query.toSql().should.eq("INSERT OR REPLACE INTO users (id, name) VALUES ($id, $name);");
+            await query.exec();
 
-        let rows = await db.table("users").select().where().eq("id", id).done().all();
-        rows.length.should.eq(1);
-    });
+            let rows = await db.table("users").select().where().eq("id", id).done().all();
+            rows.length.should.eq(1);
+        });
 
-    it("should fail to insert existing permission",  function(done) {
-        let { user } = getRandomUser();
-        let allowed = faker.random.boolean();
-        let permission = "random_permission";
-        db.table("permissions").insert({ permission, user_id: user.id, allowed }).exec()
-            .then(() => db.table("permissions").insert({ permission, user_id: user.id, allowed }).exec())
-            .then(() => done(new Error("Insert query did not throw an error")))
-            .catch(() => done());
-    });
+        it("should fail to insert existing permission",  function(done) {
+            let { user } = getRandomUser();
+            let allowed = faker.random.boolean();
+            let permission = "random_permission";
+            db.table("permissions").insert({ permission, user_id: user.id, allowed }).exec()
+                .then(() => db.table("permissions").insert({ permission, user_id: user.id, allowed }).exec())
+                .then(() => done(new Error("Insert query did not throw an error")))
+                .catch(() => done());
+        });
 
-    it("should not fail to insert non-existent permission",  function(done) {
-        let { user } = getRandomUser();
-        let allowed = faker.random.boolean();
-        let permission = "random_permission";
-        db.table("permissions").insert({ permission, user_id: user.id, allowed }).exec()
-            .then(() => db.table("permissions").insert({ permission: "random_permission2", user_id: user.id, allowed }).exec())
-            .then(() => done())
-            .catch(done);
+        it("should not fail to insert non-existent permission",  async function() {
+            let { user } = getRandomUser();
+            let { user: user2 } = getRandomUser();
+            let allowed = faker.random.boolean();
+            let permission = "random_permission2";
+            await db.table("permissions").insert({ permission, user_id: user.id, allowed }).exec();
+            await db.table("permissions").insert({ permission, user_id: user2.id, allowed }).exec();
+        });
     });
 });

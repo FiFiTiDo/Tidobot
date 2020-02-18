@@ -34,6 +34,7 @@ import BettingModule from "../Modules/BettingModule";
 import Database from "../Database/Database";
 import GroupsModule from "../Modules/GroupsModule";
 import moment from "moment";
+import TidobotModule from "../Modules/TidobotModule";
 
 require("winston-daily-rotate-file");
 
@@ -186,6 +187,7 @@ export default class Application {
         Application.mm.registerModule(new CurrencyModule());
         Application.mm.registerModule(new FilterModule());
         Application.mm.registerModule(new BettingModule());
+        Application.mm.registerModule(new TidobotModule());
         Application.mm.init();
         Application.adapter.run(options as AdapterOptions);
     };

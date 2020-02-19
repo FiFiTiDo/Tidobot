@@ -89,11 +89,21 @@ export class TwitchMessage extends Message {
                         from_id: this.getChatter().getId(),
                         to_id: this.getChannel().getId()
                     }).then(async resp => {
+                        if (resp.total < 1) return "Sender is not following the channel.";
                         let timezone = await this.getChannel().getSettings().get("timezone") as moment.MomentZone;
                         return moment.parseZone(resp.data[0].followed_at, timezone.name).format(format ? format : "Y-m-d h:i:s");
                     }).catch(e => {
                         Application.getLogger().error("Unable to determine follow age", {cause: e});
                         return "Cannot determine follow age."
+                    })
+                },
+                isFollowing: async() => {
+                    return this.api.getUserFollow({
+                        from_id: this.getChatter().getId(),
+                        to_id: this.getChannel().getId()
+                    }).then(async resp => resp.total > 0).catch(e => {
+                        Application.getLogger().error("Unable to determine if the user is following", {cause: e});
+                        return "Cannot determine if the user is following follow."
                     })
                 }
             }

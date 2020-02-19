@@ -55,12 +55,14 @@ export default class Message {
             },
             raw_arguments: this.parts.slice(1).join(" "),
             arguments: this.parts.slice(1),
-            to_user: (() => {
+            to_user: (append: unknown) => {
                 if (this.parts.length < 1) return "";
 
                 let user = this.parts[0];
+                if (typeof append === "string") user += append;
+
                 return user.startsWith("@") ? user.substring(1) : user;
-            })()
+            }
         }
     }
 

@@ -32,19 +32,23 @@ export default class Database {
     static async create(name: string) {
         let db = new Database(new sqlite3.Database(path.join(process.cwd(), "data", name + ".db"), sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE));
 
-        await db.table("channels").create(table => {
-            table.string('id').unique();
-            table.string('name');
-            table.array('disabled_modules');
-            db.schema.set("channels", table.build("channels"));
-        }).ifNotExists().exec();
+        try {
+            await db.table("channels").create(table => {
+                table.string('id').unique();
+                table.string('name');
+                table.array('disabled_modules');
+                db.schema.set("channels", table.build("channels"));
+            }).ifNotExists().exec();
 
-        await db.table("users").create(table => {
-            table.string('id').unique();
-            table.string('name');
-            table.boolean('ignore');
-            db.schema.set("users", table.build("users"));
-        }).ifNotExists().exec();
+            await db.table("users").create(table => {
+                table.string('id').unique();
+                table.string('name');
+                table.boolean('ignore');
+                db.schema.set("users", table.build("users"));
+            }).ifNotExists().exec();
+        } catch(e) {
+            Application.getLogger().emerg("Unable to create databases for channels and users", { cause: e });
+        }
 
         return db;
     }
@@ -67,7 +71,9 @@ export default class Database {
             if (name.startsWith(channel.getName() + "_")) {
                 ops.push(this.table(name).create(table1 => {
                     table1.import(table);
-                }).ifNotExists().exec());
+                }).ifNotExists().exec().catch(e => {
+                    Application.getLogger().error("Unable to create table " + name, { cause: e });
+                }));
             }
         }
         await Promise.all(ops);

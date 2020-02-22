@@ -13,8 +13,14 @@ export default class User implements Serializable {
     }
 
     static async findByName(username: string) {
-        let row = await Application.getDatabase().table("users")
-            .select().where().eq("name", username).done().first();
+        let row;
+        try {
+            row = await Application.getDatabase().table("users")
+                .select().where().eq("name", username).done().first();
+        } catch (e) {
+            Application.getLogger().error("Unable to search for user in the database", { cause: e });
+            return null;
+        }
 
         if (row === null) return null;
 
@@ -64,16 +70,24 @@ export default class User implements Serializable {
                 id: this.getId(),
                 name: this.getName(),
                 ignore: this.ignore
-            }).or("REPLACE").exec();
+            }).or("REPLACE").exec()
+            .catch(e => Application.getLogger().error("Unable to save user data to database", { cause: e }));
     }
 
     async load(): Promise<void> {
-        let rows = await Application.getDatabase().table("users")
-            .select().where().eq("name", this.name).done().all();
+        let row;
 
-        if (rows.length < 1) return;
+        try {
+            row = await Application.getDatabase().table("users")
+                .select().where().eq("name", this.name).done().first();
+        } catch (e) {
+            Application.getLogger().error("Unable to load user data from the database", { cause: e });
+            return;
+        }
 
-        this.ignore = rows[0].ignore;
+        if (row === null) return;
+
+        this.ignore = row.ignore;
     }
 
     serialize(): string {

@@ -24,9 +24,15 @@ export default class Channel implements Serializable {
     }
 
     static async findByName(name: string) {
-        let row = await Application.getDatabase().table("channels").select().where().eq("name", name).done().first();
-        if (row === null) return null;
+        let row;
+        try {
+            row = await Application.getDatabase().table("channels").select().where().eq("name", name).done().first();
+        } catch (e) {
+            Application.getLogger().error("Unable to retrieve channel from the database", { cause: e });
+            return null;
+        }
 
+        if (row === null) return null;
         let channel = new Channel(row.id, row.name);
         channel.disabledModules.set(row.disabled_modules);
         channel.tablesExist = true;
@@ -70,27 +76,37 @@ export default class Channel implements Serializable {
     }
 
     async save(): Promise<void> {
-        await Application.getDatabase().table("channels").insert({
-            id: this.getId(),
-            name: this.getName(),
-            disabled_modules: this.disabledModules.get()
-        }).or("REPLACE").exec();
+        try {
+            await Application.getDatabase().table("channels").insert({
+                id: this.getId(),
+                name: this.getName(),
+                disabled_modules: this.disabledModules.get()
+            }).or("REPLACE").exec();
 
-        if (!this.tablesExist) {
-            await this.createTables();
-            this.tablesExist = true;
+            if (!this.tablesExist) {
+                await this.createTables();
+                this.tablesExist = true;
+            }
+        } catch (e) {
+            Application.getLogger().error("Unable to save channel data to the database", { cause: e });
         }
     }
 
     async load(): Promise<void> {
-        let rows = await Application.getDatabase().table("channels")
-            .select("*")
-            .where().eq("id", this.id).done()
-            .all();
+        let row;
+        try {
+            row = await Application.getDatabase().table("channels")
+                .select("*")
+                .where().eq("id", this.id).done()
+                .first();
+        } catch (e) {
+            Application.getLogger().error("Unable to load channel data from the database", { cause: e });
+            return;
+        }
 
-        if (rows.length < 1) return;
+        if (row === null) return;
 
-        this.disabledModules.set(rows[0].disabled_modules);
+        this.disabledModules.set(row.disabled_modules);
         this.tablesExist = true;
     }
 

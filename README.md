@@ -31,10 +31,19 @@ from the way it functions to the way it interacts with its users.
 ### Requirements
 
 * Node
+* Yarn
 * Git
 
 ### Installation
 
+With yarn:
+```shell script
+$ git clone https://github.com/FiFiTiDo/Tidobot.git
+$ cd ./Tidobot
+$ yarn install
+```
+
+With npm:
 ```shell script
 $ git clone https://github.com/FiFiTiDo/Tidobot.git
 $ cd ./Tidobot
@@ -49,12 +58,26 @@ service you intend to use.
 
 ### Building
 You can build the Typescript source files into compiled plain Javascript files using
+
+With yarn:
+```shell script
+$ yarn build
+```
+
+With npm:
 ```shell script
 $ npm build
 ```
 
 ### Running
 To run the bot, first you must [build](#Building) the project then run using
+
+With yarn:
+```shell script
+$ yarn run
+```
+
+With npm:
 ```shell script
 $ npm run
 ```
@@ -63,6 +86,13 @@ $ npm run
 When running the debugger, it is not necessary to build the sources as it debugs
 using the sources rather than the compiled javascript files. Start the debugger
 by using
+
+With yarn:
+```shell script
+$ yarn debug
+```
+
+With npm:
 ```shell script
 $ npm debug
 ```
@@ -71,6 +101,13 @@ $ npm debug
 The Tidobot project uses the mocha testing framework for testing certain aspects
 of the functionality to ensure that it works the way it intends to work. All test
 files are located in the `test` directory and can be run using
+
+With yarn:
+```shell script
+$ yarn test
+```
+
+With npm:
 ```shell script
 $ npm test
 ```

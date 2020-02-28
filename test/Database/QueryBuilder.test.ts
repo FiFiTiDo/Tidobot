@@ -14,7 +14,7 @@ describe("QueryBuilder", function () {
     }
 
     before(async function () {
-        db = new Database(new sqlite3.Database(":memory:"));
+        db = new Database("test", new sqlite3.Database(":memory:"));
         await db.table("users").create(table => {
             table.string("id").unique();
             table.string("name");

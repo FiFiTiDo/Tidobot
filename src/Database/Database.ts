@@ -25,26 +25,26 @@ export type ChannelTables =
 export default class Database {
     public readonly schema: Map<string, Table>;
 
-    constructor(private db: sqlite3.Database) {
+    constructor(private service: string, private db: sqlite3.Database) {
         this.schema = new Map<string, Table>();
     }
 
-    static async create(name: string) {
-        let db = new Database(new sqlite3.Database(path.join(process.cwd(), "data", name + ".db"), sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE));
+    static async create(service: string) {
+        let db = new Database(service, new sqlite3.Database(path.join(process.cwd(), "data", "database.db"), sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE));
 
         try {
             await db.table("channels").create(table => {
                 table.string('id').unique();
                 table.string('name');
                 table.array('disabled_modules');
-                db.schema.set("channels", table.build("channels"));
+                db.schema.set(service + "_channels", table.build("channels"));
             }).ifNotExists().exec();
 
             await db.table("users").create(table => {
                 table.string('id').unique();
                 table.string('name');
                 table.boolean('ignore');
-                db.schema.set("users", table.build("users"));
+                db.schema.set(service + "_users", table.build("users"));
             }).ifNotExists().exec();
         } catch(e) {
             Application.getLogger().emerg("Unable to create databases for channels and users", { cause: e });
@@ -58,7 +58,7 @@ export default class Database {
     }
 
     table(table: string) {
-        return new QueryBuilder(this, table);
+        return new QueryBuilder(this, `${this.service}_${table}`);
     }
 
     channelTable(channel: Channel, table: string|ChannelTables) {

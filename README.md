@@ -112,6 +112,20 @@ With npm:
 $ npm test
 ```
 
+### Running the linter
+The linter helps by checking the syntax of the code, find problems, and enforce the code style
+of the project. The linter can be run by using
+
+With yarn:
+```shell script
+$ yarn lint
+```
+
+With npm:
+```shell script
+$ npm run lint
+```
+
 ## Authors
 * **Evan Fiordeliso** - *Main author* - [FiFiTiDo](https://github.com/FiFiTiDo)
 

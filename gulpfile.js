@@ -2,6 +2,7 @@ const gulp = require("gulp");
 const ts = require("gulp-typescript");
 const mocha = require("gulp-mocha");
 const sourcemaps = require("gulp-sourcemaps");
+const eslint = require("gulp-eslint");
 
 const tsProject = ts.createProject('tsconfig.json');
 
@@ -15,10 +16,17 @@ gulp.task('default', function() {
         .pipe(gulp.dest('dist'));
 });
 
-gulp.task('test', function(cb) {
+gulp.task('test', function() {
     return gulp.src('test/**/*.test.ts', { read: false })
         .pipe(mocha({
             reporter: 'spec',
             require: ['ts-node/register']
         }));
+});
+
+gulp.task('lint', function () {
+    return tsProject.src()
+        .pipe(eslint())
+        .pipe(eslint.format())
+        .pipe(eslint.failAfterError());
 });

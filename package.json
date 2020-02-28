@@ -9,7 +9,8 @@
     "run": "node ./dist/index.js",
     "debug": "node --require ts-node/register --inspect ./src/index.ts",
     "build": "gulp",
-    "test": "gulp test"
+    "test": "gulp test",
+    "lint": "gulp lint"
   },
   "devDependencies": {
     "@mixer/client-node": "^3.5.0",
@@ -26,10 +27,14 @@
     "@types/sinon-chai": "^3.2.3",
     "@types/sqlite3": "^3.1.5",
     "@types/tmi.js": "^1.4.0",
+    "@typescript-eslint/eslint-plugin": "^2.21.0",
+    "@typescript-eslint/parser": "^2.21.0",
     "chai": "^4.2.0",
     "chai-spies": "^1.0.0",
+    "eslint": "^6.8.0",
     "faker": "^4.1.0",
     "gulp": "^4.0.2",
+    "gulp-eslint": "^6.0.0",
     "gulp-mocha": "^7.0.2",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-typescript": "^6.0.0-alpha.1",

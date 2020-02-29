@@ -12,7 +12,7 @@ export default class Channel implements Serializable {
     private tablesExist: boolean;
     private settings: ChannelSettings;
 
-    constructor(private id: string, private name: string) {
+    constructor(private channel_id: string, private name: string) {
         this.disabledModules = new ObservableArray<string>();
         this.disabledModules.attach(this.save.bind(this));
         this.online = new Observable<boolean>(false);
@@ -33,21 +33,21 @@ export default class Channel implements Serializable {
         }
 
         if (row === null) return null;
-        let channel = new Channel(row.id, row.name);
+        let channel = new Channel(row.channel_id, row.name);
         channel.disabledModules.set(row.disabled_modules);
         channel.tablesExist = true;
         return channel;
     }
 
     static deserialize(input: string) {
-        let {id, name, disabledModules} = JSON.parse(input);
-        let channel = new Channel(id, name);
+        let {channel_id, name, disabledModules} = JSON.parse(input);
+        let channel = new Channel(channel_id, name);
         channel.disabledModules.set(disabledModules);
         return channel;
     }
 
     getId() {
-        return this.id;
+        return this.channel_id;
     }
 
     getName() {
@@ -78,7 +78,7 @@ export default class Channel implements Serializable {
     async save(): Promise<void> {
         try {
             await Application.getDatabase().table("channels").insert({
-                id: this.getId(),
+                channel_id: this.getId(),
                 name: this.getName(),
                 disabled_modules: this.disabledModules.get()
             }).or("REPLACE").exec();
@@ -97,7 +97,7 @@ export default class Channel implements Serializable {
         try {
             row = await Application.getDatabase().table("channels")
                 .select("*")
-                .where().eq("channel_id", this.id).done()
+                .where().eq("channel_id", this.channel_id).done()
                 .first();
         } catch (e) {
             Application.getLogger().error("Unable to load channel data from the database", { cause: e });
@@ -116,7 +116,7 @@ export default class Channel implements Serializable {
 
     serialize(): string {
         return JSON.stringify({
-            id: this.id,
+            channel_id: this.channel_id,
             name: this.name,
             disabledModules: this.disabledModules.get()
         });
@@ -125,7 +125,7 @@ export default class Channel implements Serializable {
     private createTableSchema() {
         let builder = new ChannelSchemaBuilder(Application.getDatabase(), this);
         builder.addTable("chatters", table => {
-            table.string('chatter_id').unique();
+            table.string('user_id').unique();
             table.string('name');
             table.integer('balance');
             table.boolean('banned');

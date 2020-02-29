@@ -70,7 +70,7 @@ export default class PermissionModule extends AbstractModule {
 
     createDatabaseTables(builder: ChannelSchemaBuilder) {
         builder.addTable("permissions", (table) => {
-            table.string('permission').primary();
+            table.string('permission').unique();
             table.enum('level', ['BANNED', 'NORMAL', 'PREMIUM', 'REGULAR', 'SUBSCRIBER', 'VIP', 'MODERATOR', 'BROADCASTER', 'ADMIN', 'OWNER']);
         });
         builder.addTable("userPermissions", (table) => {

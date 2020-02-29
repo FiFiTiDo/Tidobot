@@ -66,7 +66,7 @@ export default class User implements Serializable {
     async save(): Promise<void> {
         await Application.getDatabase().table("users")
             .insert({
-                id: this.getId(),
+                user_id: this.getId(),
                 name: this.getName(),
                 ignore: this.ignore
             }).or("REPLACE").exec()

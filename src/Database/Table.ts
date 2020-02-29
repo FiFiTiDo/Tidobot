@@ -75,6 +75,7 @@ export class TableBuilder {
     constructor() {
         this.columns = [];
         this.constraints = [];
+        this.increments("id");
     }
 
     increments(name: string) {

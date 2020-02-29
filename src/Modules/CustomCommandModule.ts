@@ -170,7 +170,6 @@ export default class CustomCommandModule extends AbstractModule {
             permission: "command.edit"
         });
         if (args === null) return;
-
         let [, type, id, value] = args;
         let command = await Command.retrieve(id, msg.getChannel());
         if (command === null) {

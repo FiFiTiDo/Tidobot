@@ -357,11 +357,7 @@ export class CommandEvent extends Event<CommandEvent> {
                         }
 
                         let int_range = await range(i, arg, intVal, raw);
-                        if (int_range === true) {
-                            continue;
-                        } else if (int_range === false) {
-                            return null;
-                        }
+                        if (!int_range) return null;
 
                         args.push(intVal);
                         break;
@@ -374,11 +370,7 @@ export class CommandEvent extends Event<CommandEvent> {
                         }
 
                         let float_range = await range(i, arg, floatVal, raw);
-                        if (float_range === true) {
-                            continue;
-                        } else if (float_range === false) {
-                            return null;
-                        }
+                        if (!float_range) return null;
 
                         args.push(floatVal);
                         break;

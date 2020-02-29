@@ -10,8 +10,8 @@ export default class Chatter extends User implements Serializable {
     private regular: boolean;
     private balance: number;
 
-    constructor(id: string, name: string, channel: Channel) {
-        super(id, name);
+    constructor(user_id: string, name: string, channel: Channel) {
+        super(user_id, name);
 
         this.channel = channel;
         this.banned = false;
@@ -52,9 +52,9 @@ export default class Chatter extends User implements Serializable {
     }
 
     static deserialize(input: string) {
-        let {id, name, channel, ignore, banned, regular, balance} = JSON.parse(input);
+        let {user_id, name, channel, ignore, banned, regular, balance} = JSON.parse(input);
         channel = Channel.deserialize(channel);
-        let chatter = new Chatter(id, name, channel);
+        let chatter = new Chatter(user_id, name, channel);
         chatter.ignore = ignore;
         chatter.banned = banned;
         chatter.regular = regular;
@@ -144,7 +144,7 @@ export default class Chatter extends User implements Serializable {
         try {
             let count = await this.channel.query("chatters")
                 .count()
-                .where().eq("id", this.getId()).done()
+                .where().eq("user_id", this.getId()).done()
                 .exec();
             return count > 0;
         } catch (e) {
@@ -157,7 +157,7 @@ export default class Chatter extends User implements Serializable {
         await super.save();
         await this.channel.query("chatters")
             .insert({
-                id: this.getId(),
+                user_id: this.getId(),
                 name: this.getName(),
                 banned: this.banned,
                 regular: this.regular,
@@ -187,7 +187,7 @@ export default class Chatter extends User implements Serializable {
 
     serialize(): string {
         return JSON.stringify({
-            id: this.getId(),
+            user_id: this.getId(),
             name: this.getName(),
             channel: this.channel.serialize(),
             ignore: this.isIgnored(),

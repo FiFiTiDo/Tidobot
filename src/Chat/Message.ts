@@ -27,7 +27,7 @@ export default class Message {
         let levels = [PermissionLevel.NORMAL];
 
         try {
-            let rows = await this.channel.query("chatters").select().where().eq("id", this.chatter.getId()).done().all();
+            let rows = await this.channel.query("chatters").select().where().eq("user_id", this.chatter.getId()).done().all();
 
             if (rows.length > 0) {
                 let user = rows[0];

@@ -66,7 +66,7 @@ export default class Channel implements Serializable {
         try {
             let count = await Application.getDatabase().table("channels")
                 .count()
-                .where().eq("id", this.getId()).done()
+                .where().eq("channel_id", this.getId()).done()
                 .exec();
             return count > 0;
         } catch (e) {
@@ -97,7 +97,7 @@ export default class Channel implements Serializable {
         try {
             row = await Application.getDatabase().table("channels")
                 .select("*")
-                .where().eq("id", this.id).done()
+                .where().eq("channel_id", this.id).done()
                 .first();
         } catch (e) {
             Application.getLogger().error("Unable to load channel data from the database", { cause: e });

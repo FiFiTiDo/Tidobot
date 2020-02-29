@@ -3,11 +3,11 @@ import {Serializable} from "../Utilities/Serializable";
 
 export default class User implements Serializable {
     protected ignore: boolean;
-    private readonly id: string;
+    private readonly user_id: string;
     private readonly name: string;
 
-    constructor(id: string, name: string) {
-        this.id = id;
+    constructor(user_id: string, name: string) {
+        this.user_id = user_id;
         this.name = name;
         this.ignore = false;
     }
@@ -30,8 +30,8 @@ export default class User implements Serializable {
     }
 
     static deserialize(input: string) {
-        let {id, name, ignore} = JSON.parse(input);
-        let user = new User(id, name);
+        let {user_id, name, ignore} = JSON.parse(input);
+        let user = new User(user_id, name);
         user.ignore = ignore;
         return user;
     }
@@ -56,7 +56,7 @@ export default class User implements Serializable {
     async exists(): Promise<boolean> {
         try {
             let count = await Application.getDatabase().table("users")
-                .count().where().eq("id", this.getId()).done().exec();
+                .count().where().eq("user_id", this.getId()).done().exec();
             return count > 0;
         } catch (e) {
             Application.getLogger().error("Unable to verify the existence of the user in the database", {cause: e});
@@ -76,7 +76,6 @@ export default class User implements Serializable {
 
     async load(): Promise<void> {
         let row;
-
         try {
             row = await Application.getDatabase().table("users")
                 .select().where().eq("name", this.name).done().first();
@@ -92,7 +91,7 @@ export default class User implements Serializable {
 
     serialize(): string {
         return JSON.stringify({
-            id: this.id,
+            user_id: this.user_id,
             name: this.name,
             ignore: this.ignore
         });

@@ -12,7 +12,7 @@ export enum DataTypes {
 export type ChannelTables =
     "settings"
     | "groups"
-    | "users"
+    | "chatters"
     | "groupMembers"
     | "commands"
     | "permissions"

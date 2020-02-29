@@ -33,11 +33,10 @@ export default class User implements Serializable {
         let {user_id, name, ignore} = JSON.parse(input);
         let user = new User(user_id, name);
         user.ignore = ignore;
-        return user;
     }
 
     getId() {
-        return this.id;
+        return this.user_id;
     }
 
     getName() {

@@ -8,6 +8,7 @@ export default class ChannelSchemaBuilder {
     addTable(table: string, cb: TableBuilderCallback) {
         let name = this.getTableName(table);
         let builder = new TableBuilder();
+        builder.increments("id");
         cb(builder);
         this.db.schema.set(name, builder.build(name));
     }

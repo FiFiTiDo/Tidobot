@@ -310,11 +310,11 @@ export default class CurrencyModule extends AbstractModule {
         let confirmation = await ConfirmationModule.make(msg, __("currency.reset-all.confirmation"), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
            try {
-               let chatters = await msg.getChannel().query("users").select().all();
+               let chatters = await msg.getChannel().query("chatters").select().all();
                let ops = [];
                for (let chatter of chatters) {
                    chatter.balance = 0;
-                   ops.push(msg.getChannel().query("users").update(chatter).exec());
+                   ops.push(msg.getChannel().query("chatters").update(chatter).exec());
                }
                await Promise.all(ops);
                await msg.reply(__("currency.reset-all.successful"));

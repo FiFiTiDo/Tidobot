@@ -67,7 +67,6 @@ export default class ListModule extends AbstractModule {
 
     createDatabaseTables(builder: ChannelSchemaBuilder) {
         builder.addTable("lists", table => {
-            table.increments('id');
             table.string('name').unique();
         });
     }
@@ -302,7 +301,6 @@ class List {
         if (resp.length < 1) throw new Error("Unable to add list to the database");
         let list = new List(resp[0], name, channel);
         await Application.getDatabase().table(list.getTableName()).create((table) => {
-            table.increments("id");
             table.string("value");
         }).ifNotExists().exec();
         return list;

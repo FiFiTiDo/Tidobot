@@ -50,11 +50,9 @@ export default class GroupsModule extends AbstractModule {
 
     createDatabaseTables(builder: ChannelSchemaBuilder) {
         builder.addTable("groups", (table) => {
-            table.increments('id');
             table.string('name').unique();
         });
         builder.addTable("groupMembers", (table) => {
-            table.increments('id');
             table.integer('user_id').references(builder.getTableName("users"), "id");
             table.integer('group_id').references(builder.getTableName("group"), "id");
         });

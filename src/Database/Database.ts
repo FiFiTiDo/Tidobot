@@ -34,14 +34,14 @@ export default class Database {
 
         try {
             await db.table("channels").create(table => {
-                table.string('id').unique();
+                table.string('channel_id').unique();
                 table.string('name');
                 table.array('disabled_modules');
                 db.schema.set(service + "_channels", table.build("channels"));
             }).ifNotExists().exec();
 
             await db.table("users").create(table => {
-                table.string('id').unique();
+                table.string('user_id').unique();
                 table.string('name');
                 table.boolean('ignore');
                 db.schema.set(service + "_users", table.build("users"));

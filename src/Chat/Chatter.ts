@@ -30,7 +30,7 @@ export default class Chatter extends User implements Serializable {
     }
 
     static async getAll(channel: Channel) {
-        let rows = await channel.query("users").select().all();
+        let rows = await channel.query("chatters").select().all();
 
         let chatters = [];
         for (let row of rows) {
@@ -45,7 +45,7 @@ export default class Chatter extends User implements Serializable {
         let user = await User.findByName(name);
         if (user === null) return null;
 
-        let row = await channel.query("users").select().where().eq("name", name).done().first();
+        let row = await channel.query("chatters").select().where().eq("name", name).done().first();
         if (row === null) return null;
 
         return this.fromRow(row, user, channel);
@@ -142,7 +142,7 @@ export default class Chatter extends User implements Serializable {
 
     async exists(): Promise<boolean> {
         try {
-            let count = await this.channel.query("users")
+            let count = await this.channel.query("chatters")
                 .count()
                 .where().eq("id", this.getId()).done()
                 .exec();
@@ -155,7 +155,7 @@ export default class Chatter extends User implements Serializable {
 
     async save(): Promise<void> {
         await super.save();
-        await this.channel.query("users")
+        await this.channel.query("chatters")
             .insert({
                 id: this.getId(),
                 name: this.getName(),
@@ -167,7 +167,7 @@ export default class Chatter extends User implements Serializable {
 
     async load(): Promise<void> {
         await super.load();
-        let row = await this.channel.query("users")
+        let row = await this.channel.query("chatters")
             .select("*")
             .where().eq("name", this.getName()).done()
             .first();

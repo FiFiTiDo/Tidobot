@@ -124,8 +124,8 @@ export default class Channel implements Serializable {
 
     private createTableSchema() {
         let builder = new ChannelSchemaBuilder(Application.getDatabase(), this);
-        builder.addTable("users", table => {
-            table.string('id').unique();
+        builder.addTable("chatters", table => {
+            table.string('chatter_id').unique();
             table.string('name');
             table.integer('balance');
             table.boolean('banned');

@@ -86,7 +86,6 @@ export default class CustomCommandModule extends AbstractModule {
 
     createDatabaseTables(builder: ChannelSchemaBuilder) {
         builder.addTable("commands", (table) => {
-            table.increments('id');
             table.string('trigger');
             table.string('response');
             table.string('condition');

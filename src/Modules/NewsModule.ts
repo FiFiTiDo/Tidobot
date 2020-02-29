@@ -55,7 +55,6 @@ export default class NewsModule extends AbstractModule {
 
     createDatabaseTables(builder: ChannelSchemaBuilder) {
         builder.addTable("news", table => {
-            table.increments("id");
             table.string("value");
         });
     }

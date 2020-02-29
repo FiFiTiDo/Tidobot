@@ -6,8 +6,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start": "node ./dist/index.js",
-    "debug": "node --require ts-node/register --inspect ./src/index.ts",
+    "start": "node ./dist/index.js run",
+    "debug": "node --require ts-node/register --inspect ./src/index.ts run",
     "build": "gulp",
     "test": "gulp test",
     "lint": "gulp lint"

@@ -42,8 +42,11 @@ export default class Table {
     prepareDatabaseRows(row: RowData): RowData {
         for (let columnName of Object.keys(row)) {
             let i = this.columnNames.indexOf(columnName);
-            if (i < 0)
+            if (i < 0) {
+                console.table(row);
+                console.table(this.columns);
                 throw new DatabaseError("Could not parse database rows, column names don't match the schema.");
+            }
             let column = this.columns[i];
             switch (column.datatype) {
                 case DataTypes.BOOLEAN:

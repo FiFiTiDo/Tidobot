@@ -2,6 +2,7 @@ import Channel from "../Chat/Channel";
 import Application from "../Application/Application";
 import {parseBool, parseStringAs} from "./functions";
 import SettingsModule, {convertSetting} from "../Modules/SettingsModule";
+import {Where} from "../Database/BooleanOperations";
 
 interface StringLike {
     toString(): string;
@@ -40,14 +41,23 @@ export default class ChannelSettings {
     }
 
     async set(key: string, value: StringLike) {
-        return this.channel.query("settings").insert({ key, value }).or("REPLACE").exec();
+        let where = new Where(null).eq("key", key);
+        let setting = await this.channel.query("settings").select().where(where).first();
+        if (setting === null) {
+            return this.channel.query("settings").insert({ key, value, type: "string", defaultValue: value }).exec();
+        } else {
+            return this.channel.query("settings").update({ value }).where(where).exec();
+        }
     }
 
     async unset(key: string) {
-        let setting = ChannelSettings.getSettingData(key);
-        return setting === null ?
-            this.channel.query("settings").delete().where().eq("key", key).done().exec() :
-            this.channel.query("settings").update({ value: setting.value }).where().eq("key", key).done().exec();
+        let where = new Where(null).eq("key", key);
+        let setting = await this.channel.query("settings").select().where(where).first();
+
+        if (setting === null) return false;
+
+        await this.channel.query("settings").update({ value: setting.defaultValue }).where(where).exec();
+        return true;
     }
 
     async reset() {

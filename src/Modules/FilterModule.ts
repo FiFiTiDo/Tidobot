@@ -13,7 +13,6 @@ import moment from "moment";
 import Chatter, {ChatterStateList} from "../Chat/Chatter";
 import {TwitchMessage} from "../Services/Twitch/TwitchMessage";
 import Message from "../Chat/Message";
-import {StringToBooleanConverter, StringToIntegerConverter} from "../Utilities/Converter";
 
 const DOT = /\s?\(dot\)\s?/gi;
 const URL_PATTERN = /((http|ftp|https|sftp):\/\/)?(([\w.-]*)\.([\w]*))/igm;
@@ -49,28 +48,28 @@ export default class FilterModule extends AbstractModule {
         perm.registerPermission("filter.purge", PermissionLevel.MODERATOR);
 
         const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("filter.urls.whitelist", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.caps.enabled", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.caps.amount", "20", StringToIntegerConverter.func);
-        settings.registerSetting("filter.spam.enabled", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.spam.amount", "15", StringToIntegerConverter.func);
-        settings.registerSetting("filter.symbols.enabled", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.symbols.amount", "20", StringToIntegerConverter.func);
-        settings.registerSetting("filter.emotes.enabled", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.emotes.whitelist", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.emotes.amount", "20", StringToIntegerConverter.func);
-        settings.registerSetting("filter.fake-purge.enabled", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.bad-word.enabled", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.long-message.enabled", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.long-message.length", "325", StringToIntegerConverter.func);
-        settings.registerSetting("filter.ignore-subs", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.ignore-vips", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.ignore-premium", "true", StringToBooleanConverter.func);
-        settings.registerSetting("filter.permit-length", "30", StringToIntegerConverter.func);
-        settings.registerSetting("filter.purge-length", "1", StringToIntegerConverter.func);
-        settings.registerSetting("filter.strike.1", "0", StringToIntegerConverter.func);
-        settings.registerSetting("filter.strike.2", "600", StringToIntegerConverter.func);
-        settings.registerSetting("filter.strike.3", "28800", StringToIntegerConverter.func);
+        settings.registerSetting("filter.urls.whitelist", "true", "boolean");
+        settings.registerSetting("filter.caps.enabled", "true", "boolean");
+        settings.registerSetting("filter.caps.amount", "20", "integer");
+        settings.registerSetting("filter.spam.enabled", "true", "boolean");
+        settings.registerSetting("filter.spam.amount", "15", "integer");
+        settings.registerSetting("filter.symbols.enabled", "true", "boolean");
+        settings.registerSetting("filter.symbols.amount", "20", "integer");
+        settings.registerSetting("filter.emotes.enabled", "true", "boolean");
+        settings.registerSetting("filter.emotes.whitelist", "true", "boolean");
+        settings.registerSetting("filter.emotes.amount", "20", "integer");
+        settings.registerSetting("filter.fake-purge.enabled", "true", "boolean");
+        settings.registerSetting("filter.bad-word.enabled", "true", "boolean");
+        settings.registerSetting("filter.long-message.enabled", "true", "boolean");
+        settings.registerSetting("filter.long-message.length", "325", "integer");
+        settings.registerSetting("filter.ignore-subs", "true", "boolean");
+        settings.registerSetting("filter.ignore-vips", "true", "boolean");
+        settings.registerSetting("filter.ignore-premium", "true", "boolean");
+        settings.registerSetting("filter.permit-length", "30", "integer");
+        settings.registerSetting("filter.purge-length", "1", "integer");
+        settings.registerSetting("filter.strike.1", "0", "integer");
+        settings.registerSetting("filter.strike.2", "600", "integer");
+        settings.registerSetting("filter.strike.3", "28800", "integer");
     }
 
     createDatabaseTables(builder: ChannelSchemaBuilder) {

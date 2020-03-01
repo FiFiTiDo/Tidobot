@@ -4,10 +4,8 @@ import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
 import PermissionModule, {PermissionLevel} from "./PermissionModule";
 import {__, spam_message} from "../Utilities/functions";
 import SettingsModule from "./SettingsModule";
-import request = require("request-promise-native");
-import minimist = require("minimist-string");
 import Message from "../Chat/Message";
-import {StringToBooleanConverter, StringToIntegerConverter} from "../Utilities/Converter";
+import request = require("request-promise-native");
 
 interface StrawpollGetResponse {
     id: number,
@@ -52,8 +50,8 @@ export default class PollsModule extends AbstractModule {
         perm.registerPermission("polls.strawpoll.create", PermissionLevel.MODERATOR);
 
         let settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("polls.announceVotes", "true", StringToBooleanConverter.func);
-        settings.registerSetting("polls.spamStrawpollLink", "5", StringToIntegerConverter.func);
+        settings.registerSetting("polls.announceVotes", "true", "boolean");
+        settings.registerSetting("polls.spamStrawpollLink", "5", "integer");
     }
 
     async strawpollCmd(event: CommandEvent) {

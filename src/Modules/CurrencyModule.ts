@@ -8,7 +8,6 @@ import {__, pluralize} from "../Utilities/functions";
 import Channel from "../Chat/Channel";
 import * as util from "util";
 import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
-import {StringToBooleanConverter, StringToFloatConverter, StringToStringConverter} from "../Utilities/Converter";
 
 export default class CurrencyModule extends AbstractModule {
     constructor() {
@@ -34,11 +33,11 @@ export default class CurrencyModule extends AbstractModule {
         perm.registerPermission("currency.bank.reset-all", PermissionLevel.BROADCASTER);
 
         const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("currency.name.singular", "point", StringToStringConverter.func);
-        settings.registerSetting("currency.name.plural", "points", StringToStringConverter.func);
-        settings.registerSetting("currency.gain.online", "10", StringToFloatConverter.func);
-        settings.registerSetting("currency.gain.offline", "2", StringToFloatConverter.func);
-        settings.registerSetting("currency.only-active-all", "true", StringToBooleanConverter.func);
+        settings.registerSetting("currency.name.singular", "point", "string");
+        settings.registerSetting("currency.name.plural", "points", "string");
+        settings.registerSetting("currency.gain.online", "10", "float");
+        settings.registerSetting("currency.gain.offline", "2", "float");
+        settings.registerSetting("currency.only-active-all", "true", "boolean");
 
         setInterval(this.tickHandler, 5 * 60 * 1000);
     }

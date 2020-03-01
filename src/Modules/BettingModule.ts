@@ -8,7 +8,6 @@ import Application from "../Application/Application";
 import {ChannelStateList} from "../Chat/Channel";
 import {__} from "../Utilities/functions";
 import CurrencyModule from "./CurrencyModule";
-import {StringToIntegerConverter} from "../Utilities/Converter";
 
 export default class BettingModule extends AbstractModule {
     private bet_instances: ChannelStateList<BettingGame>;
@@ -30,8 +29,8 @@ export default class BettingModule extends AbstractModule {
         perm.registerPermission("bet.check", PermissionLevel.MODERATOR);
 
         const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("bet.minimum", "1", StringToIntegerConverter.func);
-        settings.registerSetting("bet.maximum", "-1", StringToIntegerConverter.func);
+        settings.registerSetting("bet.minimum", "1", "integer");
+        settings.registerSetting("bet.maximum", "-1", "integer");
     }
 
     async betCmd(event: CommandEvent) {

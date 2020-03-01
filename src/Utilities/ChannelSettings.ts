@@ -1,7 +1,7 @@
 import Channel from "../Chat/Channel";
 import Application from "../Application/Application";
 import {parseBool, parseStringAs} from "./functions";
-import SettingsModule from "../Modules/SettingsModule";
+import SettingsModule, {convertSetting} from "../Modules/SettingsModule";
 
 interface StringLike {
     toString(): string;
@@ -36,7 +36,7 @@ export default class ChannelSettings {
             value = defaultValue;
         }
 
-        return setting !== null ? setting.converter(value) : value;
+        return setting !== null ? convertSetting(value, setting.type) : value;
     }
 
     async set(key: string, value: StringLike) {
@@ -53,7 +53,9 @@ export default class ChannelSettings {
     async reset() {
         await this.channel.query("settings").delete().exec();
         await this.channel.query("settings").insert(
-            Object.entries(ChannelSettings.getAllSettingData()).map(([key, { value }]) => { return {key, value}; })
+            Object.entries(ChannelSettings.getAllSettingData()).map(([key, { value, type }]) => {
+                return {key, value, type, defaultValue: value};
+            })
         ).exec();
     }
 }

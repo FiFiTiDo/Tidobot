@@ -11,7 +11,6 @@ import MessageEvent from "../Chat/Events/MessageEvent";
 import Dispatcher from "../Event/Dispatcher";
 import SettingsModule from "./SettingsModule";
 import TickEvent from "../Application/TickEvent";
-import {StringToIntegerConverter} from "../Utilities/Converter";
 
 interface LastMessage {
     item: NewsItem;
@@ -39,8 +38,8 @@ export default class NewsModule extends AbstractModule {
         perm.registerPermission("news.reload", PermissionLevel.MODERATOR);
 
         const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("news.message-count", "5", StringToIntegerConverter.func);
-        settings.registerSetting("news.interval", "30", StringToIntegerConverter.func);
+        settings.registerSetting("news.message-count", "5", "integer");
+        settings.registerSetting("news.interval", "30", "integer");
     }
 
     registerListeners(dispatcher: Dispatcher) {

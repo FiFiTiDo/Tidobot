@@ -3,18 +3,34 @@ import PermissionModule, {PermissionLevel} from "./PermissionModule";
 import CommandModule, {CommandEvent} from "./CommandModule";
 import Application from "../Application/Application";
 import Channel from "../Chat/Channel";
-import {__} from "../Utilities/functions";
+import {__, parseBool} from "../Utilities/functions";
 import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ExpressionModule from "./ExpressionModule";
-import {Converter} from "../Utilities/Converter";
 
+export type SettingType = "string" | "integer" | "float" | "boolean";
+export function convertSetting(value: string, type: SettingType) {
+    switch(type) {
+        case "integer":
+            let intVal = parseInt(value);
+            if (isNaN(intVal)) return null;
+            return intVal;
+        case "float":
+            let floatVal = parseFloat(value);
+            if (isNaN(floatVal)) return null;
+            return floatVal;
+        case "boolean":
+            return parseBool(value);
+        default:
+            return value;
+    }
+}
 
 export default class SettingsModule extends AbstractModule {
     private readonly settings: {
         [key: string]: {
             value: any,
-            converter: Converter<string, any>
+            type: SettingType
         }
     };
 
@@ -54,17 +70,19 @@ export default class SettingsModule extends AbstractModule {
         builder.addTable("settings", table => {
             table.string("key").unique();
             table.string("value");
+            table.enum("type", ["string", "integer", "float", "boolean"]);
+            table.string("defaultValue");
         });
     }
 
     public async onCreateTables(channel: Channel) {
-        await channel.query("settings").insert(Object.entries(this.settings).map(([key, {value}]) => {
-            return {key, value};
+        await channel.query("settings").insert(Object.entries(this.settings).map(([key, {value, type}]) => {
+            return {key, value, type, defaultValue: value};
         })).or("IGNORE").exec();
     }
 
-    registerSetting(setting: string, defaultValue: string, converter: Converter<string, any>) {
-        this.settings[setting] = {value: defaultValue, converter};
+    registerSetting(setting: string, defaultValue: string, type: SettingType) {
+        this.settings[setting] = {value: defaultValue, type};
     }
 
     getAllSettings() {

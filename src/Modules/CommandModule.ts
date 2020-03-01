@@ -7,9 +7,8 @@ import {__, parseBool} from "../Utilities/functions";
 import Dispatcher from "../Event/Dispatcher";
 import Application from "../Application/Application";
 import SettingsModule from "./SettingsModule";
-import minimist = require("minimist-string");
-import {StringToStringConverter} from "../Utilities/Converter";
 import User from "../Chat/User";
+import minimist = require("minimist-string");
 
 export type CommandListener = (event: CommandEvent) => void;
 type CommandListenerGroup = {
@@ -30,7 +29,7 @@ export default class CommandModule extends AbstractModule {
     initialize() {
         let settings = this.getModuleManager().getModule(SettingsModule);
 
-        settings.registerSetting("command.prefix", "!", StringToStringConverter.func);
+        settings.registerSetting("command.prefix", "!", "string");
     }
 
     registerListeners(dispatcher: Dispatcher) {

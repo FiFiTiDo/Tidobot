@@ -8,7 +8,6 @@ import Channel from "../Chat/Channel";
 import Application from "../Application/Application";
 import {__, array_rand} from "../Utilities/functions";
 import SettingsModule from "./SettingsModule";
-import {StringToBooleanConverter, StringToFloatConverter, StringToIntegerConverter} from "../Utilities/Converter";
 
 export default class RaffleModule extends AbstractModule {
     private raffles: Map<string, Raffle>;
@@ -31,9 +30,9 @@ export default class RaffleModule extends AbstractModule {
         perm.registerPermission("raffle.enter", PermissionLevel.NORMAL);
 
         const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("raffle.price", "0.0", StringToFloatConverter.func);
-        settings.registerSetting("raffle.max-entries", "1", StringToIntegerConverter.func);
-        settings.registerSetting("raffle.duplicate-wins", "false", StringToBooleanConverter.func);
+        settings.registerSetting("raffle.price", "0.0", "float");
+        settings.registerSetting("raffle.max-entries", "1", "integer");
+        settings.registerSetting("raffle.duplicate-wins", "false", "boolean");
     }
 
     registerListeners(dispatcher: Dispatcher) {

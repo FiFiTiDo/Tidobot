@@ -6,7 +6,7 @@ import Application from "../Application/Application";
 import {__, array_rand} from "../Utilities/functions";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import Message from "../Chat/Message";
-import ExpressionModule, {ExpressionContext} from "./ExpressionModule";
+import ExpressionModule from "./ExpressionModule";
 
 export default class ListModule extends AbstractModule {
     constructor() {

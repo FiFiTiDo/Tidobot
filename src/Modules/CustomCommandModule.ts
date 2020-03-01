@@ -9,7 +9,7 @@ import {__} from "../Utilities/functions";
 import Dispatcher from "../Event/Dispatcher";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import Message from "../Chat/Message";
-import ExpressionModule, {ExpressionContext} from "./ExpressionModule";
+import ExpressionModule from "./ExpressionModule";
 
 export default class CustomCommandModule extends AbstractModule {
     constructor() {

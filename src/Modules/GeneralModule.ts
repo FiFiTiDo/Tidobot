@@ -1,5 +1,5 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
+import CommandModule, {CommandEvent} from "./CommandModule";
 import PermissionModule, {PermissionLevel} from "./PermissionModule";
 import Application from "../Application/Application";
 import {__, __raw, array_rand} from "../Utilities/functions";
@@ -7,8 +7,6 @@ import ExpressionModule from "./ExpressionModule";
 import SettingsModule from "./SettingsModule";
 import {ConverterError} from "../Utilities/Converter";
 import moment from "moment-timezone";
-import Chatter from "../Chat/Chatter";
-import User from "../Chat/User";
 
 export default class GeneralModule extends AbstractModule {
     constructor() {

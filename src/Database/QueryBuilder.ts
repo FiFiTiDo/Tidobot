@@ -49,37 +49,9 @@ export default class QueryBuilder {
 
 export abstract class AbstractQuery {
     protected db: Database;
-    private readonly preparedValues: PreparedColumn[];
-    private usedKeys: string[];
 
-    protected constructor(db: Database) {
+    constructor(db: Database) {
         this.db = db;
-        this.preparedValues = [];
-        this.usedKeys = [];
-    }
-
-    public addPreparedValue(column: string, value: any): PreparedColumn {
-        let base_key = "$" + column;
-        let key = base_key;
-        let i = 1;
-        while (this.usedKeys.indexOf(key) >= 0) {
-            key = base_key + i;
-            i++;
-        }
-        let preparedCol = { column, key, value };
-        this.preparedValues.push(preparedCol);
-        this.addReservedKey(key);
-        return preparedCol;
-    }
-
-    protected addReservedKey(key: string) {
-        this.usedKeys.push(key);
-    }
-
-    protected getPreparedValues() {
-        let cols = {};
-        for (let col of this.preparedValues) cols[col.key] = col.value;
-        return cols;
     }
 
     abstract toSql(): string;
@@ -108,13 +80,17 @@ abstract class WhereQuery<T extends WhereQuery<T>> extends AbstractQuery {
 
     where(where: Where<any>): this;
     where(): Where<T>;
-    where(where?: Where<any>): this|Where<T> {
+    where(where?: Where<T>): this|Where<T> {
         if (where) {
             this._where = where;
             return this;
         }
 
         return this._where;
+    }
+
+    protected getPreparedValues(): {} {
+        return this._where.getPreparedValues();
     }
 }
 
@@ -141,7 +117,7 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
     constructor(db: Database, private readonly table: string, private readonly expr: string) {
         super(db);
 
-        this._where = new Where(this);
+        this._where = new Where(null, this);
     }
 
     toSql() {
@@ -158,7 +134,7 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
         return new Promise((resolve, reject) => {
             try {
                 let sql = this.toSql();
-                this.db.getClient().all(sql, this.getPreparedValues(), (err, rows) => {
+                this.db.getClient().all(sql, this._where.getPreparedValues(), (err, rows) => {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
@@ -175,7 +151,7 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
         return new Promise((resolve, reject) => {
             try {
                 let sql = this.toSql();
-                this.db.getClient().get(sql, this.getPreparedValues(), (err, row) => {
+                this.db.getClient().get(sql, this._where.getPreparedValues(), (err, row) => {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
@@ -196,7 +172,7 @@ class CountQuery extends WhereQuery<CountQuery> {
         super(db);
 
         this.select_query = new SelectQuery(db, table, `COUNT(${expr}) AS count`);
-        this._where = new Where(this);
+        this._where = new Where();
     }
 
     async exec(): Promise<number> {
@@ -215,7 +191,7 @@ class ExistsQuery extends WhereQuery<ExistsQuery> {
         super(db);
 
         this.count_query = new CountQuery(db, table, expr);
-        this._where = new Where(this);
+        this._where = new Where();
     }
 
     async exec(): Promise<boolean> {
@@ -233,7 +209,7 @@ class DeleteQuery extends PreparedQuery<DeleteQuery> {
     constructor(db: Database, table: string) {
         super(db);
         this.table = table;
-        this._where = new Where(this);
+        this._where = new Where();
     }
 
     toSql() {
@@ -242,18 +218,18 @@ class DeleteQuery extends PreparedQuery<DeleteQuery> {
 }
 
 type ConflictResolutionMethod = "ROLLBACK"|"ABORT"|"FAIL"|"IGNORE"|"REPLACE";
-class InsertQuery extends WhereQuery<InsertQuery> {
+class InsertQuery extends AbstractQuery {
     private readonly table: string;
     private readonly data: PreparedRow[];
     private conflict: string;
     private resolution: ConflictResolutionMethod|null;
 
-    constructor(db: Database, table: string, data: RowData[]) {
+    constructor(db: Database, table: string, data: RowData|RowData[]) {
         super(db);
         this.table = table;
-        this.data = data.map<PreparedRow>(row => PreparedRow.prepare(row, this.table, this.db));
+        if (!Array.isArray(data)) data = [data];
+        this.data = data.map(row => PreparedRow.prepare(row, this.table, this.db));
         if (this.data.length < 1) throw new QueryBuilderError("No data was given to the insert query");
-        this.data[0].getKeys().forEach(this.addReservedKey.bind(this));
         this.conflict = null;
         this.resolution = null;
     }
@@ -267,17 +243,13 @@ class InsertQuery extends WhereQuery<InsertQuery> {
         return`INSERT${this.resolution === null ? "" : " OR " + this.resolution} INTO ${this.table} (${this.data[0].formatColumns()}) VALUES (${this.data[0].formatKeys()});`;
     }
 
-    private getPreparedValuesForRow(row: PreparedRow): {} {
-        return Object.assign(this.getPreparedValues(), row.formatForRun());
-    }
-
     async exec(): Promise<number[]> {
         return new Promise((resolve, reject) => {
             try {
                 let sql = this.toSql();
                 let ids = [];
                 let stmt = this.db.getClient().prepare(sql);
-                for (let row of this.data) stmt.run(this.getPreparedValuesForRow(row), function (err) {
+                for (let row of this.data) stmt.run(row.formatForRun(), function (err) {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
@@ -306,8 +278,8 @@ class UpdateQuery extends PreparedQuery<UpdateQuery> {
         super(db);
         this.table = table;
         this.data = PreparedRow.prepare(data, this.table, this.db);
-        this.data.getKeys().forEach(this.addReservedKey.bind(this));
-        this._where = new Where(this);
+        this._where = new Where(null, this);
+        this.data.getKeys().forEach(this._where.addReservedKey.bind(this));
     }
 
     toSql() {

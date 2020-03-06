@@ -107,11 +107,7 @@ export default class CurrencyModule extends AbstractModule {
             usage: "bank give <user> <amount>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
+                    type: "chatter",
                     required: true
                 },
                 {
@@ -122,14 +118,10 @@ export default class CurrencyModule extends AbstractModule {
             permission: "currency.bank.give"
         });
         if (args === null) return;
-
-        let chatter = Application.getChatterManager().findByName(args[1], msg.getChannel());
-        if (chatter === null)
-            return msg.reply(__("general.user.unknown", args[1]));
-
+        let [chatter, amount] = args;
 
         try {
-            await chatter.deposit(args[2]);
+            await chatter.deposit(amount);
             await msg.reply(__("currency.give.successful", await this.formatAmount(args[2], msg.getChannel()), chatter.getName()));
         } catch(e) {
             await msg.reply(__("currency.give.failed"));
@@ -143,10 +135,6 @@ export default class CurrencyModule extends AbstractModule {
             usage: "bank give-all <amount>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "float",
                     required: true
                 }
@@ -154,7 +142,7 @@ export default class CurrencyModule extends AbstractModule {
             permission: "currency.bank.give-all"
         });
         if (args === null) return;
-        let [, amount] = args;
+        let [amount] = args;
 
         let only_active = msg.getChannel().getSettings().get("currency.only-active-all");
         let chatters = only_active ? Application.getChatterManager().getAll(msg.getChannel()) : await Chatter.getAll(msg.getChannel());
@@ -178,11 +166,7 @@ export default class CurrencyModule extends AbstractModule {
             usage: "bank take <user> <amount>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
+                    type: "chatter",
                     required: true
                 },
                 {
@@ -193,13 +177,10 @@ export default class CurrencyModule extends AbstractModule {
             permission: "currency.bank.take"
         });
         if (args === null) return;
-
-        let chatter = Application.getChatterManager().findByName(args[1], msg.getChannel());
-        if (chatter === null)
-            return msg.reply(__("general.user.unknown", args[1]));
+        let [chatter, amount] = args;
 
         try {
-            await chatter.withdraw(args[2]);
+            await chatter.withdraw(amount);
             await msg.reply(__("currency.take.successful", await this.formatAmount(args[2], msg.getChannel()), chatter.getName()));
         } catch(e) {
             await msg.reply(__("currency.take.failed"));
@@ -213,10 +194,6 @@ export default class CurrencyModule extends AbstractModule {
             usage: "bank take-all <amount>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "float",
                     required: true
                 }
@@ -224,7 +201,7 @@ export default class CurrencyModule extends AbstractModule {
             permission: "currency.bank.take-all"
         });
         if (args === null) return;
-        let [, amount] = args;
+        let [amount] = args;
 
         let only_active = msg.getChannel().getSettings().get("currency.only-active-all");
         let chatters = only_active ? Application.getChatterManager().getAll(msg.getChannel()) : await Chatter.getAll(msg.getChannel());
@@ -248,21 +225,14 @@ export default class CurrencyModule extends AbstractModule {
             usage: "bank balance <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
+                    type: "chatter",
                     required: true
                 }
             ],
             permission: "currency.bank.balance"
         });
         if (args === null) return;
-
-        let chatter = Application.getChatterManager().findByName(args[1], msg.getChannel());
-        if (chatter === null)
-            return msg.reply(__("general.user.unknown", args[1]));
+        let [chatter] = args;
 
         await msg.reply(__("currency.balance-other", chatter.getName(), await this.formatAmount(chatter.getBalance(), msg.getChannel())))
     };
@@ -273,21 +243,14 @@ export default class CurrencyModule extends AbstractModule {
             usage: "bank reset <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
+                    type: "chatter",
                     required: true
                 }
             ],
             permission: "currency.bank.reset"
         });
         if (args === null) return;
-
-        let chatter = Application.getChatterManager().findByName(args[1], msg.getChannel());
-        if (chatter === null)
-            return msg.reply(__("general.user.unknown", args[1]));
+        let [chatter] = args;
 
         try {
             await chatter.setBalance(0);
@@ -343,7 +306,7 @@ export default class CurrencyModule extends AbstractModule {
             usage: "pay <user> <amount>",
             arguments: [
                 {
-                    type: "string",
+                    type: "chatter",
                     required: true
                 },
                 {
@@ -354,19 +317,16 @@ export default class CurrencyModule extends AbstractModule {
             permission: "currency.pay"
         });
         if (args === null) return;
-        let [username, amount] = args;
-
-        let chatter = Application.getChatterManager().findByName(username, msg.getChannel());
-        if (chatter === null)
-            return msg.reply(__("general.user.unknown", username));
+        let [chatter, amount] = args as [Chatter, number];
 
         let successful = await this.charge(msg.getChatter(), amount);
         if (successful === false) {
             await msg.reply(__("currency.low-balance"));
         } else if (successful === null) {
-            await msg.reply(__("currency.pay.successful", await this.formatAmount(amount, msg.getChannel()), username));
-        } else {
             await msg.reply(__("currency.pay.failed"));
+        } else {
+            await chatter.deposit(amount);
+            await msg.reply(__("currency.pay.successful", await this.formatAmount(amount, msg.getChannel()), chatter.getName()));
         }
     }
 }

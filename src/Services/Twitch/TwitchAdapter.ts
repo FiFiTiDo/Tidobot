@@ -89,7 +89,7 @@ export default class TwitchAdapter extends Adapter {
     }
 
     async getChatter(user: string | tmi.Userstate, channel: Channel): Promise<Chatter> {
-        let name = user.hasOwnProperty("username") ? (user as any).username : user;
+        let name = typeof user === "string" ? user : user.username;
         return Application.getCache().retrieveSerializable("channel." + channel.getName() + ".chatter." + name, cache_expiresAfter.asSeconds(), Chatter, async () => {
             let chatter = await Chatter.find(name, channel);
 

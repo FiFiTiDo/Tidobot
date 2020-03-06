@@ -276,11 +276,6 @@ export default class FilterModule extends AbstractModule {
                 {
                     type: "string",
                     required: true,
-                    accepted: ["add"]
-                },
-                {
-                    type: "string",
-                    required: true,
                     accepted: ["domain", "bad-word", "emote"]
                 },
                 {
@@ -292,7 +287,7 @@ export default class FilterModule extends AbstractModule {
             permission: "filter.list.add"
         });
         if (args === null) return;
-        let [, list, item] = args;
+        let [list, item] = args;
         let lists = await FilterLists.retrieveOrMake(msg.getChannel());
         let resp = await lists.add(item, list);
 
@@ -317,11 +312,6 @@ export default class FilterModule extends AbstractModule {
                 {
                     type: "string",
                     required: true,
-                    accepted: ["add"]
-                },
-                {
-                    type: "string",
-                    required: true,
                     accepted: ["domain", "bad-word", "emote"]
                 },
                 {
@@ -333,7 +323,7 @@ export default class FilterModule extends AbstractModule {
             permission: "filter.list.remove"
         });
         if (args === null) return;
-        let [, list, item] = args;
+        let [list, item] = args;
         let lists = await FilterLists.retrieveOrMake(msg.getChannel());
         let resp = await lists.remove(item, list);
 
@@ -357,11 +347,6 @@ export default class FilterModule extends AbstractModule {
             arguments: [
                 {
                     type: "string",
-                    required: true,
-                    accepted: ["add"]
-                },
-                {
-                    type: "string",
                     required: false,
                     accepted: ["domain", "bad-word", "emote"]
                 }
@@ -369,7 +354,7 @@ export default class FilterModule extends AbstractModule {
             permission: "filter.list.add"
         });
         if (args === null) return;
-        let [, list] = args;
+        let [list] = args;
         let lists = await FilterLists.retrieveOrMake(msg.getChannel());
 
         let confirmation = await ConfirmationModule.make(msg, `filter.list.reset.${list ? "specific" : "all"}.confirmation`, 30);

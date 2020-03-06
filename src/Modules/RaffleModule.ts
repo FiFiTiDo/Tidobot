@@ -71,10 +71,6 @@ export default class RaffleModule extends AbstractModule {
             arguments: [
                 {
                     type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
                     required: true,
                     greedy: true
                 }

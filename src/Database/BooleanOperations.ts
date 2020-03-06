@@ -1,5 +1,5 @@
-import {AbstractQuery} from "./QueryBuilder";
 import {PreparedColumn, PreparedData} from "./PreparedData";
+import {AbstractQuery} from "./QueryBuilder";
 
 type BooleanCallback<T extends AbstractQuery> = (where: Where<T>) => void;
 
@@ -79,27 +79,58 @@ class EqualsExpression extends BooleanOperation {
 
 export class Where<T extends AbstractQuery> {
     private readonly data: BooleanOperation[];
+    private readonly preparedValues: { [key: string]: any };
+    private readonly reservedKeys: string[];
 
-    constructor(private query: T) {
+    constructor(private parent: Where<T> = null, private query: T = null) {
         this.data = [];
+        this.preparedValues = {};
+        this.reservedKeys = [];
     }
 
-    and(func: BooleanCallback<null>): this {
-        let where = new Where(this.query);
+    addPreparedValue(column: string, value: any): PreparedColumn {
+        if (this.parent !== null) return this.parent.addPreparedValue(column, value);
+
+        let base_key = "$" + column;
+        let key = base_key;
+        let i = 0;
+        while (this.isKeyReserved(key)) {
+            key = base_key + (++i);
+        }
+        this.preparedValues[key] = value;
+        this.addReservedKey(key);
+
+        return { key, column, value };
+    }
+
+    getPreparedValues(): { [key: string]: any } {
+        return this.preparedValues;
+    }
+
+    addReservedKey(key: string) {
+        this.reservedKeys.push(key);
+    }
+
+    isKeyReserved(key: string) {
+        return this.reservedKeys.indexOf(key) >= 0;
+    }
+
+    and(func: BooleanCallback<T>): this {
+        let where = new Where(this, null);
         func.call(null, where);
         this.add(new AndExpression(where.getData()));
         return this;
     }
 
-    or(func: BooleanCallback<null>): this {
-        let where = new Where(this.query);
+    or(func: BooleanCallback<T>): this {
+        let where = new Where(this, null);
         func.call(null, where);
         this.add(new OrExpression(where.getData()));
         return this;
     }
 
     eq(column: string, value: any): this {
-        this.add(new EqualsExpression(this.query.addPreparedValue(column, value)));
+        this.add(new EqualsExpression(this.addPreparedValue(column, value)));
         return this;
     }
 
@@ -132,7 +163,11 @@ export class Where<T extends AbstractQuery> {
         return this.data;
     }
 
-    done(): T {
+    done() {
         return this.query;
     }
+}
+
+export function where() {
+    return new Where(null, null);
 }

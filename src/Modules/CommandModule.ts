@@ -114,16 +114,9 @@ function isCliArgs(arg: any): arg is CliArgsEventValidationOptions {
 }
 
 export class CommandEvent extends Event<CommandEvent> {
-    private readonly command: string;
-    private readonly args: string[];
-    private readonly msg: Message;
 
-    constructor(command: string, args: string[], msg: Message) {
+    constructor(private readonly command: string, private readonly args: string[], private readonly msg: Message) {
         super(CommandEvent.name);
-
-        this.command = command;
-        this.args = args;
-        this.msg = msg;
     }
 
     getCommand(): string {
@@ -142,8 +135,16 @@ export class CommandEvent extends Event<CommandEvent> {
         return this.args.length;
     }
 
+    shiftArgument(): string {
+        return this.args.shift();
+    }
+
     getMessage(): Message {
         return this.msg;
+    }
+
+    clone(): CommandEvent {
+        return new CommandEvent(this.command, this.args.slice(), this.msg);
     }
 
     async validate(opts: CliArgsEventValidationOptions): Promise<{ [key: string]: any }>;
@@ -442,7 +443,9 @@ export class SubcommandHelper {
             return false;
         }
 
-        this.subcommands[subcommand].call(this.module, event);
+        let newEvent = event.clone();
+        newEvent.shiftArgument();
+        this.subcommands[subcommand].call(this.module, newEvent);
         return true;
     }
 }

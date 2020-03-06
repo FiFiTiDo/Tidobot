@@ -93,10 +93,6 @@ export default class CounterModule extends AbstractModule {
                     required: true
                 },
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "integer",
                     required: false,
                     defaultValue: "1"
@@ -127,10 +123,6 @@ export default class CounterModule extends AbstractModule {
         let args = await event.validate({
             usage: "counter decrement <counter> [amount]",
             arguments: [
-                {
-                    type: "string",
-                    required: true
-                },
                 {
                     type: "string",
                     required: true
@@ -171,10 +163,6 @@ export default class CounterModule extends AbstractModule {
                     required: true
                 },
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "integer",
                     required: true
                 }
@@ -207,10 +195,6 @@ export default class CounterModule extends AbstractModule {
                 {
                     type: "string",
                     required: true
-                },
-                {
-                    type: "string",
-                    required: true
                 }
             ],
             permission: "counter.create"
@@ -235,10 +219,6 @@ export default class CounterModule extends AbstractModule {
         let args = await event.validate({
             usage: "counter delete <counter>",
             arguments: [
-                {
-                    type: "string",
-                    required: true
-                },
                 {
                     type: "string",
                     required: true

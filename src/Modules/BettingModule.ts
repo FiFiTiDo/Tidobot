@@ -49,10 +49,6 @@ export default class BettingModule extends AbstractModule {
             usage: "bet place <option #> <amount>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "integer",
                     required: true
                 },
@@ -101,10 +97,6 @@ export default class BettingModule extends AbstractModule {
             usage: "bet open \"<title>\" <option 1> <option 2> ... <option n>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "special-string",
                     required: true
                 },
@@ -132,10 +124,6 @@ export default class BettingModule extends AbstractModule {
         let args = await event.validate({
             usage: "bet close <winning option>",
             arguments: [
-                {
-                    type: "string",
-                    required: true
-                },
                 {
                     type: "string",
                     required: true

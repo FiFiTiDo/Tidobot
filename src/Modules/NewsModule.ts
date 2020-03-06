@@ -105,10 +105,6 @@ export default class NewsModule extends AbstractModule {
             arguments: [
                 {
                     type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
                     required: true,
                     greedy: true
                 }
@@ -118,7 +114,7 @@ export default class NewsModule extends AbstractModule {
         if (args === null) return;
 
         try {
-            let item = await NewsItem.make(args[1], msg.getChannel());
+            let item = await NewsItem.make(args[0], msg.getChannel());
             await msg.reply(__("news.add.successful", item.getId()));
         } catch (e) {
             await msg.reply(__("news.add.failed"));
@@ -132,10 +128,6 @@ export default class NewsModule extends AbstractModule {
             usage: "news remove <index>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "integer",
                     required: true
                 }
@@ -144,9 +136,9 @@ export default class NewsModule extends AbstractModule {
         });
         if (args === null) return;
 
-        let item = await NewsItem.retrieve(args[1], msg.getChannel());
+        let item = await NewsItem.retrieve(args[0], msg.getChannel());
         if (item === null) {
-            await msg.reply(__("news.invalid_id", args[1]));
+            await msg.reply(__("news.invalid_id", args[0]));
             return;
         }
 

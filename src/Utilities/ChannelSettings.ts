@@ -1,8 +1,7 @@
 import Channel from "../Chat/Channel";
 import Application from "../Application/Application";
-import {parseBool, parseStringAs} from "./functions";
 import SettingsModule, {convertSetting} from "../Modules/SettingsModule";
-import {Where} from "../Database/BooleanOperations";
+import {where} from "../Database/BooleanOperations";
 
 interface StringLike {
     toString(): string;
@@ -41,22 +40,22 @@ export default class ChannelSettings {
     }
 
     async set(key: string, value: StringLike) {
-        let where = new Where(null).eq("key", key);
-        let setting = await this.channel.query("settings").select().where(where).first();
+        let where_clause = where().eq("key", key);
+        let setting = await this.channel.query("settings").select().where(where_clause).first();
         if (setting === null) {
-            return this.channel.query("settings").insert({ key, value, type: "string", defaultValue: value }).exec();
+            return this.channel.query("settings").insert({ key, value, type: "string", default_value: value }).exec();
         } else {
-            return this.channel.query("settings").update({ value }).where(where).exec();
+            return this.channel.query("settings").update({ value }).where(where_clause).exec();
         }
     }
 
     async unset(key: string) {
-        let where = new Where(null).eq("key", key);
-        let setting = await this.channel.query("settings").select().where(where).first();
+        let where_clause = where().eq("key", key);
+        let setting = await this.channel.query("settings").select().where(where_clause).first();
 
         if (setting === null) return false;
 
-        await this.channel.query("settings").update({ value: setting.defaultValue }).where(where).exec();
+        await this.channel.query("settings").update({ value: setting.default_value }).where(where_clause).exec();
         return true;
     }
 
@@ -64,7 +63,7 @@ export default class ChannelSettings {
         await this.channel.query("settings").delete().exec();
         await this.channel.query("settings").insert(
             Object.entries(ChannelSettings.getAllSettingData()).map(([key, { value, type }]) => {
-                return {key, value, type, defaultValue: value};
+                return {key, value, type, default_value: value};
             })
         ).exec();
     }

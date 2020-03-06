@@ -75,10 +75,6 @@ export default class TidobotModule extends AbstractModule {
             usage: "tidobot ignore <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true,
-                },
-                {
                     type: "user",
                     required: true
                 }
@@ -86,7 +82,7 @@ export default class TidobotModule extends AbstractModule {
             permission: "bot.ignore.add"
         });
         if (args === null) return;
-        let user = args[1] as User;
+        let user = args[0] as User;
         if (user.isIgnored()) return msg.reply(__("general.ignore.add.already_ignored", user.getName()));
         user.setIgnore(true)
             .then(() => msg.reply(__("general.ignore.add.successful", user.getName())))
@@ -102,10 +98,6 @@ export default class TidobotModule extends AbstractModule {
             usage: "tidobot unignore <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true,
-                },
-                {
                     type: "user",
                     required: true
                 }
@@ -113,7 +105,7 @@ export default class TidobotModule extends AbstractModule {
             permission: "bot.ignore.remove"
         });
         if (args === null) return;
-        let user = args[1] as User;
+        let user = args[0] as User;
         if (!user.isIgnored()) return msg.reply(__("general.ignore.remove.not_ignored", user.getName()));
         user.setIgnore(true)
             .then(() => msg.reply(__("general.ignore.remove.successful", user.getName())))
@@ -129,10 +121,6 @@ export default class TidobotModule extends AbstractModule {
             usage: "tidobot ban <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "chatter",
                     required: true
                 }
@@ -140,7 +128,7 @@ export default class TidobotModule extends AbstractModule {
             permission: "bot.ban"
         });
         if (args === null) return;
-        let user = args[1] as Chatter;
+        let user = args[0] as Chatter;
         if (user.isBanned()) return msg.reply(__("general.ban.add.already_banned", user.getName()));
         user.setBanned(true)
             .then(() => msg.reply(__("general.ban.add.successful", user.getName())))
@@ -156,10 +144,6 @@ export default class TidobotModule extends AbstractModule {
             usage: "tidobot unban <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "chatter",
                     required: true
                 }
@@ -167,7 +151,7 @@ export default class TidobotModule extends AbstractModule {
             permission: "bot.unban"
         });
         if (args === null) return;
-        let user = args[1] as Chatter;
+        let user = args[0] as Chatter;
         if (!user.isBanned()) return msg.reply(__("general.ban.remove.not_banned", user.getName()));
         user.setBanned(false)
             .then(() => msg.reply(__("general.ban.remove.successful", user.getName())))
@@ -193,10 +177,6 @@ export default class TidobotModule extends AbstractModule {
             usage: "regular add <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "chatter",
                     required: true
                 }
@@ -204,7 +184,7 @@ export default class TidobotModule extends AbstractModule {
             permission: "regular.add"
         });
         if (args === null) return;
-        let user = args[1] as Chatter;
+        let user = args[0] as Chatter;
         if (user.isRegular()) return msg.reply(__("general.regular.add.already_a_regular", user.getName()));
         user.setRegular(true)
             .then(() => msg.reply(__("general.regular.add.successful", user.getName())))
@@ -220,10 +200,6 @@ export default class TidobotModule extends AbstractModule {
             usage: "regular remove <user>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "chatter",
                     required: true
                 }
@@ -231,7 +207,7 @@ export default class TidobotModule extends AbstractModule {
             permission: "regular.remove"
         });
         if (args === null) return;
-        let user = args[1] as Chatter;
+        let user = args[0] as Chatter;
         if (!user.isRegular()) return msg.reply(__("general.regular.remove.not_a_regular", user.getName()));
         user.setRegular(false)
             .then(() => msg.reply(__("general.regular.remove.successful", user.getName())))

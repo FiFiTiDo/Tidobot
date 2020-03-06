@@ -9,7 +9,7 @@ import {__} from "../Utilities/functions";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ExpressionModule from "./ExpressionModule";
 import GroupsModule from "./GroupsModule";
-import {Where} from "../Database/BooleanOperations";
+import {where, Where} from "../Database/BooleanOperations";
 
 export function get_max_level(levels: PermissionLevel[]) {
     if (levels.indexOf(PermissionLevel.BANNED) !== -1) return PermissionLevel.BANNED;
@@ -232,17 +232,17 @@ export default class PermissionModule extends AbstractModule {
 
         if (target_val.startsWith("perm:")) {
             let perm = target_val.substring(5);
-            let where = new Where(null).eq("permission", perm);
+            let where_clause = where().eq("permission", perm);
             if (this.permissions.hasOwnProperty(perm)) {
                 msg.getChannel().query("permissions")
-                    .update({level: PermissionLevel[this.permissions[perm]]}).where(where).exec()
+                    .update({level: PermissionLevel[this.permissions[perm]]}).where(where_clause).exec()
                     .then(() => msg.reply(__("permissions.permission.reset.successful", perm)))
                     .catch(e => {
                         msg.reply(__("permissions.permission.reset.failed", perm));
                         Application.getLogger().error("Unable to reset permission", {cause: e});
                     });
             } else {
-                msg.getChannel().query("permissions").delete().where(where).exec()
+                msg.getChannel().query("permissions").delete().where(where_clause).exec()
                     .then(() => msg.reply(__("permissions.permission.delete.successful", perm)))
                     .catch(e => {
                         msg.reply(__("permissions.permission.delete.failed", perm));

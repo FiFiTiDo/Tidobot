@@ -7,8 +7,9 @@ import {__, parseBool} from "../Utilities/functions";
 import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ExpressionModule from "./ExpressionModule";
+import moment from "moment";
 
-export type SettingType = "string" | "integer" | "float" | "boolean";
+export type SettingType = "string" | "integer" | "float" | "boolean" | "timezone";
 export function convertSetting(value: string, type: SettingType) {
     switch(type) {
         case "integer":
@@ -21,6 +22,8 @@ export function convertSetting(value: string, type: SettingType) {
             return floatVal;
         case "boolean":
             return parseBool(value);
+        case "timezone":
+            return moment.tz.zone(value);
         default:
             return value;
     }
@@ -71,13 +74,13 @@ export default class SettingsModule extends AbstractModule {
             table.string("key").unique();
             table.string("value");
             table.enum("type", ["string", "integer", "float", "boolean"]);
-            table.string("defaultValue");
+            table.string("default_value");
         });
     }
 
     public async onCreateTables(channel: Channel) {
         await channel.query("settings").insert(Object.entries(this.settings).map(([key, {value, type}]) => {
-            return {key, value, type, defaultValue: value};
+            return {key, value, type, default_value: value};
         })).or("IGNORE").exec();
     }
 

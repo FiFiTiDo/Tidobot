@@ -116,10 +116,6 @@ export default class CustomCommandModule extends AbstractModule {
             arguments: [
                 {
                     type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
                     required: true,
                 },
                 {
@@ -132,7 +128,7 @@ export default class CustomCommandModule extends AbstractModule {
         });
         if (args === null) return;
 
-        let [, trigger, response] = args;
+        let [trigger, response] = args;
         trigger = trigger.toLowerCase();
 
         try {
@@ -154,10 +150,6 @@ export default class CustomCommandModule extends AbstractModule {
                     required: true
                 },
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "integer",
                     required: true
                 },
@@ -170,7 +162,7 @@ export default class CustomCommandModule extends AbstractModule {
             permission: "command.edit"
         });
         if (args === null) return;
-        let [, type, id, value] = args;
+        let [type, id, value] = args;
         let command = await Command.retrieve(id, msg.getChannel());
         if (command === null) {
             await msg.reply(__("commands.unknown", id));
@@ -234,10 +226,6 @@ export default class CustomCommandModule extends AbstractModule {
             usage: "command delete <id>",
             arguments: [
                 {
-                    type: "string",
-                    required: true
-                },
-                {
                     type: "integer",
                     required: true
                 }
@@ -245,7 +233,7 @@ export default class CustomCommandModule extends AbstractModule {
         });
         if (args === null) return;
 
-        let [, id] = args;
+        let [id] = args;
         let command = await Command.retrieve(id, msg.getChannel());
         if (command === null) {
             await msg.reply(__("commands.unknown", id));

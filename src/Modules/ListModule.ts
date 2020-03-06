@@ -84,8 +84,8 @@ export default class ListModule extends AbstractModule {
     }
 
     private static async listNameArgConverter(raw: string, msg: Message) {
-        let list = await List.retrieve(name, msg.getChannel());
-        if (list === null) await msg.reply(__("lists.unknown", name));
+        let list = await List.retrieve(raw, msg.getChannel());
+        if (list === null) await msg.reply(__("lists.unknown", raw));
         return list;
     }
 
@@ -141,7 +141,7 @@ export default class ListModule extends AbstractModule {
             permission: "list.create"
         });
         if (args === null) return;
-        let [, name] = args;
+        let [name] = args;
 
         try {
             let list = await List.make(name, msg.getChannel());

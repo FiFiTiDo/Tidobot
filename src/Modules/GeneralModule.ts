@@ -32,12 +32,7 @@ export default class GeneralModule extends AbstractModule {
         cmd.registerCommand("eval", this.evalCommand, this);
         cmd.registerCommand("shutdown", this.shutdownCommand, this);
 
-        settings.registerSetting("timezone", "America/New_York", (from: string): moment.MomentZone => {
-            let zone = moment.tz.zone(from);
-            if (zone === null)
-                throw new ConverterError("timezone", from);
-            return zone;
-        });
+        settings.registerSetting("timezone", "America/New_York", "string");
 
         this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => {
             return {

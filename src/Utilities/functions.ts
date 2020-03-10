@@ -157,3 +157,14 @@ export function parseStringAs(value: string, type: string): unknown {
     }
     return newVal;
 }
+
+export async function getOrSetProp<T>(obj: Object, key: string, f: () => T | Promise<T>) {
+    let varKey = "_" + key;
+    let prop = Object.getOwnPropertyDescriptor(obj, varKey);
+    if (!prop || !prop.value) {
+        let value = f();
+        if (value instanceof Promise) await value;
+        Object.defineProperty(obj, varKey, { value, configurable: true, enumerable: true });
+    }
+    return Object.getOwnPropertyDescriptor(obj, varKey).value;
+}

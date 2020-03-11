@@ -3,6 +3,7 @@ import ModuleManager from "./ModuleManager";
 import Channel from "../Chat/Channel";
 import Subscriber from "../Event/Subscriber";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
+import Application from "../Application/Application";
 
 export interface ModuleConstructor<T extends AbstractModule> {
     name: string
@@ -37,6 +38,10 @@ export default abstract class AbstractModule extends Dispatcher implements Subsc
     }
 
     public async onCreateTables(channel: Channel) {
+    }
+
+    getServiceName(): string {
+        return Application.getAdapter().getName();
     }
 
 

@@ -123,6 +123,10 @@ export default abstract class Entity {
         return Entity.createTableForEntity(this as unknown as EntityConstructor<T>, service, channel, optional_param);
     }
 
+    static async make<T extends Entity>(service: string, channel: string, data: RawRowData, optional_param?: string) {
+        return Entity.makeEntity(this as unknown as EntityConstructor<T>, service, channel, data, optional_param);
+    }
+
     static async retrieve<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, where: Where<any>, optional_param?: string): Promise<T|null> {
         return Entity.retrieveAll<T>(entity_const, service, channel, where, optional_param).then(models => models.length < 1 ? null : models[0]);
     }
@@ -145,7 +149,7 @@ export default abstract class Entity {
         });
     }
 
-    static async make<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, data: RawRowData, optional_param?: string): Promise<T|null> {
+    static async makeEntity<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, data: RawRowData, optional_param?: string): Promise<T|null> {
         let tableName = getTableName(entity_const, service, channel, optional_param);
         let { columns, keys, prepared } = prepareData(data);
         return new Promise((resolve, reject) => {

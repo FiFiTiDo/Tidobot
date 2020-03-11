@@ -11,9 +11,11 @@ import MessageEvent from "../Chat/Events/MessageEvent";
 import Dispatcher from "../Event/Dispatcher";
 import SettingsModule from "./SettingsModule";
 import TickEvent from "../Application/TickEvent";
+import NewsEntity from "../Database/Entities/NewsEntity";
+import Entity from "../Database/Entities/Entity";
 
 interface LastMessage {
-    item: NewsItem;
+    item: NewsEntity;
     timestamp: moment.Moment;
     message_count: number;
 }
@@ -112,10 +114,11 @@ export default class NewsModule extends AbstractModule {
             permission: "news.add"
         });
         if (args === null) return;
+        let [value] = args;
 
         try {
-            let item = await NewsItem.make(args[0], msg.getChannel());
-            await msg.reply(__("news.add.successful", item.getId()));
+            let item = await NewsEntity.create(value, msg.getChannel());
+            await msg.reply(__("news.add.successful", item.id));
         } catch (e) {
             await msg.reply(__("news.add.failed"));
             Application.getLogger().error("Failed to add news item", {cause: e});
@@ -135,16 +138,17 @@ export default class NewsModule extends AbstractModule {
             permission: "news.remove"
         });
         if (args === null) return;
+        let [id] = args as [number];
 
-        let item = await NewsItem.retrieve(args[0], msg.getChannel());
+        let item = await NewsEntity.get(id, this.getServiceName(), msg.getChannel().getName());
         if (item === null) {
-            await msg.reply(__("news.invalid_id", args[0]));
+            await msg.reply(__("news.invalid_id", id));
             return;
         }
 
         try {
-            await item.del();
-            await msg.reply(__("news.remove.successful", args[1]));
+            await item.delete();
+            await msg.reply(__("news.remove.successful", id));
         } catch (e) {
             await msg.reply(__("news.remove.failed"));
             Application.getLogger().error("Failed to remove news item", {cause: e});
@@ -173,20 +177,20 @@ export default class NewsModule extends AbstractModule {
     };
 
     private async showNextMessage(channel: Channel): Promise<void> {
-        let items = await NewsItem.retrieveAll(channel);
+        let items: NewsEntity[] = await NewsEntity.getAll(this.getServiceName(), channel.getName());
         if (items.length < 1) return;
-        let next_item = null;
+        let next_item: NewsEntity = null;
         if (this.last_message.has(channel.getId())) {
             let last_msg = this.last_message.get(channel.getId());
             for (let i = 0; i < items.length; i++) {
                 let item = items[i];
-                if (item.getId() === last_msg.item.getId()) {
+                if (item.id === last_msg.item.id) {
                     let j = (i + 1) % items.length;
                     next_item = items[j];
                     break;
                 }
 
-                if (item.getId() > last_msg.item.getId()) {
+                if (item.id > last_msg.item.id) {
                     next_item = item;
                     break;
                 }
@@ -199,58 +203,6 @@ export default class NewsModule extends AbstractModule {
             timestamp: moment(),
             message_count: 0
         });
-        await Application.getAdapter().sendMessage(next_item.getValue(), channel);
-    }
-}
-
-class NewsItem {
-    private readonly id: number;
-    private value: string;
-    private channel: Channel;
-
-    constructor(id: number, value: string, channel: Channel) {
-        this.id = id;
-        this.value = value;
-        this.channel = channel;
-    }
-
-    static async retrieve(id: number, channel: Channel) {
-        let rows = await channel.query("news").select().where().eq("id", id).done().all();
-        if (rows.length < 1) return null;
-        return new NewsItem(id, rows[0].value, channel);
-    }
-
-    static async retrieveAll(channel: Channel): Promise<NewsItem[]> {
-        let items = [];
-        let rows = await channel.query("news").select().all();
-        for (let row of rows) items.push(new NewsItem(row.id, row.value, channel));
-        return items;
-    }
-
-    static async make(value: string, channel: Channel) {
-        let rows = await channel.query("news").insert({value}).exec();
-        if (rows.length < 1) throw new Error("No news item inserted into the database.");
-        return new NewsItem(rows[0], value, channel);
-    }
-
-    getId() {
-        return this.id;
-    }
-
-    getValue() {
-        return this.value;
-    }
-
-    async setValue(newValue: string) {
-        this.value = newValue;
-        await this.save();
-    }
-
-    async save() {
-        return this.channel.query("news").update({value: this.value}).where().eq("id", this.id).done().exec();
-    }
-
-    async del() {
-        return this.channel.query("news").delete().where().eq("id", this.id).done().exec();
+        await Application.getAdapter().sendMessage(next_item.value, channel);
     }
 }

@@ -17,6 +17,8 @@ export default abstract class Adapter extends Dispatcher {
         }, 1000);
     }
 
+    public abstract getName(): string;
+
     public abstract async sendMessage(message: string, channel: Channel);
 
     public abstract async sendAction(action: string, channel: Channel);

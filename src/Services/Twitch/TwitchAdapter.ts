@@ -144,4 +144,8 @@ export default class TwitchAdapter extends Adapter {
     async tempbanChatter(chatter: Chatter, length: number, reason?: string) {
         return this.client.timeout(chatter.getChannel().getName(), chatter.getName(), length, reason);
     }
+
+    getName(): string {
+        return "twitch";
+    }
 }

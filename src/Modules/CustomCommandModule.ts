@@ -3,13 +3,11 @@ import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
 import PermissionModule, {PermissionLevel} from "./PermissionModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import Application from "../Application/Application";
-import Channel from "../Chat/Channel";
-import MessageParser from "../Chat/MessageParser";
 import {__} from "../Utilities/functions";
 import Dispatcher from "../Event/Dispatcher";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
-import Message from "../Chat/Message";
 import ExpressionModule from "./ExpressionModule";
+import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
 
 export default class CustomCommandModule extends AbstractModule {
     constructor() {
@@ -31,7 +29,7 @@ export default class CustomCommandModule extends AbstractModule {
         if (msg.getParts().length < 1) return;
 
         let trigger = msg.getPart(0);
-        let commands = await Command.findByTrigger(trigger, msg.getChannel());
+        let commands = await CommandEntity.findByTrigger(trigger, this.getServiceName(), msg.getChannel().getName());
         if (commands.length < 1) return;
 
         let defCommands = [];
@@ -132,8 +130,8 @@ export default class CustomCommandModule extends AbstractModule {
         trigger = trigger.toLowerCase();
 
         try {
-            let command = await Command.make(trigger, response, msg.getChannel());
-            await msg.reply(__("commands.add.successful", command.getId()));
+            let command = await CommandEntity.create(trigger, response, this.getServiceName(), msg.getChannel().getName());
+            await msg.reply(__("commands.add.successful", command.id));
         } catch (e) {
             Application.getLogger().error("Unable to add custom command", {cause: e});
             await msg.reply(__("commands.add.failed"));
@@ -163,7 +161,7 @@ export default class CustomCommandModule extends AbstractModule {
         });
         if (args === null) return;
         let [type, id, value] = args;
-        let command = await Command.retrieve(id, msg.getChannel());
+        let command: CommandEntity = await CommandEntity.get(id, this.getServiceName(), msg.getChannel().getName());
         if (command === null) {
             await msg.reply(__("commands.unknown", id));
             return;
@@ -171,13 +169,13 @@ export default class CustomCommandModule extends AbstractModule {
 
         switch (type.toLowerCase()) {
             case "trigger":
-                command.setTrigger(value.toLowerCase());
+                command.trigger = value.toLowerCase();
                 break;
             case "condition":
-                command.setCondition(value);
+                command.condition = value;
                 break;
             case "response":
-                command.setResponse(value);
+                command.response = value;
                 break;
             case "price":
                 let price = parseFloat(value);
@@ -188,7 +186,7 @@ export default class CustomCommandModule extends AbstractModule {
                     return;
                 }
 
-                command.setPrice(price);
+                command.price = price;
                 break;
             case "cooldown":
                 let seconds = parseInt(value);
@@ -199,7 +197,7 @@ export default class CustomCommandModule extends AbstractModule {
                     return;
                 }
 
-                command.setCooldown(seconds);
+                command.cooldown = seconds;
                 break;
             default:
                 await this.getModuleManager().getModule(CommandModule)
@@ -234,179 +232,17 @@ export default class CustomCommandModule extends AbstractModule {
         if (args === null) return;
 
         let [id] = args;
-        let command = await Command.retrieve(id, msg.getChannel());
+        let command = await CommandEntity.get(id, this.getServiceName(), msg.getChannel().getName());
         if (command === null) {
             await msg.reply(__("commands.unknown", id));
             return;
         }
 
         command.delete()
-            .then(() => {
-                msg.reply(__("commands.delete.successful", id));
-            })
+            .then(() => msg.reply(__("commands.delete.successful", id)))
             .catch(e => {
                 msg.reply(__("commands.delete.failed"));
                 Application.getLogger().error("Failed to delete the custom command", {cause: e});
             });
     };
-}
-
-enum CommandConditionResponse {
-    DONT_RUN, RUN_NOW, RUN_DEFAULT
-}
-
-class Command {
-    private readonly id: number;
-    private trigger: string;
-    private condition: string;
-    private response_raw: string;
-    private response_parts: string[];
-    private price: number;
-    private cooldown: number;
-    private channel: Channel;
-
-    constructor(id: number, trigger: string, condition: string, response: string, price: number, channel: Channel) {
-        this.id = id;
-        this.trigger = trigger;
-        this.condition = condition;
-        this.setResponse(response);
-        this.price = price;
-        this.channel = channel;
-    }
-
-    static async make(trigger: string, response: string, channel: Channel) {
-        const defaultCondition = "true";
-        const defaultPrice = 0.0;
-        let resp = await channel.query("commands")
-            .insert({
-                trigger,
-                response,
-                condition: defaultCondition,
-                price: defaultPrice
-            })
-            .exec();
-        if (resp.length < 0) throw new Error("No commands inserted into the database.");
-        return new Command(resp[0], trigger, defaultCondition, response, defaultPrice, channel);
-    }
-
-    static async retrieve(id: number, channel: Channel): Promise<Command | null> {
-        try {
-            let rows = await channel.query("commands")
-                .select()
-                .where().eq("id", id).done()
-                .all();
-            if (rows.length < 1) return null;
-            let row = rows[0];
-
-            return new Command(id, row.trigger, row.condition, row.response, row.price, channel);
-        } catch (e) {
-            Application.getLogger().error("Unable to retrieve custom command #" + id, {cause: e});
-            return null;
-        }
-    }
-
-    static async findByTrigger(trigger: string, channel: Channel): Promise<Command[]> {
-        let commands = [];
-        try {
-            let rows = await channel.query("commands")
-                .select()
-                .where().eq('trigger', trigger).done()
-                .all();
-
-            for (let row of rows) commands.push(new Command(row.id, row.trigger, row.condition, row.response, row.price, channel));
-        } catch (e) {
-            Application.getLogger().error("Unable to retrieve custom commands", {cause: e});
-            return [];
-        }
-        return commands;
-    }
-
-    getId() {
-        return this.id;
-    }
-
-    getTrigger() {
-        return this.trigger;
-    }
-
-    setTrigger(trigger: string) {
-        this.trigger = trigger;
-    }
-
-    check(trigger: string) {
-        return this.trigger === trigger;
-    }
-
-    getCondition() {
-        return this.condition;
-    }
-
-    setCondition(condition: string) {
-        this.condition = condition;
-    }
-
-    async checkCondition(msg: Message, def = false): Promise<CommandConditionResponse> {
-        if (this.condition.toLowerCase() === "@@default" && !def) return CommandConditionResponse.RUN_DEFAULT;
-        return Application.getModuleManager().getModule(ExpressionModule).evaluate(this.condition, msg) ?
-            CommandConditionResponse.RUN_NOW : CommandConditionResponse.DONT_RUN;
-    }
-
-    async getResponse(msg: Message) {
-        let parts = [];
-        for (let part of this.response_parts) {
-            if (part.startsWith("${") && part.endsWith("}")) {
-                parts.push(await Application.getModuleManager().getModule(ExpressionModule).evaluate(part.substr(2, part.length - 3), msg));
-                continue;
-            }
-
-            parts.push(part);
-        }
-        let resp = parts.join(" ");
-        if (resp.startsWith("/") || resp.startsWith(".")) resp = ">> " + resp;
-        return resp;
-    }
-
-    getRawResponse() {
-        return this.response_raw;
-    }
-
-    setResponse(response: string) {
-        this.response_raw = response;
-        this.response_parts = MessageParser.parse(response);
-    }
-
-    getPrice() {
-        return this.price;
-    }
-
-    setPrice(price: number) {
-        this.price = price;
-    }
-
-    getCooldown() {
-        return this.cooldown;
-    }
-
-    setCooldown(seconds: number) {
-        this.cooldown = seconds;
-    }
-
-    async save() {
-        return this.channel.query("commands")
-            .update({
-                trigger: this.trigger,
-                response: this.response_raw,
-                condition: this.condition,
-                price: this.price
-            })
-            .where().eq("id", this.id).done()
-            .exec();
-    }
-
-    async delete() {
-        return this.channel.query("commands")
-            .delete()
-            .where().eq("id", this.id).done()
-            .exec();
-    }
 }

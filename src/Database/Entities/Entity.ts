@@ -4,12 +4,13 @@ import {prepareData, RawRowData} from "../RowData";
 import moment from "moment";
 import {Where, where} from "../BooleanOperations";
 import {formatForCreate, getTableName} from "../Decorators/Table";
+import {Serializable} from "../../Utilities/Serializable";
 
-export interface EntityConstructor<T extends Entity> {
+export interface EntityConstructor<T extends Entity>{
     new (id: number, service: string, channel: string, optional_param?: string): T;
 }
 
-export default abstract class Entity {
+export default abstract class Entity implements Serializable  {
     private readonly tableName: string;
     protected schema: TableSchema = null;
 
@@ -181,6 +182,23 @@ export default abstract class Entity {
                 }
             })
         });
+    }
+
+    serialize(): string {
+        return JSON.stringify({
+            service: this.getService(),
+            channel: this.getChannel(),
+            optional_param: this.optional_param,
+            row_data: this.getSchema().exportRow()
+        });
+    }
+
+    static deserialize(input: string): Entity {
+        let json = JSON.parse(input);
+        let constructor = this as unknown as EntityConstructor<any>;
+        let model: Entity = new constructor(json.row_data.id, json.service, json.channel, json.optional_param);
+        model.getSchema().importRow(json.row_data);
+        return model;
     }
 }
 

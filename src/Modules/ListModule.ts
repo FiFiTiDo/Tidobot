@@ -7,6 +7,9 @@ import {__, array_rand} from "../Utilities/functions";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import Message from "../Chat/Message";
 import ExpressionModule from "./ExpressionModule";
+import ListsEntity from "../Database/Entities/ListsEntity";
+import Entity from "../Database/Entities/Entity";
+import ListEntity from "../Database/Entities/ListEntity";
 
 export default class ListModule extends AbstractModule {
     constructor() {
@@ -83,8 +86,8 @@ export default class ListModule extends AbstractModule {
             .handle(event);
     }
 
-    private static async listNameArgConverter(raw: string, msg: Message) {
-        let list = await List.retrieve(raw, msg.getChannel());
+    private async listNameArgConverter(raw: string, msg: Message) {
+        let list = await ListsEntity.findByName(raw, this.getServiceName(), msg.getChannel().getName());
         if (list === null) await msg.reply(__("lists.unknown", raw));
         return list;
     }
@@ -97,7 +100,7 @@ export default class ListModule extends AbstractModule {
                 {
                     type: "custom",
                     required: true,
-                    converter: ListModule.listNameArgConverter
+                    converter: this.listNameArgConverter
                 },
                 {
                     type: "integer",
@@ -107,14 +110,14 @@ export default class ListModule extends AbstractModule {
             permission: "list.view"
         });
         if (args === null) return;
-        let list: List = args[0];
+        let list: ListsEntity = args[0];
 
-        let item;
+        let item: ListEntity;
         if (args.length > 1) {
             if (!await msg.checkPermission("list.view.specific")) return;
             let itemNum = args[1];
 
-            item = await list.get(itemNum);
+            item = await list.getItem(itemNum);
             if (item === null) {
                 await msg.reply(__("lists.item.unknown", item));
                 return;
@@ -122,10 +125,10 @@ export default class ListModule extends AbstractModule {
         } else {
             if (!await msg.checkPermission("list.view.random")) return;
 
-            item = array_rand(await list.getAll());
+            item = array_rand(await list.getAllItems());
         }
 
-        await msg.reply("#" + item.getId() + ": " + item.getValue());
+        await msg.reply("#" + item.id + ": " + item.value);
     }
 
     async create(event: CommandEvent) {
@@ -144,7 +147,7 @@ export default class ListModule extends AbstractModule {
         let [name] = args;
 
         try {
-            let list = await List.make(name, msg.getChannel());
+            let list = await ListsEntity.create(name, this.getServiceName(), msg.getChannel().getName());
             if (list === null) {
                 await msg.reply(__("lists.create.already_exists", name));
             } else {
@@ -163,16 +166,16 @@ export default class ListModule extends AbstractModule {
                 {
                     type: "custom",
                     required: true,
-                    converter: ListModule.listNameArgConverter
+                    converter: this.listNameArgConverter
                 }
             ],
             permission: "list.delete"
         });
         if (args === null) return;
-        let list: List = args[0];
+        let list: ListsEntity = args[0];
 
         try {
-            await list.del();
+            await list.delete();
             await msg.reply(__("lists.delete.successful", name));
         } catch (e) {
             await msg.reply(__("lists.delete.failed", name));
@@ -187,7 +190,7 @@ export default class ListModule extends AbstractModule {
                 {
                     type: "custom",
                     required: true,
-                    converter: ListModule.listNameArgConverter
+                    converter: this.listNameArgConverter
                 },
                 {
                     type: "string",
@@ -198,14 +201,13 @@ export default class ListModule extends AbstractModule {
             permission: "list.delete"
         });
         if (args === null) return;
-        let list: List = args[0];
-        let value = args[1];
+        let [list, value] = args as [ListsEntity, string];
 
-        let item = await list.add(value);
+        let item = await list.addItem(value);
         if (item === null) {
             await msg.reply(__("lists.item.add.failed"));
         } else {
-            await msg.reply(__("lists.item.add.successful", item.getId()));
+            await msg.reply(__("lists.item.add.successful", item.id));
         }
     };
 
@@ -217,7 +219,7 @@ export default class ListModule extends AbstractModule {
                 {
                     type: "custom",
                     required: true,
-                    converter: ListModule.listNameArgConverter
+                    converter: this.listNameArgConverter
                 },
                 {
                     type: "integer",
@@ -232,16 +234,16 @@ export default class ListModule extends AbstractModule {
             permission: "list.edit"
         });
         if (args === null) return;
-        let [, itemNum, value ] = args;
-        let list: List = args[0];
+        let [list, itemNum, value ] = args as [ListsEntity, number, string];
 
-        let item = await list.get(itemNum);
+        let item = await list.getItem(itemNum);
         if (item === null) {
             await msg.reply(__("lists.item.unknown", item));
         } else {
             try {
-                await item.setValue(value);
-                await msg.reply(__("lists.item.edit.successful", item.getId()));
+                item.value = value;
+                await item.save();
+                await msg.reply(__("lists.item.edit.successful", item.id));
             } catch (e) {
                 await msg.reply(__("lists.item.edit.failed"));
             }
@@ -256,7 +258,7 @@ export default class ListModule extends AbstractModule {
                 {
                     type: "custom",
                     required: true,
-                    converter: ListModule.listNameArgConverter
+                    converter: this.listNameArgConverter
                 },
                 {
                     type: "integer",
@@ -266,128 +268,18 @@ export default class ListModule extends AbstractModule {
             permission: "list.add"
         });
         if (args === null) return;
-        let [, itemNum ] = args;
-        let list: List = args[0];
+        let [list, itemNum] = args as [ListsEntity, number];
 
-        let item = await list.get(itemNum);
+        let item = await list.getItem(itemNum);
         if (item === null) {
             await msg.reply(__("lists.item.unknown", item));
         } else {
             try {
-                await item.del();
-                await msg.reply(__("lists.item.delete.successful", item.getId()));
+                await item.delete();
+                await msg.reply(__("lists.item.delete.successful", item.id));
             } catch (e) {
                 await msg.reply(__("lists.item.delete.failed"));
             }
         }
     };
-}
-
-class List {
-    private readonly id: number;
-    private readonly name: string;
-    private readonly channel: Channel;
-
-    constructor(id: number, name: string, channel: Channel) {
-        this.id = id;
-        this.name = name;
-        this.channel = channel;
-    }
-
-    static async make(name: string, channel: Channel) {
-        let count = await channel.query("lists").count().where().eq("name", name).done().exec();
-        if (count > 0) return null;
-        let resp = await channel.query("lists").insert({name}).exec();
-        if (resp.length < 1) throw new Error("Unable to add list to the database");
-        let list = new List(resp[0], name, channel);
-        await Application.getDatabase().table(list.getTableName()).create((table) => {
-            table.string("value");
-        }).ifNotExists().exec();
-        return list;
-    }
-
-    static async retrieve(name: string, channel: Channel) {
-        let rows = await channel.query("lists").select().where().eq("name", name).done().all();
-        if (rows.length < 1) return null;
-        return new List(rows[0].id, rows[0].name, channel);
-    }
-
-    async add(value: string) {
-        return ListItem.make(value, this);
-    }
-
-    async get(i: number) {
-        return ListItem.retrieve(i, this);
-    }
-
-    async getAll() {
-        let rows = await this.query().select().all();
-        return rows.map(row => new ListItem(row.id, row.value, this));
-    }
-
-    async del() {
-        return this.channel.query("lists")
-            .delete()
-            .where().eq("id", this.id).done()
-            .exec()
-            .then(() => Application.getDatabase().table(this.getTableName()).drop().exec());
-    }
-
-    getName() {
-        return this.name;
-    }
-
-    query() {
-        return Application.getDatabase().table(this.getTableName());
-    }
-
-    private getTableName() {
-        return this.channel.getName() + "_list_" + this.getName();
-    }
-}
-
-class ListItem {
-    private readonly id: number;
-    private readonly parent: List;
-    private value: string;
-
-    constructor(id: number, value: string, parent: List) {
-        this.id = id;
-        this.value = value;
-        this.parent = parent;
-    }
-
-    static async make(value: string, parent: List) {
-        let resp = await parent.query().insert({value}).exec();
-        if (resp.length < 0) throw new Error("No list item inserted into the database.");
-        return new ListItem(resp[0], value, parent);
-    }
-
-    static async retrieve(id: number, parent: List) {
-        let rows = await parent.query().select().where().eq("id", id).done().all();
-        if (rows.length < 1) return null;
-
-        return new ListItem(id, rows[0].value, parent);
-    }
-
-    getId() {
-        return this.id;
-    }
-
-    getValue() {
-        return this.value;
-    }
-
-    async setValue(value: string) {
-        this.value = value;
-        await this.save();
-    }
-
-    async del() {
-        return this.parent.query().delete().where().eq("id", this.id).done().exec();
-    }
-
-    async save() {
-        return this.parent.query().insert({ id: this.id, value: this.value }).or("REPLACE").exec();
-    }
 }

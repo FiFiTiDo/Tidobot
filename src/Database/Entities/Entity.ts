@@ -124,6 +124,10 @@ export default abstract class Entity implements Serializable  {
         return Entity.createTableForEntity(this as unknown as EntityConstructor<T>, service, channel, optional_param);
     }
 
+    static async dropTable<T extends Entity>(service?: string, channel?: string, optional_param?: string): Promise<void> {
+        return Entity.dropTableForEntity(this as unknown as EntityConstructor<T>, service, channel, optional_param);
+    }
+
     static async make<T extends Entity>(service: string, channel: string, data: RawRowData, optional_param?: string) {
         return Entity.makeEntity(this as unknown as EntityConstructor<T>, service, channel, data, optional_param);
     }
@@ -154,7 +158,7 @@ export default abstract class Entity implements Serializable  {
         let tableName = getTableName(entity_const, service, channel, optional_param);
         let { columns, keys, prepared } = prepareData(data);
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().run(`INSERT OR ABORT INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")})`, prepared, function (err) {
+            Application.getDatabase().getClient().run(`INSERT OR ABORT INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
                 if (err) {
                     if ((err as any).errno === 19 && err.message.indexOf("UNIQUE") >= 0) {
                         resolve(null);
@@ -174,7 +178,20 @@ export default abstract class Entity implements Serializable  {
         let tableName = getTableName(entity_const, service, channel, optional_param);
         let columns = formatForCreate(entity_const);
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().exec(`CREATE TABLE IF NOT EXISTS ${tableName}(${columns})`, function (err) {
+            Application.getDatabase().getClient().exec(`CREATE TABLE IF NOT EXISTS ${tableName}(${columns});`, function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            })
+        });
+    }
+
+    static async dropTableForEntity<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, optional_param?: string): Promise<void> {
+        let tableName = getTableName(entity_const, service, channel, optional_param);
+        return new Promise((resolve, reject) => {
+            Application.getDatabase().getClient().exec(`DROP TABLE ${tableName};`, function (err) {
                 if (err) {
                     reject(err);
                 } else {
@@ -201,8 +218,3 @@ export default abstract class Entity implements Serializable  {
         return model;
     }
 }
-
-
-
-
-

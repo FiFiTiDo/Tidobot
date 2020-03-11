@@ -15,15 +15,15 @@ export default class ListsEntity extends Entity {
     public name: string;
 
     public async addItem(value: string) {
-        return Entity.make(ListEntity, this.getService(), this.getChannel(), { value }, this.name);
+        return ListEntity.make<ListEntity>(this.getService(), this.getChannel(), { value }, this.name);
     }
 
     public async getItem(id: number) {
-        return ListEntity.get(id, this.getService(), this.getChannel(), this.name);
+        return ListEntity.get<ListEntity>(id, this.getService(), this.getChannel(), this.name);
     }
 
     public async getAllItems() {
-        return ListEntity.getAll(this.getService(), this.getChannel(), this.name);
+        return ListEntity.getAll<ListEntity>(this.getService(), this.getChannel(), this.name);
     }
 
     public async getRandomItem() {
@@ -31,7 +31,18 @@ export default class ListsEntity extends Entity {
         return items[Math.floor(Math.random() * items.length)];
     }
 
+    public async delete() {
+        await super.delete();
+        await ListEntity.dropTable(this.getService(), this.getChannel(), name);
+    }
+
     static async findByName(name: string, service: string, channel: string) {
-        return Entity.retrieve(ListsEntity, service, channel, where().eq("name", name));
+        return Entity.retrieve<ListsEntity>(ListsEntity, service, channel, where().eq("name", name));
+    }
+
+    static async create(name: string, service: string, channel: string) {
+        let list = await ListsEntity.make(service, channel, { name });
+        if (list === null) return null;
+        await ListEntity.createTable(service, channel, name);
     }
 }

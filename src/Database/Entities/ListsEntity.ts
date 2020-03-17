@@ -15,15 +15,15 @@ export default class ListsEntity extends Entity {
     public name: string;
 
     public async addItem(value: string) {
-        return ListEntity.make<ListEntity>(this.getService(), this.getChannel(), { value }, this.name);
+        return ListEntity.make<ListEntity>(this.getService(), this.getChannelName(), { value }, this.name);
     }
 
     public async getItem(id: number) {
-        return ListEntity.get<ListEntity>(id, this.getService(), this.getChannel(), this.name);
+        return ListEntity.get<ListEntity>(id, this.getService(), this.getChannelName(), this.name);
     }
 
     public async getAllItems() {
-        return ListEntity.getAll<ListEntity>(this.getService(), this.getChannel(), this.name);
+        return ListEntity.getAll<ListEntity>(this.getService(), this.getChannelName(), this.name);
     }
 
     public async getRandomItem() {
@@ -33,7 +33,7 @@ export default class ListsEntity extends Entity {
 
     public async delete() {
         await super.delete();
-        await ListEntity.dropTable(this.getService(), this.getChannel(), name);
+        await ListEntity.dropTable(this.getService(), this.getChannelName(), name);
     }
 
     static async findByName(name: string, service: string, channel: string) {

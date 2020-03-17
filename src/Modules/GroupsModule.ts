@@ -10,6 +10,9 @@ import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import Message from "../Chat/Message";
 import {where} from "../Database/BooleanOperations";
 import {RowData} from "../Database/QueryBuilder";
+import GroupsEntity from "../Database/Entities/GroupsEntity";
+import GroupMembersEntity from "../Database/Entities/GroupMembersEntity";
+import Entity from "../Database/Entities/Entity";
 
 export default class GroupsModule extends AbstractModule {
     constructor() {
@@ -69,12 +72,8 @@ export default class GroupsModule extends AbstractModule {
             .handle(event);
     }
 
-    async getGroupId(channel: Channel, name: string): Promise<number> {
-        return channel.query("groups").select().where().eq("name", name).done().first()
-            .then(row => row === null ? -1 : row.id)
-            .catch(e => {
-                Application.getLogger().error("Unable to retrieve group id", {cause: e});
-            });
+    async getGroupId(channel: Channel, name: string): Promise<GroupsEntity> {
+        return GroupsEntity.findByName(name, this.getServiceName(), channel.getName());
     }
 
     async addToGroup(event: CommandEvent) {
@@ -95,30 +94,16 @@ export default class GroupsModule extends AbstractModule {
             permission: "permission.group.add"
         });
         if (args === null) return;
-        let [group_id, chatter] = args as [number, Chatter];
+        let [group, chatter] = args as [GroupsEntity, Chatter];
 
-        let group = event.getArgument(0);
-        let user_id = chatter.getId();
-        let where_clause = where().eq("group_id", group_id).eq("user_id", user_id);
-
-        msg.getChannel().query("groupMembers")
-            .exists().where(where_clause).exec()
-            .then(exists => {
-                if (exists) {
-                    msg.reply(__("permissions.group.user.already_a_member", chatter.getName(), group));
-                } else {
-                    msg.getChannel().query("groupMembers").insert({group_id, user_id}).exec()
-                        .then(() => msg.reply(__("permissions.group.user.added", chatter.getName(), group)))
-                        .catch((e) => {
-                            Application.getLogger().error(e.message || e);
-                            console.log((e as Error).stack);
-                            msg.reply(__("permissions.group.user.failed_to_add", chatter.getName(), group));
-                        });
-                }
+        GroupMembersEntity.create(chatter.getId(), group)
+            .then(added => {
+                if (added) msg.reply(__("permissions.group.user.added", chatter.getName(), group.name));
+                else msg.reply(__("permissions.group.user.already_a_member", chatter.getName(), group.name));
             })
             .catch((e) => {
                 Application.getLogger().error("Unable to add user to group", {cause: e});
-                msg.reply(__("permissions.group.user.failed_to_add", chatter.getName(), group));
+                msg.reply(__("permissions.group.user.failed_to_add", chatter.getName(), group.name));
             });
     };
 
@@ -140,30 +125,19 @@ export default class GroupsModule extends AbstractModule {
             permission: "permission.group.remove"
         });
         if (args === null) return;
-        let [group_id, chatter] = args as [number, Chatter];
+        let [group, chatter] = args as [GroupsEntity, Chatter];
 
-        let group = event.getArgument(0);
-        let user_id = chatter.getId();
-        let where_clause = where().eq("group_id", group_id).eq("user_id", user_id);
-
-        msg.getChannel().query("groupMembers").exists().where(where_clause).exec()
-            .then(exists => {
-                if (!exists) {
-                    msg.reply(__("permissions.group.user.not_a_member", chatter.getName(), group));
-                } else {
-                    msg.getChannel().query("groupMembers").delete().where(where_clause).exec()
-                        .then(() => msg.reply(__("permissions.group.user.removed", chatter.getName(), group)))
-                        .catch((e) => {
-                            Application.getLogger().error("Unable to remove user from the group", {cause: e});
-                            msg.reply(__("permissions.group.user.failed_to_remove", chatter.getName(), group));
-                        });
-                }
-            })
-            .catch((e) => {
-                Application.getLogger().error("Unable to remove user from the group", {cause: e});
-                msg.reply(__("permissions.group.user.failed_to_remove", chatter.getName(), group));
-            });
-    };
+        try {
+            let member = await GroupMembersEntity.findByUser(chatter.getId(), group);
+            if (member === null)
+                return msg.reply(__("permissions.group.user.not_a_member", chatter.getName(), group));
+            await member.delete();
+            return msg.reply(__("permissions.group.user.removed", chatter.getName(), group));
+        } catch (e) {
+            Application.getLogger().error("Unable to remove user from the group", {cause: e});
+            return msg.reply(__("permissions.group.user.failed_to_remove", chatter.getName(), group));
+        }
+    }
 
     async createGroup(event: CommandEvent) {
         let msg = event.getMessage();
@@ -180,30 +154,21 @@ export default class GroupsModule extends AbstractModule {
         if (args === null) return;
         let [name] = args;
 
-        msg.getChannel().query("groups")
-            .exists().where().eq("name", name).done().exec()
-            .then(exists => {
-                if (exists) {
-                    msg.reply(__("permissions.group.create.already_exists", name));
-                } else {
-                    msg.getChannel().query("groups").insert({name}).exec()
-                        .then(() => msg.reply(__("permissions.group.create.successful", name)))
-                        .catch((e) => {
-                            Application.getLogger().error("Unable to create the group", {cause: e});
-                            msg.reply(__("permissions.group.create.failed", name));
-                        });
-                }
-            })
-            .catch((e) => {
-                Application.getLogger().error("Unable to create the group", {cause: e});
-                msg.reply(__("permissions.group.create.failed", name));
-            });
-    };
+        try {
+            let group = await GroupsEntity.create(name, this.getServiceName(), msg.getChannel().getName());
+            if (group === null)
+                return msg.reply(__("permissions.group.create.already_exists", name));
+            return msg.reply(__("permissions.group.create.successful", name))
+        } catch (e) {
+            Application.getLogger().error("Unable to create the group", {cause: e});
+            return msg.reply(__("permissions.group.create.failed", name));
+        }
+    }
 
     async deleteGroup(event: CommandEvent) {
         let msg = event.getMessage();
         let args = await event.validate({
-            usage: "group create <group>",
+            usage: "group delete <group>",
             arguments: [
                 {
                     type: "string",
@@ -213,22 +178,18 @@ export default class GroupsModule extends AbstractModule {
             permission: "permission.group.delete"
         });
         if (args === null) return;
-        let [group_id] = args;
-        let group = event.getArgument(0);
+        let [group] = args as [GroupsEntity];
 
         let confirmation = await Application.getModuleManager().getModule(ConfirmationModule)
             .make(msg, __("permissions.group.delete.confirmation", group), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
-                let where_clause = where().eq("id", group_id);
-                await msg.getChannel().query("groups").delete().where(where_clause).exec();
-                await msg.getChannel().query("groupMembers").delete().where(where_clause).exec();
-                await msg.getChannel().query("groupPermissions").delete().where(where_clause).exec();
+                await group.delete();
+                return msg.reply(__("permissions.group.delete.successful", group));
             } catch (e) {
                 Application.getLogger().error("Unable to delete the group", {cause: e});
                 return msg.reply(__("permissions.group.delete.failed", group));
             }
-            await msg.reply(__("permissions.group.delete.successful", group));
         });
         confirmation.run();
     }

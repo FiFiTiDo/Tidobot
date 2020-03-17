@@ -5,6 +5,7 @@ import moment from "moment";
 import {Where, where} from "../BooleanOperations";
 import {formatForCreate, getTableName} from "../Decorators/Table";
 import {Serializable} from "../../Utilities/Serializable";
+import ChannelEntity from "./ChannelEntity";
 
 export interface EntityConstructor<T extends Entity>{
     new (id: number, service: string, channel: string, optional_param?: string): T;
@@ -14,11 +15,15 @@ export default abstract class Entity implements Serializable  {
     private readonly tableName: string;
     protected schema: TableSchema = null;
 
-    protected constructor(private entity_const: EntityConstructor<any>, public id: number, private service: string, private channel: string, private optional_param?: string) {
+    protected constructor(private entity_const: EntityConstructor<any>, public id: number, private service: string, private channel?: string, private optional_param?: string) {
         this.tableName = getTableName(entity_const, service, channel, optional_param);
         if (this.tableName === null) throw new Error("Model must use the @Table decorator to add the table name formatter.");
         this.schema = new TableSchema(this);
         this.schema.addColumn("id", { datatype: DataTypes.INTEGER, primary: true, increment: true });
+    }
+
+    is(entity: Entity): entity is this {
+        return entity.id === this.id;
     }
 
     getSchema(): TableSchema {
@@ -31,8 +36,13 @@ export default abstract class Entity implements Serializable  {
         return this.service;
     }
 
-    getChannel(): string {
+    getChannelName(): string {
         return this.channel;
+    }
+
+    async getChannel(): Promise<ChannelEntity|null> {
+        if (!this.channel) return null;
+        return ChannelEntity.findByName(this.getChannelName(), this.getService());
     }
 
     async exists(): Promise<boolean> {
@@ -64,14 +74,7 @@ export default abstract class Entity implements Serializable  {
     }
 
     async delete(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().get(`DELETE FROM ${this.tableName} WHERE id = ?`, this.id,(err) => {
-                if (err)
-                    reject(err);
-                else
-                    resolve();
-            });
-        });
+        return Entity.removeEntriesForEntity(this.entity_const, this.service, this.channel, where().eq("id", this.id), this.optional_param);
     }
 
     async load(): Promise<boolean> {
@@ -130,6 +133,10 @@ export default abstract class Entity implements Serializable  {
 
     static async make<T extends Entity>(service: string, channel: string, data: RawRowData, optional_param?: string) {
         return Entity.makeEntity(this as unknown as EntityConstructor<T>, service, channel, data, optional_param);
+    }
+
+    static async removeEntries<T extends Entity>(service: string, channel: string, where?: Where<any>, optional_param?: string) {
+        return Entity.removeEntriesForEntity(this as unknown as EntityConstructor<T>, service, channel, where, optional_param);
     }
 
     static async retrieve<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, where: Where<any>, optional_param?: string): Promise<T|null> {
@@ -201,10 +208,23 @@ export default abstract class Entity implements Serializable  {
         });
     }
 
+    static async removeEntriesForEntity<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, where_clause?: Where<any>, optional_param?: string): Promise<void> {
+        let tableName = getTableName(entity_const, service, channel, optional_param);
+        if (!where_clause) where_clause = where();
+        return new Promise((resolve, reject) => {
+            Application.getDatabase().getClient().get(`DELETE FROM ${tableName}${where_clause.toString()};`, where_clause.getPreparedValues(),(err) => {
+                if (err)
+                    reject(err);
+                else
+                    resolve();
+            });
+        });
+    }
+
     serialize(): string {
         return JSON.stringify({
             service: this.getService(),
-            channel: this.getChannel(),
+            channel: this.getChannelName(),
             optional_param: this.optional_param,
             row_data: this.getSchema().exportRow()
         });

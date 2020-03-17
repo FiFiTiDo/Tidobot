@@ -43,10 +43,8 @@ export function OneToMany<T extends Entity>(entity_const: EntityConstructor<T>, 
     }
 }
 
-export function ManyToMany<T1 extends Entity, T2 extends Entity>(foreign_model: EntityConstructor<T1>, joining_model: EntityConstructor<T2>, local: [string, string], foreign: [string, string]): any {
+export function ManyToMany<T1 extends Entity, T2 extends Entity>(foreign_model: EntityConstructor<T1>, joining_model: EntityConstructor<T2>, localKey: string, localJoinKey: string, foreignKey: string, foreignJoinKey: string): any {
     return function (obj: Object, key: string, descriptor: TypedPropertyDescriptor<() => Promise<T1[]>>): any {
-        let [localKey, localJoinKey] = local;
-        let [foreignKey, foreignJoinKey] = foreign;
         addRelationship(obj.constructor.name, key);
 
         descriptor.value = async function () {
@@ -65,7 +63,7 @@ export function ManyToMany<T1 extends Entity, T2 extends Entity>(foreign_model: 
 export function ImportModel<T extends Entity>(model_const: EntityConstructor<T>): any {
     return function (obj: Object, key: string|symbol, descriptor: TypedPropertyDescriptor<() => Promise<T[]>>): any {
         if (!(obj instanceof Entity)) throw new Error("Model needs the service to retrieve the data.");
-        descriptor.value = async () => Entity.retrieveAll(model_const, obj.getService(), obj.getChannel());
+        descriptor.value = async () => Entity.retrieveAll(model_const, obj.getService(), obj.getChannelName());
         return descriptor;
     }
 }

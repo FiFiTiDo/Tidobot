@@ -8,6 +8,7 @@ import PermissionEntity from "./PermissionEntity";
 import {ImportModel} from "../Decorators/Relationships";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
+import {where} from "../BooleanOperations";
 
 @Table(service => `${service}_channels`)
 export default class ChannelEntity extends Entity {
@@ -38,4 +39,8 @@ export default class ChannelEntity extends Entity {
 
     @ImportModel(PermissionEntity)
     async permissions(): Promise<PermissionEntity[]> { return []; }
+
+    static async findByName(name: string, service: string): Promise<ChannelEntity|null> {
+        return Entity.retrieve(ChannelEntity, service, undefined, where().eq("name", name));
+    }
 }

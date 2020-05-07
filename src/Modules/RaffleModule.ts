@@ -187,7 +187,7 @@ class RaffleCommand extends Command {
         }
 
         await response.message(Key("raffle.pull.lead_up"));
-        setTimeout(() => msg.reply("@" + winner + "!!!"), 1000);
+        setTimeout(() => msg.getResponse().message("@" + winner + "!!!"), 1000);
     }
 }
 

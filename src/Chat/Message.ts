@@ -88,10 +88,6 @@ export default class Message {
         return this.response;
     }
 
-    public async reply(message: string): Promise<void> {
-        return this.adapter.sendMessage(message, this.getChannel());
-    }
-
     public addToLoopProtection(command: string): void {
         this.loopProtection.push(command.toLowerCase());
     }

@@ -190,7 +190,7 @@ export default class CustomCommandModule extends AbstractModule {
         for (const command of commands) {
             const res = await command.checkCondition(msg);
             if (res === CommandConditionResponse.RUN_NOW) {
-                await msg.reply(await command.getResponse(msg));
+                await msg.getResponse().message(await command.getResponse(msg));
                 doDefault = false;
             } else if (res === CommandConditionResponse.RUN_DEFAULT) {
                 defCommands.push(command);
@@ -201,7 +201,7 @@ export default class CustomCommandModule extends AbstractModule {
             for (const command of defCommands) {
                 const res = await command.checkCondition(msg, true);
                 if (res === CommandConditionResponse.RUN_NOW)
-                    await msg.reply(await command.getResponse(msg));
+                    await msg.getResponse().message(await command.getResponse(msg));
             }
         }
     }

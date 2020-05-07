@@ -109,11 +109,11 @@ export default class ConfirmationModule extends AbstractModule {
         confirmation.addListener(ExpiredEvent, () => this.confirmations.removeChatter(chatter));
         this.confirmations.setChatter(chatter, confirmation);
 
-        await message.reply(prompt);
-        await message.reply(util.format("Run %sconfirm %s within %d seconds to verify your decision.",
+        await message.getResponse().message(prompt);
+        await message.getResponse().message("Run %sconfirm %s within %d seconds to verify your decision.",
             (await CommandModule.getPrefix(message.getChannel())), code, seconds
-        ));
-        await message.reply("Warning: this action might not be able to be undone.");
+        );
+        await message.getResponse().message("Warning: this action might not be able to be undone.");
 
         return confirmation;
     }

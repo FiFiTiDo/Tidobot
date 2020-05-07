@@ -136,7 +136,7 @@ class ListCommand extends Command {
             item = array_rand(await list.getAllItems());
         }
 
-        await msg.reply("#" + item.id + ": " + item.value);
+        await msg.getResponse().message("#" + item.id + ": " + item.value);
     }
 
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {

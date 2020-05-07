@@ -129,8 +129,7 @@ export default class UserModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
-
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new UserCommand(this.makeConfirmation), this);
     }
 

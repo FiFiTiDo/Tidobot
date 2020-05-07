@@ -325,7 +325,7 @@ export default class PollsModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new PollCommand(this.runningPolls), this);
         cmd.registerCommand(new VoteCommand(this.runningPolls), this);
         cmd.registerCommand(new StrawpollCommand(), this);

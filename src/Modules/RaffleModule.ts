@@ -12,6 +12,7 @@ import Permission from "../Systems/Permissions/Permission";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
+import {EventHandler} from "../Systems/Event/decorators";
 
 enum RaffleState {
     OPEN = 1,
@@ -200,7 +201,7 @@ export default class RaffleModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new RaffleCommand(this.raffles), this);
 
         const perm = PermissionSystem.getInstance();
@@ -216,6 +217,7 @@ export default class RaffleModule extends AbstractModule {
         settings.registerSetting(new Setting("raffle.duplicate-wins", "false", SettingType.BOOLEAN));
     }
 
+    @EventHandler(MessageEvent)
     async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
         const msg = event.getMessage();
         if (this.isDisabled(msg.getChannel())) return;

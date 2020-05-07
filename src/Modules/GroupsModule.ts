@@ -22,7 +22,7 @@ export default class GroupsModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new GroupCommand(this.makeConfirmation), this);
 
         const perm = PermissionSystem.getInstance();

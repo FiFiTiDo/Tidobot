@@ -137,7 +137,7 @@ export default class GeneralModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         const perm = PermissionSystem.getInstance();
         const settings = SettingsSystem.getInstance();
 
@@ -155,7 +155,7 @@ export default class GeneralModule extends AbstractModule {
 
         settings.registerSetting(new Setting("timezone", "America/New_York", SettingType.TIMEZONE));
 
-        this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => ({
+        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
             datetime: async (format?: string): Promise<string> => {
                 const timezone = await msg.getChannel().getSetting<moment.MomentZone>("timezone");
                 return moment().tz(timezone.name).format(format ? format : "Y-m-d h:i:s");

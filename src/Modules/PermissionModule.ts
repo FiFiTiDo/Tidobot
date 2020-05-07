@@ -20,7 +20,7 @@ export default class PermissionModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new PermissionCommand(), this);
 
         const perm = PermissionSystem.getInstance();
@@ -30,7 +30,7 @@ export default class PermissionModule extends AbstractModule {
         perm.registerPermission(new Permission("permission.reset", Role.MODERATOR));
         perm.registerPermission(new Permission("permission.reset.all", Role.BROADCASTER));
 
-        this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => ({
+        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
             sender: {
                 isA: async (input: string): Promise<boolean> => {
                     const role = parseRole(input);

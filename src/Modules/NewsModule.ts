@@ -121,7 +121,7 @@ export default class NewsModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new NewsCommand(this.makeConfirmation), this);
 
         const perm = PermissionSystem.getInstance();

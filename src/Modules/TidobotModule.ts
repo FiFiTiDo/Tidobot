@@ -221,7 +221,7 @@ export default class TidobotModule extends AbstractModule {
         perm.registerPermission(new Permission("regular.add", Role.MODERATOR));
         perm.registerPermission(new Permission("regular.remove", Role.MODERATOR));
 
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new TidobotCommand(), this);
         cmd.registerCommand(new RegularCommand(), this);
     }

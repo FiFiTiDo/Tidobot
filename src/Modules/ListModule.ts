@@ -18,7 +18,7 @@ export default class ListModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         const listCommand = new ListCommand();
         cmd.registerCommand(listCommand, this);
 
@@ -32,7 +32,7 @@ export default class ListModule extends AbstractModule {
         perm.registerPermission(new Permission("list.view.specific", Role.NORMAL));
         perm.registerPermission(new Permission("list.view.random", Role.NORMAL));
 
-        this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => ({
+        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
             list: {
                 command: async (listName: unknown): Promise<string> => {
                     if (typeof listName !== "string") return "Invalid parameter, expected a string";

@@ -112,7 +112,7 @@ export default class SettingsModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         const perm = PermissionSystem.getInstance();
 
         perm.registerPermission(new Permission("settings.set", Role.MODERATOR));
@@ -123,7 +123,7 @@ export default class SettingsModule extends AbstractModule {
         cmd.registerCommand(new UnsetCommand(), this);
         cmd.registerCommand(new ResetCommand(this.makeConfirmation), this);
 
-        this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => ({
+        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
             settings: {
                 get: async <T> (key: string, defVal?: T): Promise<ConvertedSetting|T|null> => {
                     if (defVal === undefined) defVal = null;

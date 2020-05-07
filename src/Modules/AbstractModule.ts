@@ -15,7 +15,6 @@ export interface ModuleConstructor<T extends AbstractModule> {
 
 @injectable()
 export default abstract class AbstractModule {
-
     @inject(ModuleManager)
     protected moduleManager: ModuleManager;
 
@@ -62,9 +61,5 @@ export default abstract class AbstractModule {
 
     isDisabled(channel: ChannelEntity): boolean {
         return !this.coreModule && array_contains(this.getName(), channel.disabledModules);
-    }
-
-    protected getModuleManager(): ModuleManager {
-        return this.moduleManager;
     }
 }

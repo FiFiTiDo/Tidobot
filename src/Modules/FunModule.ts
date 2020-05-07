@@ -70,7 +70,7 @@ export default class FunModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.getModuleManager().getModule(CommandModule);
+        const cmd = this.moduleManager.getModule(CommandModule);
         cmd.registerCommand(new RouletteCommand(this.bot), this);
         cmd.registerCommand(new SeppukuCommand(this.bot), this);
         cmd.registerCommand(new Magic8BallCommand(), this);

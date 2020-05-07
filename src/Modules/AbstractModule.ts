@@ -1,17 +1,12 @@
-import Dispatcher from "../Systems/Event/Dispatcher";
 import ModuleManager from "./ModuleManager";
-import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import Bot from "../Application/Bot";
 import {inject, injectable} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
-import ChatterManager from "../Chat/ChatterList";
-import Translator from "../Utilities/Translator";
 import {ConfirmationFactory} from "./ConfirmationModule";
 import Config from "../Utilities/Config";
 import {array_contains, array_remove} from "../Utilities/ArrayUtils";
-import CommandModule, {Command} from "./CommandModule";
 
 export interface ModuleConstructor<T extends AbstractModule> {
     name: string;
@@ -46,19 +41,6 @@ export default abstract class AbstractModule {
     public initialize(): void {
         // Not implemented
     }
-
-    public postInitialize(): void {
-        // Not implemented
-    }
-
-    public createDatabaseTables(builder: ChannelSchemaBuilder): void {
-        // Not implemented
-    }
-
-    public async onCreateTables(channel: ChannelEntity): Promise<void> {
-        // Not implemented
-    }
-
 
     getName(): string {
         return this.name;

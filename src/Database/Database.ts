@@ -2,9 +2,7 @@ import * as sqlite3 from "sqlite3";
 import * as path from "path";
 import QueryBuilder from "./QueryBuilder";
 import Table from "./Table";
-import ChannelEntity from "./Entities/ChannelEntity";
 import AbstractModule from "../Modules/AbstractModule";
-import Logger from "../Utilities/Logger";
 
 export enum DataTypes {
     STRING, INTEGER, FLOAT, BOOLEAN, DATE, ARRAY, ENUM
@@ -62,28 +60,5 @@ export default class Database {
 
     table(table: string): QueryBuilder {
         return new QueryBuilder(this, `${this.service}_${table}`);
-    }
-
-    channelTable(channel: ChannelEntity, table: string|ChannelTables): QueryBuilder {
-        return this.table(`${channel.name.toLowerCase()}_${table}`);
-    }
-
-    async createChannelTables(channel: ChannelEntity): Promise<void> {
-        const ops = [];
-        for (const [name, table] of this.schema.entries()) {
-            if (name.startsWith(channel.name + "_")) {
-                ops.push(this.table(name).create(table1 => {
-                    table1.import(table);
-                }).ifNotExists().exec().catch(e => {
-                    Logger.get().error("Unable to create table " + name, { cause: e });
-                }));
-            }
-        }
-        await Promise.all(ops);
-
-        const ops2 = [];
-        for (const module of this.modules)
-            ops2.push(module.onCreateTables(channel));
-        await Promise.all(ops2);
     }
 }

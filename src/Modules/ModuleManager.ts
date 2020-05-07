@@ -1,8 +1,6 @@
 import AbstractModule, {ModuleConstructor} from "./AbstractModule";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import Bot from "../Application/Bot";
 import {inject, injectable} from "inversify";
-import Adapter from "../Services/Adapter";
 import {ALL_MODULES_KEY} from "./index";
 import {objectHasProperties} from "../Utilities/ObjectUtils";
 
@@ -10,16 +8,11 @@ import {objectHasProperties} from "../Utilities/ObjectUtils";
 export default class ModuleManager {
     private modules: { [key: string]: AbstractModule };
 
-    constructor(@inject(ALL_MODULES_KEY) modules: AbstractModule[], private bot: Bot, private adapter: Adapter) {
+    constructor(@inject(ALL_MODULES_KEY) modules: AbstractModule[]) {
         this.modules = {};
 
-        for (const module of modules) {
-            this.adapter.addSubscriber(module);
-            this.modules[module.getName()] = module;
-        }
-
+        for (const module of modules) this.modules[module.getName()] = module;
         for (const module of Object.values(this.modules)) module.initialize();
-        for (const module of Object.values(this.modules)) module.postInitialize();
     }
 
     getModule<T extends AbstractModule>(module: ModuleConstructor<T>): T {

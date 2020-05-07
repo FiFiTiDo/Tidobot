@@ -38,6 +38,7 @@ export default class GroupsModule extends AbstractModule {
     async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
         await GroupsEntity.createTable({ channel });
         await GroupMembersEntity.createTable({ channel });
+        await GroupPermissionsEntity.createTable({ channel });
     }
 }
 

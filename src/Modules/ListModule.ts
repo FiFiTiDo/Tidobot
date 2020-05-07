@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEvent, CommandEventArgs} from "./CommandModule";
-import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import Message from "../Chat/Message";
 import ExpressionModule from "./ExpressionModule";
 import ListsEntity from "../Database/Entities/ListsEntity";
@@ -10,6 +9,8 @@ import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import {Key} from "../Utilities/Translator";
+import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {EventHandler} from "../Systems/Event/decorators";
 
 export default class ListModule extends AbstractModule {
     constructor() {
@@ -74,8 +75,9 @@ export default class ListModule extends AbstractModule {
         return list;
     }
 
-    createDatabaseTables(builder: ChannelSchemaBuilder): void {
-        builder.addTable("lists", table => table.string("name").unique());
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+        await ListsEntity.createTable({ channel });
     }
 }
 

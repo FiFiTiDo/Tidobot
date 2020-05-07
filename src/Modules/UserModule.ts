@@ -5,6 +5,8 @@ import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
+import {EventHandler} from "../Systems/Event/decorators";
+import {NewChannelEvent} from "../Chat/NewChannelEvent";
 
 class UserCommand extends Command {
     constructor(private confirmationFactory: ConfirmationFactory) {
@@ -130,5 +132,10 @@ export default class UserModule extends AbstractModule {
         const cmd = this.getModuleManager().getModule(CommandModule);
 
         cmd.registerCommand(new UserCommand(this.makeConfirmation), this);
+    }
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+        await UserPermissionsEntity.createTable({ channel });
     }
 }

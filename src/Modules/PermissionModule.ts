@@ -1,7 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
-import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ExpressionModule from "./ExpressionModule";
 import {where} from "../Database/BooleanOperations";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
@@ -10,9 +9,10 @@ import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import Logger from "../Utilities/Logger";
+import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {EventHandler} from "../Systems/Event/decorators";
 
 export default class PermissionModule extends AbstractModule {
-
     constructor() {
         super(PermissionModule.name);
 
@@ -53,30 +53,17 @@ export default class PermissionModule extends AbstractModule {
         }));
     }
 
-    createDatabaseTables(builder: ChannelSchemaBuilder): void {
-        builder.addTable("permissions", (table) => {
-            table.string("permission").unique();
-            table.enum("level", ["BANNED", "NORMAL", "PREMIUM", "REGULAR", "SUBSCRIBER", "VIP", "MODERATOR", "BROADCASTER", "ADMIN", "OWNER"]);
-        });
-        builder.addTable("userPermissions", (table) => {
-            table.string("permission");
-            table.integer("user_id").references(builder.getTableName("users"), "id");
-            table.boolean("allowed");
-            table.unique("UserPermission", ["permission", "user_id"]);
-        });
-        builder.addTable("groupPermissions", (table) => {
-            table.string("permission");
-            table.integer("group_id").references(builder.getTableName("groups"), "id");
-            table.boolean("allowed");
-            table.unique("GroupPermission", ["permission", "group_id"]);
-        });
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+        await PermissionEntity.createTable({ channel });
     }
 
-    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity|null> =>
-        PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
 }
 
 class PermissionCommand extends Command {
+    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity|null> =>
+        PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
+
     constructor() {
         super("permission", "<set|reset>", ["perm"]);
 
@@ -91,7 +78,7 @@ class PermissionCommand extends Command {
                 {
                     value: {
                         type: "custom",
-                        converter: PermissionModule.permissionArgConverter
+                        converter: PermissionCommand.permissionArgConverter
                     },
                     required: true
                 },
@@ -129,7 +116,7 @@ class PermissionCommand extends Command {
                 {
                     value: {
                         type: "custom",
-                        converter: PermissionModule.permissionArgConverter
+                        converter: PermissionCommand.permissionArgConverter
                     },
                     required: false
                 }

@@ -1,10 +1,8 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ExpressionModule from "./ExpressionModule";
 import {Key} from "../Utilities/Translator";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -12,6 +10,8 @@ import Logger from "../Utilities/Logger";
 import SettingsEntity from "../Database/Entities/SettingsEntity";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {ConvertedSetting} from "../Systems/Settings/Setting";
+import {EventHandler} from "../Systems/Event/decorators";
+import {NewChannelEvent} from "../Chat/NewChannelEvent";
 
 class SetCommand extends Command {
     constructor() {
@@ -134,16 +134,9 @@ export default class SettingsModule extends AbstractModule {
         }));
     }
 
-    createDatabaseTables(builder: ChannelSchemaBuilder): void {
-        builder.addTable("settings", table => {
-            table.string("key").unique();
-            table.string("value");
-            table.enum("type", ["string", "integer", "float", "boolean"]);
-            table.string("default_value");
-        });
-    }
-
-    public async onCreateTables(channel: ChannelEntity): Promise<void> {
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+        await SettingsEntity.createTable({ channel });
         await SettingsEntity.make({ channel },
             SettingsSystem.getInstance().getAll().map(setting => ({
                 key: setting.getKey(),

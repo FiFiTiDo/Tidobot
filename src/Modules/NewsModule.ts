@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
-import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import MessageEvent from "../Chat/Events/MessageEvent";
@@ -16,6 +15,7 @@ import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler} from "../Systems/Event/decorators";
+import {NewChannelEvent} from "../Chat/NewChannelEvent";
 
 interface LastMessage {
     item: NewsEntity;
@@ -135,10 +135,9 @@ export default class NewsModule extends AbstractModule {
         settings.registerSetting(new Setting("news.interval", "30", SettingType.INTEGER));
     }
 
-    createDatabaseTables(builder: ChannelSchemaBuilder): void {
-        builder.addTable("news", table => {
-            table.string("value");
-        });
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+        await NewsEntity.createTable({ channel });
     }
 
     tryNext = async (channel: ChannelEntity, increment = false): Promise<void> => {

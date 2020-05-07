@@ -69,7 +69,11 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
     }
 
     static async from(id: string, name: string, service: string): Promise<ChannelEntity|null> {
-        return this.make({ service }, { channel_id: id, name, disabled_modules: "" });
+        return this.retrieveOrMake({ service }, where().eq("channel_id", id), { channel_id: id, name, disabled_modules: "" });
+    }
+
+    findChatterById(id: string) {
+        return this.chatterList.findById(id);
     }
 
     findChatterByName(name: string): ChatterEntity|null {

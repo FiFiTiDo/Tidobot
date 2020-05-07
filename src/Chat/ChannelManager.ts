@@ -18,4 +18,11 @@ export default class ChannelManager {
         this.ids.push(channel.channelId);
         this.channels.push(channel);
     }
+
+    findByName(name: string): ChannelEntity|null {
+        for (const channel of this.channels)
+            if (channel.name === name)
+                return channel;
+        return null;
+    }
 }

@@ -8,7 +8,6 @@ import ConnectedEvent from "../../Chat/Events/ConnectedEvent";
 import DisconnectedEvent from "../../Chat/Events/DisconnectedEvent";
 import JoinEvent from "../../Chat/Events/JoinEvent";
 import LeaveEvent from "../../Chat/Events/LeaveEvent";
-import moment from "moment";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../../Utilities/Config";
@@ -17,12 +16,7 @@ import {inject, injectable} from "inversify";
 import symbols from "../../symbols";
 import Logger from "../../Utilities/Logger";
 import EventSystem from "../../Systems/Event/EventSystem";
-
-const cacheLength: {
-    length: moment.DurationInputArg1;
-    unit: moment.unitOfTime.DurationConstructor;
-} = this.config.get("general.cache.users");
-const cacheExpiresAfter = moment.duration(cacheLength.length, cacheLength.unit);
+import Bot from "../../Application/Bot";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
@@ -31,11 +25,12 @@ export default class TwitchAdapter extends Adapter {
     public oldApi: kraken.Api;
 
     constructor(
-        @inject(symbols.Config) private config: Config, @inject(symbols.TwitchMessageFactory) private messageFactory: TwitchMessageFactory
+        @inject(Bot) private bot: Bot, @inject(symbols.Config) private config: Config,
+        @inject(symbols.TwitchMessageFactory) private messageFactory: TwitchMessageFactory
     ) {
         super();
 
-        this.api = new helix.Api(config.get("twitch.api.clientId"));
+        this.api = new helix.Api(config.get("twitch.api.clientId"), config.get("twitch.api.clientSecret"));
         this.oldApi = new kraken.Api(config.get("twitch.api.clientId"));
     }
 
@@ -100,49 +95,50 @@ export default class TwitchAdapter extends Adapter {
         return this.client.action(channel.name, action);
     }
 
-    getChatter(user: string | tmi.Userstate, channel: ChannelEntity): Promise<ChatterEntity> {
-        const name = typeof user === "string" ? user : user.username;
-        return Cache.getInstance().retrieveSerializable(`channel.${channel.name}.chatter.${name}`, cacheExpiresAfter.asSeconds(), ChatterEntity, async () => {
-            let chatter = await ChatterEntity.findByName(name, channel);
+    async getChatter(user: string | tmi.Userstate, channel: ChannelEntity): Promise<ChatterEntity> {
+        let chatter = typeof user === "string" ? channel.findChatterByName(user) : channel.findChatterById(user.id);
 
-            if (chatter === null) {
-                if (typeof user === "string") {
-                    let resp;
-                    try {
-                        resp = await this.api.getUsers({login: name});
-                    } catch (e) {
-                        Logger.get().emerg("Unable to retrieve user from the API", {cause: e});
-                        process.exit(1);
-                    }
-                    chatter = await ChatterEntity.from(resp.data[0].id, name, channel);
-                } else {
-                    chatter = await ChatterEntity.from(user.id, name, channel);
-                }
-                await chatter.save();
-            }
+        if (chatter === null && typeof user !== "string")
+            chatter = await ChatterEntity.findById(user.id, channel);
 
-            return chatter;
-        }) as Promise<ChatterEntity>;
-    }
-
-    getChannelByName(channelName: string): Promise<ChannelEntity|null> {
-        return Cache.getInstance().retrieveSerializable("channel." + channelName, cacheExpiresAfter.asSeconds(), ChannelEntity, async () => {
-            let channel = await ChannelEntity.findByName(channelName, "twitch");
-
-            if (channel === null) {
-                let resp: helix.Response<helix.User>;
+        if (chatter === null) {
+            if (typeof user === "string") {
+                let resp;
                 try {
-                    resp = await this.api.getUsers({login: channelName});
+                    resp = await this.api.getUsers({login: user});
                 } catch (e) {
                     Logger.get().emerg("Unable to retrieve user from the API", {cause: e});
                     process.exit(1);
                 }
-                channel = await ChannelEntity.from(resp.data[0].id, resp.data[0].login, "twitch");
-                await channel.save();
+                chatter = await ChatterEntity.from(resp.data[0].id, user, channel);
+            } else {
+                chatter = await ChatterEntity.from(user.id, user.username, channel);
             }
+            await chatter.save();
+        }
 
-            return channel;
-        }) as Promise<ChannelEntity>;
+        return chatter;
+    }
+
+    async getChannelByName(channelName: string): Promise<ChannelEntity|null> {
+        let channel = this.bot.getChannelManager().findByName(channelName);
+
+        if (channel === null) {
+            let resp: helix.Response<helix.User>;
+            try {
+                resp = await this.api.getUsers({ login: channelName });
+            } catch (e) {
+                Logger.get().emerg("Unable to retrieve user from the API", {cause: e});
+                process.exit(1);
+            }
+            const { id, login: name } = resp.data[0];
+
+            channel = await ChannelEntity.from(id, name, "twitch");
+            channel.name = name;
+            await channel.save();
+        }
+
+        return channel;
     }
 
     async unbanChatter(chatter: ChatterEntity): Promise<[string, string]> {

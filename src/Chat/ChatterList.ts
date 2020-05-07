@@ -35,6 +35,13 @@ export default class ChatterList {
         return this.chatters;
     }
 
+    findById(id: string) {
+        for (const chatter of this.chatters)
+            if (chatter.userId === id)
+                return chatter;
+        return null;
+    }
+
     findByName(name: string): ChatterEntity|null {
         for (const chatter of this.chatters)
             if (chatter.name.toLowerCase() === name.toLowerCase())

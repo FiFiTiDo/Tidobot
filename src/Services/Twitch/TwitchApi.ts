@@ -1,13 +1,10 @@
 import request = require("request-promise-native");
-import moment from "moment";
-import Application from "../../Application/Application";
 import Cache from "../../Systems/Cache/Cache";
+import {parse_duration} from "../../Utilities/functions";
+import {AccessToken, ClientCredentialTokenConfig, create as createOauth, OAuthClient} from "simple-oauth2";
+import Logger from "../../Utilities/Logger";
 
-const cacheLength: {
-    length: moment.DurationInputArg1;
-    unit: moment.unitOfTime.DurationConstructor;
-} = Application.getConfig().getOrDefault("general.cache.api");
-const cacheExpiresAfter = moment.duration(cacheLength.length, cacheLength.unit);
+const CACHE_EXPIRY = parse_duration(process.env.CACHE_LENGTH);
 
 /**
  * The new twitch api
@@ -151,15 +148,57 @@ export namespace helix {
      */
     export class Api {
         readonly BASE_URL = "https://api.twitch.tv/helix/";
-        private readonly clientId: string;
+        private oauth2: OAuthClient;
+        private accessToken: AccessToken = null;
 
         /**
          * Api constructor.
          *
          * @param clientId The client id for the api
+         * @param clientSecret The client secret for the api
          */
-        constructor(clientId: string) {
-            this.clientId = clientId;
+        constructor(clientId: string, clientSecret: string) {
+            this.oauth2 = createOauth({
+                client: {
+                    id: clientId,
+                    secret: clientSecret
+                },
+                auth: {
+                    tokenHost: "https://id.twitch.tv",
+                    tokenPath: "/oauth2/token"
+                }
+            });
+        }
+
+        /**
+         * Get the access token for API requests
+         * Retrieves it if it hasn't been retrieved yet
+         * Refreshes if it has been but is expired
+         *
+         * @returns The AccessToken object
+         */
+        private async getAccessToken(): Promise<AccessToken> {
+            const tokenConfig: ClientCredentialTokenConfig = {};
+            if (this.accessToken === null) { // Has not been retrieved yet
+                try {
+                    const result = await this.oauth2.clientCredentials.getToken(tokenConfig);
+                    this.accessToken = this.oauth2.accessToken.create(result);
+                } catch (error) {
+                    Logger.get().emerg("Unable to retrieve the access token", { cause: error });
+                    process.exit(1);
+                }
+            } else { // Has been retrieved previously
+                if (this.accessToken.expired()) { // Token is expired
+                    try {
+                        this.accessToken = await this.accessToken.refresh(tokenConfig);
+                    } catch (error) {
+                        Logger.get().emerg("Unable to refresh the access token", { cause: error });
+                        process.exit(1);
+                    }
+                }
+            }
+
+            return this.accessToken;
         }
 
         /**
@@ -170,7 +209,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getGames(params: GameParams): Promise<Response<Game>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.games." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.games." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Game>({
                     endpoint: "games",
                     query: params as values
@@ -186,7 +225,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getStreams(params: StreamParams): Promise<Response<Stream>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.streams." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.streams." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Stream>({
                     endpoint: "streams",
                     query: params as values
@@ -202,7 +241,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUsers(params: UserParams): Promise<Response<User>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.users." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.users." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<User>({
                     endpoint: "users",
                     query: params as values
@@ -219,7 +258,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUserFollow(params: UserFollowParams): Promise<Response<UserFollow>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.users.follow." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.users.follow." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<UserFollow>({
                     endpoint: "users/follows",
                     query: params as values
@@ -232,13 +271,13 @@ export namespace helix {
          *
          * @param opts The options for the request
          */
-        private makeRequest<T>(opts: RequestOptions): Promise<Response<T>> {
+        private async makeRequest<T>(opts: RequestOptions): Promise<Response<T>> {
+            const accessToken = await this.getAccessToken();
+
             const method = opts.method ? opts.method : "GET";
             const body = opts.body ? opts.body : undefined;
             const url = this.BASE_URL + opts.endpoint;
-            const headers = {
-                "Client-ID": this.clientId
-            };
+            const headers = { "Authorization": `Bearer ${accessToken.token}` };
             if (opts.headers) Object.assign(headers, opts.headers);
             const qs = opts.query ? opts.query : undefined;
             const json = true;

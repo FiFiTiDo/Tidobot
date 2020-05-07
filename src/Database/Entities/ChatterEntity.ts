@@ -72,6 +72,10 @@ export default class ChatterEntity extends Entity<ChatterEntity> {
         return true;
     }
 
+    public static async findById(id: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
+        return ChatterEntity.retrieve({ channel }, where().eq("user_id", id));
+    }
+
     public static async findByName(name: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
         return ChatterEntity.retrieve({ channel }, where().eq("name", name));
     }

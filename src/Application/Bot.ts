@@ -11,12 +11,11 @@ import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelManager from "../Chat/ChannelManager";
 import Logger from "../Utilities/Logger";
-import ModuleManager from "../Modules/ModuleManager";
 import EventSystem from "../Systems/Event/EventSystem";
 
 @injectable()
 export default class Bot {
-    constructor(private adapter: Adapter, private channelManager: ChannelManager, private moduleManager: ModuleManager) {
+    constructor(private adapter: Adapter, private channelManager: ChannelManager) {
     }
 
     start(options: AdapterOptions): void {
@@ -42,8 +41,8 @@ export default class Bot {
         this.adapter.run(options);
     }
 
-    getModuleManager(): ModuleManager {
-        return this.moduleManager;
+    getChannelManager(): ChannelManager {
+        return this.channelManager;
     }
 
     async send(message: string, channel: ChannelEntity): Promise<void> {

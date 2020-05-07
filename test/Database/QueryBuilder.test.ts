@@ -2,6 +2,7 @@ import chai = require("chai");
 import Database from "../../src/Database/Database";
 import * as sqlite3 from "sqlite3";
 import faker from "faker";
+import * as winston from "winston";
 
 describe("QueryBuilder", function () {
     let db: Database;
@@ -14,7 +15,7 @@ describe("QueryBuilder", function () {
     }
 
     before(async function () {
-        db = new Database("test", new sqlite3.Database(":memory:"));
+        db = new Database("test", new sqlite3.Database(":memory:"), []);
         await db.table("users").create(table => {
             table.string("id").unique();
             table.string("name");

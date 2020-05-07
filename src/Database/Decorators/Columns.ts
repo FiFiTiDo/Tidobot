@@ -1,23 +1,14 @@
-import {ColumnProp, ColumnSettings, DataTypes} from "../Schema";
-import Entity, {EntityConstructor} from "../Entities/Entity";
+import {ColumnProp, ColumnSettings} from "../Schema";
+import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";
 
-const columns_map: Map<string, ColumnProp[]> = new Map();
-function addColumn(entity: Entity, propertyKey: string, settings: ColumnSettings): void {
-    let arr = getColumns(entity);
-    arr.push({ property: propertyKey, settings });
-    columns_map.set(entity.constructor.name, arr);
+const COLUMNS_KEY = "entity:columns";
+
+export function getColumns(target: any): ColumnProp[] {
+    return getMetadata(COLUMNS_KEY, target);
 }
 
-export function getColumns(entity: Entity|EntityConstructor<any>): ColumnProp[] {
-    return columns_map.get(entity instanceof Entity ? entity.constructor.name : entity.name) || [];
-}
-
-export function Column(settings: ColumnSettings) {
-    return function (target: any, propertyKey: string) {
-        addColumn(target, propertyKey, settings);
-    }
-}
-
-export function Id(target: any, propertyKey: string) {
-    addColumn(target, propertyKey, { datatype: DataTypes.INTEGER, increment: true, primary: true });
+export function Column(settings: ColumnSettings): Function {
+    return function (target: any, property: string): void {
+        addMetadata<ColumnProp>(COLUMNS_KEY, target, { property, settings });
+    };
 }

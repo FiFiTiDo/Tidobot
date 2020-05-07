@@ -1,10 +1,22 @@
-import {QueryBuilderError, RowData} from "./QueryBuilder";
+import {RowData} from "./QueryBuilder";
 import {DataTypes} from "./Database";
 import moment from "moment";
-import { DatabaseError } from "./DatabaseErrors";
+import {DatabaseError, QueryBuilderError} from "./DatabaseErrors";
 
-export type TableBuilderCallback = (table: TableBuilder) => void;
-type ColumnSettings = { name: string, datatype: DataTypes, primary?: boolean, null?: boolean, unique?: boolean, increment?: boolean, references?: string, enum?: string[] };
+export interface TableBuilderCallback {
+    (table: TableBuilder): void;
+}
+
+interface ColumnSettings {
+    name: string;
+    datatype: DataTypes;
+    primary?: boolean;
+    null?: boolean;
+    unique?: boolean;
+    increment?: boolean;
+    references?: string;
+    enum?: string[];
+}
 
 export default class Table {
     public readonly name: string;
@@ -18,12 +30,12 @@ export default class Table {
     }
 
     parseDatabaseRows(row: RowData): RowData {
-        for (let columnName of Object.keys(row)) {
+        for (const columnName of Object.keys(row)) {
             if (columnName === "count") continue;
-            let i = this.columnNames.indexOf(columnName);
+            const i = this.columnNames.indexOf(columnName);
             if (i < 0)
                 throw new DatabaseError("Could not parse database rows, column names don't match the schema.");
-            let column = this.columns[i];
+            const column = this.columns[i];
             switch (column.datatype) {
                 case DataTypes.BOOLEAN:
                     row[column.name] = (row[column.name] as number) === 1;
@@ -40,14 +52,14 @@ export default class Table {
     }
 
     prepareDatabaseRows(row: RowData): RowData {
-        for (let columnName of Object.keys(row)) {
-            let i = this.columnNames.indexOf(columnName);
+        for (const columnName of Object.keys(row)) {
+            const i = this.columnNames.indexOf(columnName);
             if (i < 0) {
                 console.table(row);
                 console.table(this.columns);
                 throw new DatabaseError("Could not parse database rows, column names don't match the schema.");
             }
-            let column = this.columns[i];
+            const column = this.columns[i];
             switch (column.datatype) {
                 case DataTypes.BOOLEAN:
                     row[column.name] = (row[column.name] as boolean) ? 1 : 0;
@@ -78,53 +90,53 @@ export class TableBuilder {
         this.increments("id");
     }
 
-    increments(name: string) {
+    increments(name: string): this {
         this.integer(name).primary().autoIncrement();
         return this;
     }
 
-    string(name: string) {
+    string(name: string): this {
         this.columns.push({ name, datatype: DataTypes.STRING });
         return this;
     }
 
-    integer(name: string) {
+    integer(name: string): this {
         this.columns.push({ name, datatype: DataTypes.INTEGER });
         return this;
     }
 
-    float(name: string) {
+    float(name: string): this {
         this.columns.push({ name, datatype: DataTypes.FLOAT });
         return this;
     }
 
-    boolean(name: string) {
+    boolean(name: string): this {
         this.columns.push({ name, datatype: DataTypes.BOOLEAN });
         return this;
     }
 
-    date(name: string) {
+    date(name: string): this {
         this.columns.push({ name: name, datatype: DataTypes.DATE });
         return this;
     }
 
-    array(name: string) {
+    array(name: string): this {
         this.columns.push({ name: name, datatype: DataTypes.ARRAY });
         return this;
     }
 
-    enum(name: string, types: string[]) {
+    enum(name: string, types: string[]): this {
         this.columns.push({ name: name, datatype: DataTypes.ENUM, enum: types });
         return this;
     }
 
-    timestamps() {
+    timestamps(): this {
         this.date("created_at");
         this.date("updated_at");
         return this;
     }
 
-    unique(name?: string, columns?: string[]) {
+    unique(name?: string, columns?: string[]): this {
         if (name && columns) {
             this.addConstraint(name, `UNIQUE (${columns.join(", ")})`);
             return this;
@@ -135,43 +147,43 @@ export class TableBuilder {
         return this;
     }
 
-    nullable() {
+    nullable(): this {
         if (this.columns.length < 1) throw new QueryBuilderError("nullable() must be called after adding a column.");
         this.columns[this.columns.length - 1].null = true;
         return this;
     }
 
-    primary() {
+    primary(): this {
         if (this.columns.length < 1) throw new QueryBuilderError("primary() must be called after adding a column.");
         this.columns[this.columns.length - 1].primary = true;
         return this;
     }
 
-    references(table: string, column: string) {
+    references(table: string, column: string): this {
         if (this.columns.length < 1) throw new QueryBuilderError("references() must be called after adding a column.");
         this.columns[this.columns.length - 1].references = `${table}(${column})`;
         return this;
     }
 
-    autoIncrement() {
+    autoIncrement(): this {
         if (this.columns.length < 1) throw new QueryBuilderError("autoIncrement() must be called after adding a column.");
         this.columns[this.columns.length - 1].increment = true;
         return this;
     }
 
-    addConstraint(name: string, sql: string) {
+    addConstraint(name: string, sql: string): this {
         this.constraints.push(`CONSTRAINT ${name} ${sql}`);
         return this;
     }
 
-    build(name: string) {
+    build(name: string): Table {
         return new Table(name, this.columns);
     }
 
-    toSql() {
-        let parts = [];
-        let constraints = this.constraints.slice();
-        for (let column of this.columns) {
+    toSql(): string {
+        const parts = [];
+        const constraints = this.constraints.slice();
+        for (const column of this.columns) {
             let type = "BLOB";
             switch (column.datatype) {
                 case DataTypes.INTEGER:
@@ -209,7 +221,7 @@ export class TableBuilder {
         return parts.concat(constraints).join(", ");
     }
 
-    import(table: Table) {
+    import(table: Table): void {
         this.columns = table.columns;
     }
 }

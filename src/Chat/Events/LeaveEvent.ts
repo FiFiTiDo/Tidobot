@@ -1,25 +1,19 @@
-import Event from "../../Event/Event";
-import Channel from "../Channel";
-import Chatter from "../Chatter";
+import Event from "../../Systems/Event/Event";
+import ChatterEntity from "../../Database/Entities/ChatterEntity";
+import ChannelEntity from "../../Database/Entities/ChannelEntity";
 
 export default class LeaveEvent extends Event<LeaveEvent> {
     public static readonly NAME = "chat_leave";
 
-    private readonly chatter: Chatter;
-    private readonly channel: Channel;
-
-    constructor(chatter: Chatter, channel: Channel) {
+    constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity) {
         super(LeaveEvent.NAME);
-
-        this.chatter = chatter;
-        this.channel = channel;
     }
 
-    getChatter() {
+    getChatter(): ChatterEntity {
         return this.chatter;
     }
 
-    getChannel() {
+    getChannel(): ChannelEntity {
         return this.channel;
     }
 }

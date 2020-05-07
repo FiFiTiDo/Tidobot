@@ -1,29 +1,38 @@
-import Entity from "./Entity";
+import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {DataTypes} from "../Schema";
 import {where} from "../BooleanOperations";
 import GroupsEntity from "./GroupsEntity";
+import ChatterEntity from "./ChatterEntity";
+import UserEntity from "./UserEntity";
 
-@Table((service, channel) => `${service}_${channel}_groupMembers`)
-export default class GroupMembersEntity extends Entity {
-    constructor(id: number, service?: string, channel?: string) {
-        super(GroupMembersEntity, id, service, channel);
+@Table(({ service, channel }) => `${service}_${channel.name}_groupMembers`)
+export default class GroupMembersEntity extends Entity<GroupMembersEntity> {
+    constructor(id: number, params: EntityParameters) {
+        super(GroupMembersEntity, id, params);
     }
 
-    @Column({ datatype: DataTypes.INTEGER })
-    public user_id: number;
+    @Column({ name: "user_id", datatype: DataTypes.INTEGER })
+    public userId: number;
 
-    @Column({ datatype: DataTypes.INTEGER })
-    public group_id: number;
+    @Column({ name: "group_id", datatype: DataTypes.INTEGER })
+    public groupId: number;
 
-    public static async create(user_id: string, group: GroupsEntity) {
-        if (await group.isMember(user_id)) return false;
-        await GroupMembersEntity.make(group.getService(), group.getChannelName(), { user_id, group_id: group.id });
+    public static async create(userId: string, group: GroupsEntity): Promise<boolean> {
+        if (await group.isMember(userId)) return false;
+        await GroupMembersEntity.make({ channel: group.getChannel() }, { user_id: userId, group_id: group.id });
         return true;
     }
 
-    public static async findByUser(user_id: string, group: GroupsEntity) {
-        return Entity.retrieve(GroupMembersEntity, group.getService(), group.getChannelName(), where().eq("user_id", user_id).eq("group_id", group.id));
+    public static async findByUser(user: UserEntity|ChatterEntity|string, group: GroupsEntity): Promise<GroupMembersEntity|null> {
+        let userId;
+        if (user instanceof ChatterEntity || user instanceof UserEntity) {
+            userId = user.userId;
+        } else {
+            userId = user;
+        }
+
+        return GroupMembersEntity.retrieve({ channel: group.getChannel() }, where().eq("user_id", userId).eq("group_id", group.id));
     }
 }

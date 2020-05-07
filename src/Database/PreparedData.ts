@@ -2,9 +2,9 @@ import Database from "./Database";
 import {RowData} from "./QueryBuilder";
 
 export type PreparedColumn = {
-    column: string,
-    key: string,
-    value: any
+    column: string;
+    key: string;
+    value: any;
 }
 export type PreparedData = PreparedColumn[];
 
@@ -15,38 +15,38 @@ export class PreparedRow {
         this.data = data;
     }
 
-    formatForRun() {
-        let cols = {};
-        for (let col of this.data) cols[col.key] = col.value;
+    formatForRun(): { [key: string]: any } {
+        const cols = {};
+        for (const col of this.data) cols[col.key] = col.value;
         return cols;
     }
 
-    formatForSet() {
+    formatForSet(): string {
         return this.data.map<string>(col => `${col.column} = ${col.key}`).join(", ");
     }
 
-    formatColumns() {
+    formatColumns(): string {
         return this.data.map<string>(col => col.column).join(", ");
     }
 
-    formatKeys() {
+    formatKeys(): string {
         return this.data.map<string>(col => col.key).join(", ");
     }
 
-    getKeys() {
+    getKeys(): string[] {
         return this.data.map(col => col.key);
     }
 
-    getValues() {
+    getValues(): any[] {
         return this.data.map(col => col.value);
     }
 
-    static prepare(row: RowData, table: string, db: Database) {
+    static prepare(row: RowData, table: string, db: Database): PreparedRow {
         if (db.schema.has(table))
             row = db.schema.get(table).prepareDatabaseRows(row);
 
-        let data: PreparedData = [];
-        for (let [key, value] of Object.entries(row))
+        const data: PreparedData = [];
+        for (const [key, value] of Object.entries(row))
             data.push({ key: "$" + key, column: key, value });
         return new PreparedRow(data);
     }

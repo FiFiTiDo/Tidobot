@@ -1,22 +1,21 @@
-import Entity from "./Entity";
+import Entity, {EntityParameters} from "./Entity";
 import {DataTypes} from "../Schema";
 import moment, {Moment} from "moment";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {where} from "../BooleanOperations";
 import Message from "../../Chat/Message";
-import Application from "../../Application/Application";
-import ExpressionModule from "../../Modules/ExpressionModule";
 import MessageParser from "../../Chat/MessageParser";
+import ChannelEntity from "./ChannelEntity";
 
 export enum CommandConditionResponse {
     DONT_RUN, RUN_NOW, RUN_DEFAULT
 }
 
-@Table((service, channel) => `${service}_${channel}_commands`)
-export default class CommandEntity extends Entity {
-    constructor(id: number, service?: string, channel?: string) {
-        super(CommandEntity, id, service, channel);
+@Table(({service, channel}) => `${service}_${channel.name}_commands`)
+export default class CommandEntity extends Entity<CommandEntity> {
+    constructor(id: number, params: EntityParameters) {
+        super(CommandEntity, id, params);
     }
 
     @Column({ datatype: DataTypes.STRING })
@@ -34,24 +33,23 @@ export default class CommandEntity extends Entity {
     @Column({ datatype: DataTypes.INTEGER })
     public cooldown: number;
 
-    @Column({ datatype: DataTypes.DATE })
-    public created_at: Moment;
+    @Column({ name: "created_at", datatype: DataTypes.DATE })
+    public createdAt: Moment;
 
-    @Column({ datatype: DataTypes.DATE })
-    public updated_at: Moment;
+    @Column({ name: "updated_at", datatype: DataTypes.DATE })
+    public updatedAt: Moment;
 
     async checkCondition(msg: Message, def = false): Promise<CommandConditionResponse> {
         if (this.condition.toLowerCase() === "@@default" && !def) return CommandConditionResponse.RUN_DEFAULT;
-        return Application.getModuleManager().getModule(ExpressionModule).evaluate(this.condition, msg) ?
-            CommandConditionResponse.RUN_NOW : CommandConditionResponse.DONT_RUN;
+        return await msg.evaluateExpression(this.condition) ? CommandConditionResponse.RUN_NOW : CommandConditionResponse.DONT_RUN;
     }
 
-    async getResponse(msg: Message) {
-        let raw_parts = MessageParser.parse(this.response);
-        let parts = [];
-        for (let part of raw_parts) {
+    async getResponse(msg: Message): Promise<string> {
+        const rawParts = MessageParser.parse(this.response);
+        const parts = [];
+        for (const part of rawParts) {
             if (part.startsWith("${") && part.endsWith("}")) {
-                parts.push(await Application.getModuleManager().getModule(ExpressionModule).evaluate(part.substr(2, part.length - 3), msg));
+                parts.push(await msg.evaluateExpression(part.substr(2, part.length - 3)));
                 continue;
             }
 
@@ -62,15 +60,14 @@ export default class CommandEntity extends Entity {
         return resp;
     }
 
-    public static async create(trigger: string, response: string, service: string, channel: string) {
-        let created_at, updated_at;
-        created_at = updated_at = moment().toISOString();
-        return CommandEntity.make<CommandEntity>(service, channel, {
-            trigger, response, condition: "true", price: 0.0, cooldown: 0, created_at, updated_at
+    public static async create(trigger: string, response: string, channel: ChannelEntity): Promise<CommandEntity|null> {
+        const timestamp = moment().toISOString();
+        return CommandEntity.make<CommandEntity>({ channel }, {
+            trigger, response, condition: "true", price: 0.0, cooldown: 0, created_at: timestamp, updated_at: timestamp
         });
     }
 
-    public static async findByTrigger(trigger: string, service: string, channel: string) {
-        return Entity.retrieveAll(CommandEntity, service, channel, where().eq("trigger", trigger));
+    public static async findByTrigger(trigger: string, channel: ChannelEntity): Promise<CommandEntity[]> {
+        return Entity.retrieveAll(CommandEntity, { channel }, where().eq("trigger", trigger));
     }
 }

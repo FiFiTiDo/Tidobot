@@ -1,9 +1,13 @@
 import request = require("request-promise-native");
 import moment from "moment";
 import Application from "../../Application/Application";
+import Cache from "../../Systems/Cache/Cache";
 
-const cache_length: { length: moment.DurationInputArg1, unit: moment.unitOfTime.DurationConstructor } = Application.getConfig().getOrDefault("general.cache.api");
-const cache_expiresAfter = moment.duration(cache_length.length, cache_length.unit);
+const cacheLength: {
+    length: moment.DurationInputArg1;
+    unit: moment.unitOfTime.DurationConstructor;
+} = Application.getConfig().getOrDefault("general.cache.api");
+const cacheExpiresAfter = moment.duration(cacheLength.length, cacheLength.unit);
 
 /**
  * The new twitch api
@@ -15,21 +19,21 @@ export namespace helix {
      * this interface. Sometimes the total and pagination are
      * omitted from the response but data will always be supplied.
      */
-    export interface IResponse<T> {
-        total?: number,
-        data: T[],
+    export interface Response<T> {
+        total?: number;
+        data: T[];
         pagination?: {
-            cursor: string
-        }
+            cursor: string;
+        };
     }
 
     /**
      * The json response for a game request
      */
-    export interface IGame {
-        box_art_url: string,
-        id: string,
-        name: string
+    export interface Game {
+        box_art_url: string;
+        id: string;
+        name: string;
     }
 
     /**
@@ -37,26 +41,26 @@ export namespace helix {
      *
      * One of the following params are required
      */
-    export interface IGameParams {
-        id?: string | string[],
-        name?: string | string[]
+    export interface GameParams {
+        id?: string | string[];
+        name?: string | string[];
     }
 
     /**
      * The json response for a stream request
      */
-    export interface IStream {
-        id: string,
-        user_id: string,
-        user_name: string,
-        game_id: string,
-        community_ids: string[],
-        type: string,
-        title: string,
-        viewer_count: number,
-        started_at: string,
-        language: string,
-        thumbnail_url: string
+    export interface Stream {
+        id: string;
+        user_id: string;
+        user_name: string;
+        game_id: string;
+        community_ids: string[];
+        type: string;
+        title: string;
+        viewer_count: number;
+        started_at: string;
+        language: string;
+        thumbnail_url: string;
     }
 
     /**
@@ -64,31 +68,31 @@ export namespace helix {
      *
      * One or more of the following params are required
      */
-    export interface IStreamParams {
-        after?: string,
-        before?: string,
-        community_id?: string,
-        first?: number,
-        game_id?: string | string[],
-        language?: string | string[],
-        user_id?: string | string[],
-        user_login?: string | string[]
+    export interface StreamParams {
+        after?: string;
+        before?: string;
+        community_id?: string;
+        first?: number;
+        game_id?: string | string[];
+        language?: string | string[];
+        user_id?: string | string[];
+        user_login?: string | string[];
     }
 
     /**
      * The json response for a user request
      */
-    export interface IUser {
-        id: string,
-        login: string,
-        display_name: string,
-        type: string,
-        broadcaster_type: string,
-        description: string,
-        profile_image_url: string,
-        offline_image_url: string,
-        view_count: number,
-        email?: string
+    export interface User {
+        id: string;
+        login: string;
+        display_name: string;
+        type: string;
+        broadcaster_type: string;
+        description: string;
+        profile_image_url: string;
+        offline_image_url: string;
+        view_count: number;
+        email?: string;
     }
 
     /**
@@ -96,20 +100,20 @@ export namespace helix {
      *
      * One of the following params are required
      */
-    export interface IUserParams {
-        id?: string | string[],
-        login?: string | string[]
+    export interface UserParams {
+        id?: string | string[];
+        login?: string | string[];
     }
 
     /**
      * Data on a user follow, from_* is following to_*
      */
-    export interface IUserFollow {
-        from_id: string,
-        from_name: string,
-        to_id: string,
-        to_name: string,
-        followed_at: string
+    export interface UserFollow {
+        from_id: string;
+        from_name: string;
+        to_id: string;
+        to_name: string;
+        followed_at: string;
     }
 
     /**
@@ -121,11 +125,11 @@ export namespace helix {
      * from_id: Find all the users the specified user is following
      * to_id: Find all the users following the specified user
      */
-    export interface IUserFollowParams {
-        after?: string,
-        first?: number,
-        from_id?: string,
-        to_id?: string
+    export interface UserFollowParams {
+        after?: string;
+        first?: number;
+        from_id?: string;
+        to_id?: string;
     }
 
     /** @ignore */
@@ -146,7 +150,7 @@ export namespace helix {
      * The Api class handling the api requests for the new helix api
      */
     export class Api {
-        readonly base_url = 'https://api.twitch.tv/helix/';
+        readonly BASE_URL = "https://api.twitch.tv/helix/";
         private readonly clientId: string;
 
         /**
@@ -165,9 +169,9 @@ export namespace helix {
          *
          * @returns A Promise that resolves to an [[IResponse]]
          */
-        async getGames(params: IGameParams): Promise<IResponse<IGame>> {
-            return JSON.parse(await Application.getCache().retrieve("twitch.games." + JSON.stringify(params), cache_expiresAfter.asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<IGame>({
+        async getGames(params: GameParams): Promise<Response<Game>> {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.games." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+                return JSON.stringify(await this.makeRequest<Game>({
                     endpoint: "games",
                     query: params as values
                 }));
@@ -181,9 +185,9 @@ export namespace helix {
          *
          * @returns A Promise that resolves to an [[IResponse]]
          */
-        async getStreams(params: IStreamParams): Promise<IResponse<IStream>> {
-            return JSON.parse(await Application.getCache().retrieve("twitch.streams." + JSON.stringify(params), cache_expiresAfter.asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<IStream>({
+        async getStreams(params: StreamParams): Promise<Response<Stream>> {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.streams." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+                return JSON.stringify(await this.makeRequest<Stream>({
                     endpoint: "streams",
                     query: params as values
                 }));
@@ -197,14 +201,14 @@ export namespace helix {
          *
          * @returns A Promise that resolves to an [[IResponse]]
          */
-        async getUsers(params: IUserParams): Promise<IResponse<IUser>> {
-            return JSON.parse(await Application.getCache().retrieve("twitch.users." + JSON.stringify(params), cache_expiresAfter.asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<IUser>({
+        async getUsers(params: UserParams): Promise<Response<User>> {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.users." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+                return JSON.stringify(await this.makeRequest<User>({
                     endpoint: "users",
                     query: params as values
                 }));
             }));
-        };
+        }
 
 
         /**
@@ -214,9 +218,9 @@ export namespace helix {
          *
          * @returns A Promise that resolves to an [[IResponse]]
          */
-        async getUserFollow(params: IUserFollowParams): Promise<IResponse<IUserFollow>> {
-            return JSON.parse(await Application.getCache().retrieve("twitch.users.follow." + JSON.stringify(params), cache_expiresAfter.asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<IUserFollow>({
+        async getUserFollow(params: UserFollowParams): Promise<Response<UserFollow>> {
+            return JSON.parse(await Cache.getInstance().retrieve("twitch.users.follow." + JSON.stringify(params), cacheExpiresAfter.asSeconds(), async () => {
+                return JSON.stringify(await this.makeRequest<UserFollow>({
                     endpoint: "users/follows",
                     query: params as values
                 }));
@@ -228,17 +232,17 @@ export namespace helix {
          *
          * @param opts The options for the request
          */
-        private makeRequest<T>(opts: RequestOptions): Promise<IResponse<T>> {
-            let method = opts.method ? opts.method : "GET";
-            let body = opts.body ? opts.body : undefined;
-            let url = this.base_url + opts.endpoint;
-            let headers = {
-                'Client-ID': this.clientId
+        private makeRequest<T>(opts: RequestOptions): Promise<Response<T>> {
+            const method = opts.method ? opts.method : "GET";
+            const body = opts.body ? opts.body : undefined;
+            const url = this.BASE_URL + opts.endpoint;
+            const headers = {
+                "Client-ID": this.clientId
             };
             if (opts.headers) Object.assign(headers, opts.headers);
-            let qs = opts.query ? opts.query : undefined;
-            let json = true;
-            let useQuerystring = true;
+            const qs = opts.query ? opts.query : undefined;
+            const json = true;
+            const useQuerystring = true;
 
             return request({method, url, headers, qs, body, useQuerystring, json}).promise();
         }
@@ -251,84 +255,84 @@ export namespace helix {
 export namespace kraken {
     export type ApiPromise<T> = request.RequestPromise<T>;
 
-    export interface IChannel {
-        _id: number,
-        broadcaster_language: string,
-        created_at: string,
-        display_name: string,
-        followers: number,
-        game: string,
-        language: string,
-        logo: string,
-        mature: boolean,
-        name: string,
-        partner: boolean,
-        profile_banner: string | null,
-        profile_banner_background_color: string | null,
-        status: string,
-        updated_at: string,
-        url: string,
-        video_banner: string | null,
-        views: number
+    export interface Channel {
+        _id: number;
+        broadcaster_language: string;
+        created_at: string;
+        display_name: string;
+        followers: number;
+        game: string;
+        language: string;
+        logo: string;
+        mature: boolean;
+        name: string;
+        partner: boolean;
+        profile_banner: string | null;
+        profile_banner_background_color: string | null;
+        status: string;
+        updated_at: string;
+        url: string;
+        video_banner: string | null;
+        views: number;
     }
 
-    export interface IChannelUpdateParams {
-        status?: string,
-        games?: string,
-        delay?: number,
-        channel_feed_enabled?: boolean
+    export interface ChannelUpdateParams {
+        status?: string;
+        games?: string;
+        delay?: number;
+        channel_feed_enabled?: boolean;
     }
 
-    export interface IStreamData {
-        _id: number,
-        game: string,
-        viewers: number,
-        video_height: number,
-        average_fps: number,
-        delay: number,
-        created_at: string,
-        is_playlist: boolean,
+    export interface StreamData {
+        _id: number;
+        game: string;
+        viewers: number;
+        video_height: number;
+        average_fps: number;
+        delay: number;
+        created_at: string;
+        is_playlist: boolean;
         preview: {
-            small: string,
-            medium: string,
-            large: string,
-            template: string
-        },
-        channel: IChannel
+            small: string;
+            medium: string;
+            large: string;
+            template: string;
+        };
+        channel: Channel;
     }
 
-    export interface IStream {
-        stream: null | IStreamData
+    export interface Stream {
+        stream: null | StreamData;
     }
 
-    export interface IStreams {
-        _total: number,
-        streams: IStreamData[]
+    export interface Streams {
+        _total: number;
+        streams: StreamData[];
     }
 
-    export interface IStreamsParams {
-        channel?: string,
-        game?: string,
-        language?: string,
-        stream_type?: string,
-        limit?: number,
-        offset?: number
+    export interface StreamsParams {
+        channel?: string;
+        game?: string;
+        language?: string;
+        stream_type?: string;
+        limit?: number;
+        offset?: number;
     }
 
-    export interface IUser {
-        _id: string,
-        bio: string,
-        created_at: string,
-        display_name: string,
-        logo: string,
-        name: string,
-        type: string,
-        updated_at: string
+    export interface User {
+        _id: string;
+        bio: string;
+        created_at: string;
+        display_name: string;
+        logo: string;
+        name: string;
+        type: string;
+        updated_at: string;
     }
 
-    export interface IUsers {
-        _total: number,
-        users: IUser[]
+    export interface Users {
+        _total: number;
+        users: User[];
     }
 
     /** @ignore */
@@ -346,61 +350,61 @@ export namespace kraken {
     }
 
     export class Api {
-        readonly base_url = 'https://api.twitch.tv/kraken/';
+        readonly BASE_URL = "https://api.twitch.tv/kraken/";
         private readonly clientId: string;
 
         constructor(clientId: string) {
             this.clientId = clientId;
         }
 
-        getChannel(id: string | number): ApiPromise<IChannel> {
-            return this.makeRequest<IChannel>({endpoint: "channels/" + id});
+        getChannel(id: string | number): ApiPromise<Channel> {
+            return this.makeRequest<Channel>({endpoint: "channels/" + id});
         }
 
-        updateChannel(id: string | number, params: IChannelUpdateParams): ApiPromise<IChannel> {
-            return this.makeRequest<IChannel>({
+        updateChannel(id: string | number, params: ChannelUpdateParams): ApiPromise<Channel> {
+            return this.makeRequest<Channel>({
                 method: "PUT",
                 endpoint: "channels/" + id,
                 body: {channel: params}
             });
         }
 
-        getStreamByUser(id: string | number): ApiPromise<IStream> {
-            return this.makeRequest<IStream>({endpoint: "streams/" + id});
+        getStreamByUser(id: string | number): ApiPromise<Stream> {
+            return this.makeRequest<Stream>({endpoint: "streams/" + id});
         }
 
-        getStreams(opts: IStreamsParams): ApiPromise<IStreams> {
-            return this.makeRequest<IStreams>({
+        getStreams(opts: StreamsParams): ApiPromise<Streams> {
+            return this.makeRequest<Streams>({
                 endpoint: "streams/",
                 query: opts as values
             });
         }
 
-        getUser(id: string | number): ApiPromise<IUser> {
-            return this.makeRequest<IUser>({endpoint: "users/" + id});
+        getUser(id: string | number): ApiPromise<User> {
+            return this.makeRequest<User>({endpoint: "users/" + id});
         }
 
-        getUsers(login: string[]): ApiPromise<IUsers> {
-            return this.makeRequest<IUsers>({
+        getUsers(login: string[]): ApiPromise<Users> {
+            return this.makeRequest<Users>({
                 endpoint: "users",
                 query: {
                     login: login.join(",")
                 }
-            })
+            });
         }
 
         private makeRequest<T>(opts: RequestOptions): ApiPromise<T> {
-            let method = opts.method ? opts.method : "GET";
-            let body = opts.body ? opts.body : undefined;
-            let url = this.base_url + opts.endpoint;
-            let headers = {
-                'Accept': 'application/vnd.twitchtv.v5+json',
-                'Client-Id': this.clientId
+            const method = opts.method ? opts.method : "GET";
+            const body = opts.body ? opts.body : undefined;
+            const url = this.BASE_URL + opts.endpoint;
+            const headers = {
+                "Accept": "application/vnd.twitchtv.v5+json",
+                "Client-Id": this.clientId
             };
             if (opts.headers) Object.assign(headers, opts.headers);
-            let qs = opts.query ? opts.query : undefined;
-            let json = method == "GET" || typeof body != "string";
-            let useQuerystring = true;
+            const qs = opts.query ? opts.query : undefined;
+            const json = method == "GET" || typeof body != "string";
+            const useQuerystring = true;
 
             return request({method, url, headers, qs, body, useQuerystring, json});
         }

@@ -1,76 +1,128 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import Dispatcher from "../Event/Dispatcher";
-import Chatter from "../Chat/Chatter";
-import Channel from "../Chat/Channel";
-import Application from "../Application/Application";
-import {__, array_rand} from "../Utilities/functions";
-import SettingsModule from "./SettingsModule";
+import {array_rand} from "../Utilities/ArrayUtils";
+import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
+import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
+import Message from "../Chat/Message";
+import {Key} from "../Utilities/Translator";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import {Role} from "../Systems/Permissions/Role";
+import Permission from "../Systems/Permissions/Permission";
+import Setting, {SettingType} from "../Systems/Settings/Setting";
+import SettingsSystem from "../Systems/Settings/SettingsSystem";
+import {EventArguments} from "../Systems/Event/Event";
 
-export default class RaffleModule extends AbstractModule {
-    private raffles: Map<string, Raffle>;
+enum RaffleState {
+    OPEN = 1,
+    CLOSED = 1 << 1
+}
 
-    constructor() {
-        super(RaffleModule.name);
+interface RaffleSettings {
+    price: number;
+    maxEntries: number;
+    duplicateWins: boolean;
+}
 
-        this.raffles = new Map();
+class Raffle {
+    private state: RaffleState;
+    private userEntries: ChatterStateList<number>;
+    private entries: string[];
+    private winners: string[];
+
+    constructor(private readonly keyword: string, private channel: ChannelEntity, private settings: RaffleSettings) {
+        this.userEntries = new ChatterStateList<number>(0);
+        this.state = RaffleState.CLOSED;
+        this.reset();
     }
 
-    initialize() {
-        const cmd = this.getModuleManager().getModule(CommandModule);
-        cmd.registerCommand("raffle", this.raffleCommand, this);
-
-        const perm = this.getModuleManager().getModule(PermissionModule);
-        perm.registerPermission("raffle.open", PermissionLevel.MODERATOR);
-        perm.registerPermission("raffle.close", PermissionLevel.MODERATOR);
-        perm.registerPermission("raffle.reset", PermissionLevel.MODERATOR);
-        perm.registerPermission("raffle.pull", PermissionLevel.MODERATOR);
-        perm.registerPermission("raffle.enter", PermissionLevel.NORMAL);
-
-        const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("raffle.price", "0.0", "float");
-        settings.registerSetting("raffle.max-entries", "1", "integer");
-        settings.registerSetting("raffle.duplicate-wins", "false", "boolean");
+    getKeyword(): string {
+        return this.keyword;
     }
 
-    registerListeners(dispatcher: Dispatcher) {
-        dispatcher.addListener(MessageEvent, this.messageHandler);
+    open(): void {
+        this.state = RaffleState.OPEN;
     }
 
-    unregisterListeners(dispatcher: Dispatcher) {
-        dispatcher.removeListener(MessageEvent, this.messageHandler);
+    close(): void {
+        this.state = RaffleState.CLOSED;
     }
 
-    messageHandler = async (event: MessageEvent) => {
-        let msg = event.getMessage();
-        if (this.isDisabled(msg.getChannel())) return;
-        if (!this.raffles.has(msg.getChannel().getId())) return;
-        let raffle = this.raffles.get(msg.getChannel().getId());
-
-        if (msg.getRaw().toLowerCase() === raffle.getKeyword().toLowerCase())
-            if (await raffle.canEnter(msg.getChatter(), await msg.getUserLevels()))
-                raffle.addEntry(msg.getChatter());
-    };
-
-    async raffleCommand(event: CommandEvent) {
-        new SubcommandHelper.Builder()
-            .addSubcommand("open", this.open)
-            .addSubcommand("close", this.close)
-            .addSubcommand("reset", this.reset)
-            .addSubcommand("pull", this.pull)
-            .build(this)
-            .handle(event);
+    isOpen(): boolean {
+        return this.state === RaffleState.OPEN;
     }
 
-    async open(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    getState(): RaffleState {
+        return this.state;
+    }
+
+    async canEnter(chatter: ChatterEntity, roles: Role[]): Promise<boolean> {
+        if (!this.isOpen()) return false;
+        if (this.userEntries.getChatter(chatter) >= this.settings.maxEntries) return false;
+
+        return PermissionSystem.getInstance().check("raffle.enter", chatter, roles);
+    }
+
+    addEntry(chatter: ChatterEntity): void {
+        this.userEntries.setChatter(chatter, this.userEntries.getChatter(chatter) + 1);
+        this.entries.push(chatter.name);
+    }
+
+    pullWinner(): string | null {
+        if (this.entries.length < 1) return null;
+        if (this.winners.length === Object.keys(this.userEntries).length && !this.settings.duplicateWins) return null;
+        let winner;
+        do {
+            winner = array_rand(this.entries);
+        } while (this.winners.indexOf(winner) >= 0 && !this.settings.duplicateWins);
+        this.winners.push(winner);
+        return winner;
+    }
+
+    reset(): void {
+        this.userEntries.clear(this.channel);
+        this.entries = [];
+        this.winners = [];
+    }
+}
+
+class RaffleCommand extends Command {
+    constructor(private raffles: ChannelStateList<Raffle>) {
+        super("raffle", "<open|close|reset|pull>");
+
+        this.addSubcommand("open", this.open);
+        this.addSubcommand("close", this.close);
+        this.addSubcommand("reset", this.reset);
+        this.addSubcommand("pull", this.pull);
+    }
+
+    private async getRaffle(msg: Message, state: RaffleState = RaffleState.OPEN | RaffleState.CLOSED): Promise<Raffle|null> {
+        if (!this.raffles.hasChannel(msg.getChannel())) {
+            await msg.getResponse().message(Key("raffles.does_not_exist"));
+            return null;
+        }
+
+        const raffle = this.raffles.getChannel(msg.getChannel());
+        if (raffle.getState() & state) {
+            return raffle;
+        } else {
+            if ((state & RaffleState.OPEN) === RaffleState.OPEN) {
+                await msg.getResponse().message(Key("raffle.not_open"));
+            } else if ((state & RaffleState.CLOSED) === RaffleState.CLOSED) {
+                await msg.getResponse().message(Key("raffle.already_open"));
+            }
+            return null;
+        }
+    }
+
+    async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "raffle open [keyword]",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                     greedy: true
                 }
@@ -79,159 +131,99 @@ export default class RaffleModule extends AbstractModule {
         });
         if (args === null) return;
 
-        if (this.raffles.has(msg.getChannel().getId())) {
-            if (this.raffles.get(msg.getChannel().getId()).isOpen()) {
-                await msg.reply(__("raffles.open.already_open"));
+        if (this.raffles.hasChannel(msg.getChannel())) {
+            if (this.raffles.getChannel(msg.getChannel()).isOpen()) {
+                await response.message(Key("raffles.open.already_open"));
                 return;
             }
         }
 
-        let raffle = new Raffle(args[1], msg.getChannel(), {
+        const raffle = new Raffle(args[1], msg.getChannel(), {
             price: await msg.getChannel().getSettings().get("raffles.price"),
-            max_entries: await msg.getChannel().getSettings().get("raffles.max-entries"),
-            duplicate_wins: await msg.getChannel().getSettings().get("raffles.max-entries")
+            maxEntries: await msg.getChannel().getSettings().get("raffles.max-entries"),
+            duplicateWins: await msg.getChannel().getSettings().get("raffles.max-entries")
         });
         raffle.open();
-        await msg.reply(__("raffles.open.successful", args[1]));
-    };
+        await response.message(Key("raffles.open.successful"), args[1]);
+    }
 
-    async close(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "raffle close",
             permission: "raffle.close"
         });
-        if (args === null) return;
-
-        if (!this.raffles.has(msg.getChannel().getId())) {
-            await msg.reply(__("raffles.does_not_exist"));
-            return;
-        }
-
-        let raffle = this.raffles.get(msg.getChannel().getId());
-
-        if (!raffle.isOpen()) {
-            await msg.reply(__("raffle.close.not_open"));
-            return;
-        }
+        const raffle = await this.getRaffle(msg, RaffleState.OPEN);
+        if (args === null || raffle === null) return;
 
         raffle.close();
-        await msg.reply(__("raffle.close.successful"));
-    };
+        await response.message(Key("raffle.close.successful"));
+    }
 
-    async reset(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "raffle reset",
             permission: "raffle.reset"
         });
-        if (args === null) return;
+        const raffle = await this.getRaffle(msg);
+        if (args === null || raffle === null) return;
 
-        if (!this.raffles.has(msg.getChannel().getId())) {
-            await msg.reply(__("raffles.does_not_exist"));
-            return;
-        }
-
-        let raffle = this.raffles.get(msg.getChannel().getId());
         raffle.reset();
-        await msg.reply(__("raffle.reset.successful"));
-    };
+        await response.message(Key("raffle.reset.successful"));
+    }
 
-    async pull(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async pull({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "raffle pull",
             permission: "raffle.pull"
         });
-        if (args === null) return;
+        const raffle = await this.getRaffle(msg);
+        if (args === null || raffle === null) return;
 
-        if (!this.raffles.has(msg.getChannel().getId())) {
-            await msg.reply(__("raffles.does_not_exist"));
-            return;
-        }
-
-        let raffle = this.raffles.get(msg.getChannel().getId());
-        let winner = raffle.pullWinner();
+        const winner = raffle.pullWinner();
         if (winner === null) {
-            await msg.reply(__("raffle.pull.failed"));
+            await response.message(Key("raffle.pull.failed"));
             return;
         }
 
-        await msg.reply(__("raffle.pull.lead_up"));
-        setTimeout(() => {
-            msg.reply("@" + winner + "!!!");
-        }, 1000);
-    };
+        await response.message(Key("raffle.pull.lead_up"));
+        setTimeout(() => msg.reply("@" + winner + "!!!"), 1000);
+    }
 }
 
-interface RaffleSettings {
-    price: number,
-    max_entries: number,
-    duplicate_wins: boolean
-}
+export default class RaffleModule extends AbstractModule {
+    private readonly raffles: ChannelStateList<Raffle>;
 
-class Raffle {
-    private _open: boolean;
-    private readonly keyword: string;
-    private user_entries: { [key: string]: number };
-    private entries: string[];
-    private winners: string[];
-    private channel: Channel;
-    private settings: RaffleSettings;
+    constructor() {
+        super(RaffleModule.name);
 
-    constructor(keyword: string, channel: Channel, settings: RaffleSettings) {
-        this.keyword = keyword;
-        this.channel = channel;
-        this.settings = settings;
-
-        this.reset();
+        this.raffles = new ChannelStateList<Raffle>(null);
     }
 
-    getKeyword() {
-        return this.keyword;
+    initialize(): void {
+        const cmd = this.getModuleManager().getModule(CommandModule);
+        cmd.registerCommand(new RaffleCommand(this.raffles), this);
+
+        const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("raffle.open", Role.MODERATOR));
+        perm.registerPermission(new Permission("raffle.close", Role.MODERATOR));
+        perm.registerPermission(new Permission("raffle.reset", Role.MODERATOR));
+        perm.registerPermission(new Permission("raffle.pull", Role.MODERATOR));
+        perm.registerPermission(new Permission("raffle.enter", Role.NORMAL));
+
+        const settings = SettingsSystem.getInstance();
+        settings.registerSetting(new Setting("raffle.price", "0.0", SettingType.FLOAT));
+        settings.registerSetting(new Setting("raffle.max-entries", "1", SettingType.INTEGER));
+        settings.registerSetting(new Setting("raffle.duplicate-wins", "false", SettingType.BOOLEAN));
     }
 
-    open() {
-        this._open = true;
-    }
+    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
+        const msg = event.getMessage();
+        if (this.isDisabled(msg.getChannel())) return;
+        if (!this.raffles.hasChannel(msg.getChannel())) return;
+        const raffle = this.raffles.getChannel(msg.getChannel());
 
-    close() {
-        this._open = false;
-    }
-
-    isOpen() {
-        return this._open;
-    }
-
-    async canEnter(chatter: Chatter, permission_levels: PermissionLevel[]) {
-        if (!this.isOpen()) return false;
-        if (this.user_entries.hasOwnProperty(chatter.getId()))
-            if (this.user_entries[chatter.getId()] >= this.settings.max_entries) return false;
-
-        return await Application.getModuleManager().getModule(PermissionModule).checkPermission("raffle.enter", chatter, permission_levels);
-    }
-
-    addEntry(chatter: Chatter) {
-        if (!this.user_entries.hasOwnProperty(chatter.getId()))
-            this.user_entries[chatter.getId()] = 0;
-        this.user_entries[chatter.getId()]++;
-        this.entries.push(chatter.getName());
-    }
-
-    pullWinner(): string | null {
-        if (this.entries.length < 1) return null;
-        if (this.winners.length === Object.keys(this.user_entries).length && !this.settings.duplicate_wins) return null;
-        let winner;
-        do {
-            winner = array_rand(this.entries);
-        } while (this.winners.indexOf(winner) >= 0 && !this.settings.duplicate_wins);
-        this.winners.push(winner);
-        return winner;
-    }
-
-    reset() {
-        this.user_entries = {};
-        this.entries = [];
-        this.winners = [];
+        if (msg.getRaw().toLowerCase() === raffle.getKeyword().toLowerCase())
+            if (await raffle.canEnter(msg.getChatter(), await msg.getUserRoles()))
+                raffle.addEntry(msg.getChatter());
     }
 }

@@ -1,0 +1,15 @@
+permission:
+  granted:
+    successful: "Granted permission %s to the user %s"
+    failed: "Oops! I was unable to grant the permission %s to the user %s"
+  denied:
+    successful: "Denied the user %s access to the permission %s"
+    failed: "Uh Oh! An error occurred preventing me from denying the permission %s for the user %s"
+  deleted:
+    specific:
+      successful: "Successfully deleted the permission %s for the user %s"
+      failed: "An error occurred while trying to remove the permission %s for the user %s"
+    all:
+      successful: "Successfully deleted all of the permissions for the user %s"
+      failed: "An error occurred while trying to delete all of the permissions for the user %s"
+      confirm: "Are you sure you want to delete all permissions for the user %s?"

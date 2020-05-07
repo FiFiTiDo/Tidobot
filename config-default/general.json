@@ -1,4 +1,5 @@
 {
+    "service": "twitch",
     "version": "0.3.0",
     "lang": "en",
     "cache": {

@@ -1,12 +1,14 @@
-import Entity from "./Entity";
+import Entity, {EntityParameters} from "./Entity";
 import {DataTypes} from "../Schema";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
+import ChannelEntity from "./ChannelEntity";
+import {where} from "../BooleanOperations";
 
-@Table((service, channel) => `${service}_${channel}_news`)
-export default class CountersEntity extends Entity {
-    constructor(id: number, service: string, channel: string) {
-        super(CountersEntity, id, service, channel);
+@Table(({service, channel}) => `${service}_${channel.name}_news`)
+export default class CountersEntity extends Entity<CountersEntity> {
+    constructor(id: number, params: EntityParameters) {
+        super(CountersEntity, id, params);
     }
 
     @Column({ datatype: DataTypes.STRING })
@@ -14,4 +16,8 @@ export default class CountersEntity extends Entity {
 
     @Column({ datatype: DataTypes.INTEGER })
     public value: number;
+
+    public static async findByName(name: string, channel: ChannelEntity): Promise<CountersEntity|null> {
+        return CountersEntity.retrieve({ channel }, where().eq("name", name));
+    }
 }

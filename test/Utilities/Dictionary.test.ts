@@ -1,4 +1,4 @@
-import Dictionary, { FileDictionaryParser, getPathSegments, normalizeSegment } from "../../src/Utilities/Dictionary";
+import Dictionary, { FileDictionaryParser, getPathSegments, normalizeSegment } from "../../src/Utilities/Structures/Dictionary";
 import * as chai from 'chai'
 const should = chai.should();
 

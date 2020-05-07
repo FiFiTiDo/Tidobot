@@ -3,7 +3,7 @@ import ExpressionParser from "../../../src/Utilities/Expression/Parser";
 import ExpressionInterpreter from "../../../src/Utilities/Expression/Interpreter";
 const lexer = Lexer.default;
 import * as chai from 'chai'
-import Dictionary from "../../../src/Utilities/Dictionary";
+import Dictionary from "../../../src/Utilities/Structures/Dictionary";
 chai.should();
 
 describe("ExpressionInterpreter", function () {

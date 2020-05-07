@@ -1,5 +1,5 @@
-import Dispatcher from "../../src/Event/Dispatcher";
-import Event from "../../src/Event/Event";
+import Dispatcher from "../../src/Systems/Event/Dispatcher";
+import Event from "../../src/Systems/Event/Event";
 import chai = require("chai");
 import sinon = require("sinon");
 import sinonChai = require("sinon-chai");
@@ -85,8 +85,8 @@ describe('Dispatcher', function() {
             dispatcher.dispatch(event1);
             dispatcher.dispatch(event2);
     
-            spy5.should.be.calledWith(event1);
-            spy6.should.be.calledWith(event2);
+            spy5.should.be.calledWith({ event: event1 });
+            spy6.should.be.calledWith({ event: event2 });
         });
     });
 })

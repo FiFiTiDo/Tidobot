@@ -1,42 +1,32 @@
-import Chatter from "./Chatter";
 import MessageParser from "./MessageParser";
-import Channel from "./Channel";
-import PermissionModule, {PermissionLevel} from "../Modules/PermissionModule";
-import Application from "../Application/Application";
 import Adapter from "../Services/Adapter";
-import {ExpressionContext} from "../Modules/ExpressionModule";
+import ExpressionModule, {ExpressionContext} from "../Modules/ExpressionModule";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import Response, {ResponseFactory} from "./Response";
+import {Role} from "../Systems/Permissions/Role";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 
 export default class Message {
-    private readonly raw: string;
+
     private readonly parts: string[];
-    private readonly chatter: Chatter;
-    private readonly channel: Channel;
-    private readonly adapter: Adapter;
+    private readonly response: Response;
     private loopProtection: string[];
 
-    constructor(raw: string, chatter: Chatter, channel: Channel, adapter: Adapter) {
-        this.raw = raw;
+    constructor(
+        private readonly raw: string, private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity,
+        private readonly adapter: Adapter, private readonly responseFactory: ResponseFactory, private readonly expr: ExpressionModule
+    ) {
         this.parts = MessageParser.parse(raw);
-        this.chatter = chatter;
-        this.channel = channel;
-        this.adapter = adapter;
         this.loopProtection = [];
+        this.response = responseFactory(this);
     }
 
-    public async getUserLevels(): Promise<PermissionLevel[]> {
-        let levels = [PermissionLevel.NORMAL];
+    public async getUserRoles(): Promise<Role[]> {
+        const levels = [Role.NORMAL];
 
-        try {
-            let rows = await this.channel.query("chatters").select().where().eq("user_id", this.chatter.getId()).done().all();
-
-            if (rows.length > 0) {
-                let user = rows[0];
-                if (user.banned) levels.push(PermissionLevel.BANNED);
-                if (user.regular) levels.push(PermissionLevel.REGULAR);
-            }
-        } catch (e) {
-            Application.getLogger().error("Unable to get user's permission levels", {cause: e});
-        }
+        if (this.chatter.banned) levels.push(Role.BANNED);
+        if (this.chatter.regular) levels.push(Role.REGULAR);
 
         return levels;
     }
@@ -44,18 +34,18 @@ export default class Message {
     public async getExpressionContext(): Promise<ExpressionContext> {
         return {
             sender: {
-                id: this.getChatter().getId(),
-                name: this.getChatter().getName(),
+                id: this.getChatter().id,
+                name: this.getChatter().name,
             },
             channel: {
-                id: this.getChannel().getId(),
-                name: this.getChannel().getName(),
-                chatters: Application.getChatterManager().getAll(this.getChannel()).map(chatter => chatter.getName()),
-                isLive: () => this.getChannel().online.get()
+                id: this.getChannel().id,
+                name: this.getChannel().name,
+                chatters: (await this.channel.chatters()).map(chatter => chatter.name),
+                isLive: (): boolean => this.getChannel().online.get()
             },
             raw_arguments: this.parts.slice(1).join(" "),
             arguments: this.parts.slice(1),
-            to_user: (append: unknown) => {
+            to_user: (append: unknown): string => {
                 if (this.parts.length < 1) return "";
 
                 let user = this.parts[0];
@@ -63,11 +53,15 @@ export default class Message {
 
                 return user.startsWith("@") ? user.substring(1) : user;
             }
-        }
+        };
     }
 
-    public async checkPermission(permission: string) {
-        return Application.getModuleManager().getModule(PermissionModule).checkPermission(permission, this.getChatter(), await this.getUserLevels());
+    public async evaluateExpression(expression: string): Promise<string> {
+        return this.expr.evaluate(expression, this);
+    }
+
+    public async checkPermission(permission: string): Promise<boolean> {
+        return PermissionSystem.getInstance().check(permission, this.chatter, await this.getUserRoles());
     }
 
     public getRaw(): string {
@@ -82,23 +76,23 @@ export default class Message {
         return this.parts;
     }
 
-    public getChatter() {
+    public getChatter(): ChatterEntity {
         return this.chatter;
     }
 
-    public getChannel() {
+    public getChannel(): ChannelEntity {
         return this.channel;
     }
 
-    public async reply(message: string) {
+    public getResponse(): Response {
+        return this.response;
+    }
+
+    public async reply(message: string): Promise<void> {
         return this.adapter.sendMessage(message, this.getChannel());
     }
 
-    protected getAdapter() {
-        return this.adapter;
-    }
-
-    public addToLoopProtection(command: string) {
+    public addToLoopProtection(command: string): void {
         this.loopProtection.push(command.toLowerCase());
     }
 
@@ -106,26 +100,30 @@ export default class Message {
         return this.loopProtection.indexOf(command.toLowerCase()) >= 0;
     }
 
-    public extend(newRaw: string, onReply: (message: string) => void) {
-        let msg = this;
+    public extend(newRaw: string, onReply: (message: string) => void): Message {
+        const msg = this;
         return new class extends Message {
             constructor() {
-                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter);
+                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter, msg.responseFactory, msg.expr);
 
                 this.loopProtection = msg.loopProtection.slice();
             }
 
-            async getUserLevels(): Promise<PermissionLevel[]> {
-                return msg.getUserLevels();
+            async getUserRoles(): Promise<Role[]> {
+                return msg.getUserRoles();
             }
 
             async getExpressionContext(): Promise<ExpressionContext> {
                 return msg.getExpressionContext();
             }
 
-            async reply(message: string): Promise<any> {
+            async reply(message: string): Promise<void> {
                 onReply(message);
             }
         };
     }
+}
+
+export interface MessageFactory {
+    (raw: string, chatter: ChatterEntity, channel: ChannelEntity): Message;
 }

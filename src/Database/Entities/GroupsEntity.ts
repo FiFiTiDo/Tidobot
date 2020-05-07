@@ -1,4 +1,4 @@
-import Entity from "./Entity";
+import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {DataTypes} from "../Schema";
@@ -7,11 +7,13 @@ import GroupMembersEntity from "./GroupMembersEntity";
 import ChatterEntity from "./ChatterEntity";
 import {ManyToMany, OneToMany} from "../Decorators/Relationships";
 import {where} from "../BooleanOperations";
+import ChannelEntity from "./ChannelEntity";
+import Permission from "../../Systems/Permissions/Permission";
 
-@Table((service, channel) => `${service}_${channel}_groups`)
-export default class GroupsEntity extends Entity {
-    constructor(id: number, service?: string, channel?: string) {
-        super(GroupsEntity, id, service, channel);
+@Table(({ service, channel }) => `${service}_${channel.name}_groups`)
+export default class GroupsEntity extends Entity<GroupsEntity> {
+    constructor(id: number, params: EntityParameters) {
+        super(GroupsEntity, id, params);
     }
 
     @Column({ datatype: DataTypes.STRING, unique: true })
@@ -23,37 +25,36 @@ export default class GroupsEntity extends Entity {
     @OneToMany(GroupPermissionsEntity, "id", "group_id")
     async permissions(): Promise<GroupPermissionsEntity[]> { return []; }
 
-    async hasPermission(perm_str: string) {
-        for (let permission of await this.permissions())
-            if (permission.permission === perm_str)
+    async hasPermission(perm: Permission): Promise<boolean> {
+        for (const permission of await this.permissions())
+            if (permission.permission === perm.getPermission())
                 return permission.allowed;
         return false;
     }
 
-
-    async isMember(chatter: string|ChatterEntity) {
-        if (chatter instanceof ChatterEntity) chatter = chatter.user_id;
-        let members = await this.members();
-        for (let member of members)
-            if (member.user_id === chatter) return true;
+    async isMember(chatter: string|ChatterEntity): Promise<boolean> {
+        if (chatter instanceof ChatterEntity) chatter = chatter.userId;
+        const members = await this.members();
+        for (const member of members)
+            if (member.userId === chatter) return true;
         return false;
     }
 
-    async delete() {
+    async delete(): Promise<void> {
         await super.delete();
         await this.reset();
     }
 
-    async reset() {
-        await GroupMembersEntity.removeEntries(this.getService(), this.getChannelName(), where().eq("group_id", this.id));
-        await GroupPermissionsEntity.removeEntries(this.getService(), this.getChannelName(), where().eq("group_id", this.id));
+    async reset(): Promise<void> {
+        await GroupMembersEntity.removeEntries({ channel: this.getChannel() }, where().eq("group_id", this.id));
+        await GroupPermissionsEntity.removeEntries({ channel: this.getChannel() }, where().eq("group_id", this.id));
     }
 
-    static async findByName(name: string, service: string, channel: string) {
-        return Entity.retrieve(GroupsEntity, service, channel, where().eq("name", name));
+    static async findByName(name: string, channel: ChannelEntity): Promise<GroupsEntity|null> {
+        return GroupsEntity.retrieve({ channel }, where().eq("name", name));
     }
 
-    static async create(name: string, service: string, channel: string) {
-        return GroupsEntity.make<GroupsEntity>(service, channel, { name });
+    static async create(name: string, channel: ChannelEntity): Promise<GroupsEntity|null> {
+        return GroupsEntity.make<GroupsEntity>({ channel }, { name });
     }
 }

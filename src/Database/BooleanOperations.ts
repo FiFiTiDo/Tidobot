@@ -41,7 +41,7 @@ class InExpression extends BooleanOperation {
     }
 
     toString(): string {
-        return `${this.column} IN ${this.possible.join(',')}`;
+        return `${this.column} IN ${this.possible.join(",")}`;
     }
 
     getPreparedData(): PreparedData {
@@ -55,7 +55,7 @@ class NotInExpression extends BooleanOperation {
     }
 
     toString(): string {
-        return `${this.column} NOT IN ${this.possible.join(',')}`;
+        return `${this.column} NOT IN ${this.possible.join(",")}`;
     }
 
     getPreparedData(): PreparedData {
@@ -91,11 +91,11 @@ export class Where<T extends AbstractQuery> {
     addPreparedValue(column: string, value: any): PreparedColumn {
         if (this.parent !== null) return this.parent.addPreparedValue(column, value);
 
-        let base_key = "$" + column;
-        let key = base_key;
+        const baseKey = "$" + column;
+        let key = baseKey;
         let i = 0;
         while (this.isKeyReserved(key)) {
-            key = base_key + (++i);
+            key = baseKey + (++i);
         }
         this.preparedValues[key] = value;
         this.addReservedKey(key);
@@ -107,23 +107,23 @@ export class Where<T extends AbstractQuery> {
         return this.preparedValues;
     }
 
-    addReservedKey(key: string) {
+    addReservedKey(key: string): void {
         this.reservedKeys.push(key);
     }
 
-    isKeyReserved(key: string) {
+    isKeyReserved(key: string): boolean {
         return this.reservedKeys.indexOf(key) >= 0;
     }
 
     and(func: BooleanCallback<T>): this {
-        let where = new Where(this, null);
+        const where = new Where(this, null);
         func.call(null, where);
         this.add(new AndExpression(where.getData()));
         return this;
     }
 
     or(func: BooleanCallback<T>): this {
-        let where = new Where(this, null);
+        const where = new Where(this, null);
         func.call(null, where);
         this.add(new OrExpression(where.getData()));
         return this;
@@ -163,11 +163,11 @@ export class Where<T extends AbstractQuery> {
         return this.data;
     }
 
-    done() {
+    done(): T {
         return this.query;
     }
 }
 
-export function where() {
+export function where(): Where<null> {
     return new Where(null, null);
 }

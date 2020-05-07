@@ -10,20 +10,20 @@ export enum DataTypes {
 }
 
 export interface ColumnSettings {
-    name?: string,
-    datatype: DataTypes,
-    primary?: boolean,
-    null?: boolean,
-    unique?: boolean,
-    increment?: boolean,
-    references?: string,
-    enum?: string[]
+    name?: string;
+    datatype: DataTypes;
+    primary?: boolean;
+    null?: boolean;
+    unique?: boolean;
+    increment?: boolean;
+    references?: string;
+    enum?: string[];
 }
 
-export type ColumnProp = {
+export interface ColumnProp {
     property: string;
-    settings: ColumnSettings
-};
+    settings: ColumnSettings;
+}
 
 export class TableSchema {
     private readonly columns: Map<string, ColumnProp>;
@@ -31,26 +31,26 @@ export class TableSchema {
     constructor(private entity: Entity) {
         this.columns = new Map();
 
-        for (let col of getColumns(entity) as ColumnProp[]) {
+        for (const col of getColumns(entity) as ColumnProp[]) {
             this.addColumn(col.property, col.settings);
         }
     }
 
-    addColumn(property: string, settings: ColumnSettings) {
+    addColumn(property: string, settings: ColumnSettings): void {
         if (!settings.name) settings.name = property;
 
         this.columns.set(settings.name, { property, settings });
     }
 
-    importRow(row: RawRowData) {
-        for (let columnName of Object.keys(row)) {
+    importRow(row: RawRowData): RawRowData {
+        for (const columnName of Object.keys(row)) {
             if (!this.columns.has(columnName)) {
                 console.table(row);
                 console.table(this.columns);
                 throw new DatabaseError("Could not parse database rows, column names don't match the schema.");
             }
-            let { property, settings } = this.columns.get(columnName);
-            let value = row[settings.name];
+            const { property, settings } = this.columns.get(columnName);
+            const value = row[settings.name];
             switch (settings.datatype) {
                 case DataTypes.BOOLEAN:
                     this.entity[property] = (value as number) === 1;
@@ -69,10 +69,10 @@ export class TableSchema {
     }
 
     exportRow(): RawRowData {
-        let data = {};
-        for (let column of Array.from(this.columns.values())) {
-            let { property, settings } = column;
-            let value = this.entity[property];
+        const data = {};
+        for (const column of Array.from(this.columns.values())) {
+            const { property, settings } = column;
+            const value = this.entity[property];
             switch (settings.datatype) {
                 case DataTypes.BOOLEAN:
                     data[settings.name] = (value as boolean) ? 1 : 0;
@@ -95,18 +95,18 @@ export class TableSchema {
         return data;
     }
 
-    async export() {
-        let relationship_data = {};
-        for (let relationship of getRelationships(this.entity.constructor.name)) {
-            let entities = await this.entity[relationship]();
+    async export(): Promise<RawRowData> {
+        const relationshipData = {};
+        for (const relationship of getRelationships(this.entity)) {
+            const entities = await this.entity[relationship]();
             if (Array.isArray(entities)) {
-                relationship_data[relationship] = (entities as Entity[]).map(entity => entity.getSchema().exportRow());
+                relationshipData[relationship] = (entities as Entity[]).map(entity => entity.getSchema().exportRow());
             } else if (entities === null) {
-                relationship_data[relationship] = null;
+                relationshipData[relationship] = null;
             } else {
-                relationship_data[relationship] = (entities as Entity).getSchema().exportRow();
+                relationshipData[relationship] = (entities as Entity).getSchema().exportRow();
             }
         }
-        return Object.assign(this.exportRow(), relationship_data);
+        return Object.assign(this.exportRow(), relationshipData);
     }
 }

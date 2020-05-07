@@ -1,9 +1,16 @@
-import Dictionary, {IDictionary} from "../Utilities/Dictionary";
+import Dictionary from "../../Utilities/Structures/Dictionary";
+import {forceCast} from "../../Utilities/functions";
+import GenericObject from "../../Utilities/Interfaces/GenericObject";
 
-export type EventMetadata = Dictionary
+export type EventMetadata = Dictionary;
 
 export interface EventConstructor<T extends Event<T>> {
     NAME: string;
+    new(...args: any[]): T;
+}
+
+export interface EventArguments<T extends Event<T>> {
+    event: T;
 }
 
 export default abstract class Event<T extends Event<T>> {
@@ -16,11 +23,15 @@ export default abstract class Event<T extends Event<T>> {
         this.propagate = true;
     }
 
+    public getEventArgs(): EventArguments<T> {
+        return { event: forceCast(this) };
+    }
+
     public getName(): string {
         return this.name;
     }
 
-    public setMetadata(metadata: IDictionary): void {
+    public setMetadata(metadata: GenericObject): void {
         this.metadata = new Dictionary(metadata);
     }
 
@@ -28,7 +39,7 @@ export default abstract class Event<T extends Event<T>> {
         return this.metadata.getOrDefault(key, defaultValue) as T;
     }
 
-    public getAllMetadata(): IDictionary {
+    public getAllMetadata(): GenericObject {
         return this.metadata.all();
     }
 

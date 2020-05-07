@@ -1,28 +1,57 @@
 import {DataTypes, TableSchema} from "../Schema";
 import Application from "../../Application/Application";
-import {prepareData, RawRowData} from "../RowData";
+import {prepareData, RawRowData, RawRowDataWithId} from "../RowData";
 import moment from "moment";
 import {Where, where} from "../BooleanOperations";
 import {formatForCreate, getTableName} from "../Decorators/Table";
-import {Serializable} from "../../Utilities/Serializable";
+import {Serializable} from "../../Utilities/Patterns/Serializable";
 import ChannelEntity from "./ChannelEntity";
+import {objectHasProperties} from "../../Utilities/ObjectUtils";
 
-export interface EntityConstructor<T extends Entity>{
-    new (id: number, service: string, channel: string, optional_param?: string): T;
+export interface EntityConstructor<T extends Entity<T>>{
+    new (id: number, params: EntityParameters): T;
+
+    get<T extends Entity<T>>(this: EntityConstructor<T>, id: number, params: EntityParameters): Promise<T|null>;
+    getAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters): Promise<T[]>;
+    createTable<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters): Promise<void>;
+
+    dropTable<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters): Promise<void>;
+
+    make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData): Promise<T|null>;
+    make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData[]): Promise<T[]>;
+    make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData|RawRowData[]): Promise<T|T[]|null>;
+    createFromRow<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowDataWithId): T;
+
+    retrieve<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>): Promise<T|null>;
+    retrieveAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where<any>): Promise<T[]>;
+    retrieveOrMake<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>, data: RawRowData): Promise<T|null>;
+
+    removeEntries<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, where?: Where<any>): Promise<void>;
 }
 
-export default abstract class Entity implements Serializable  {
+export interface EntityParameters {
+    service?: string;
+    channel?: ChannelEntity;
+    optionalParam?: string;
+}
+
+function normalizeParams(params: EntityParameters): EntityParameters {
+    if (params.channel) params.service = params.channel.getService();
+    return params;
+}
+
+export default abstract class Entity<T extends Entity<T>> implements Serializable {
     private readonly tableName: string;
     protected schema: TableSchema = null;
 
-    protected constructor(private entity_const: EntityConstructor<any>, public id: number, private service: string, private channel?: string, private optional_param?: string) {
-        this.tableName = getTableName(entity_const, service, channel, optional_param);
+    protected constructor(private entityConstructor: EntityConstructor<T>, public id: number, private params: EntityParameters) {
+        this.tableName = getTableName(entityConstructor, normalizeParams(params));
         if (this.tableName === null) throw new Error("Model must use the @Table decorator to add the table name formatter.");
         this.schema = new TableSchema(this);
         this.schema.addColumn("id", { datatype: DataTypes.INTEGER, primary: true, increment: true });
     }
 
-    is(entity: Entity): entity is this {
+    is(entity: Entity<any>): entity is this {
         return entity.id === this.id;
     }
 
@@ -33,16 +62,15 @@ export default abstract class Entity implements Serializable  {
     }
 
     getService(): string {
-        return this.service;
+        return this.params.service;
     }
 
-    getChannelName(): string {
-        return this.channel;
+    getChannelName(): string|null {
+        return this.params.channel ? this.params.channel.name : null;
     }
 
-    async getChannel(): Promise<ChannelEntity|null> {
-        if (!this.channel) return null;
-        return ChannelEntity.findByName(this.getChannelName(), this.getService());
+    getChannel(): ChannelEntity|null {
+        return this.params.channel ? this.params.channel : null;
     }
 
     async exists(): Promise<boolean> {
@@ -57,24 +85,24 @@ export default abstract class Entity implements Serializable  {
                         resolve(row.count);
                     }
                 }
-            })
+            });
         });
     }
 
     async save(): Promise<void> {
         return new Promise((resolve, reject) => {
-            let { keys, columns, prepared } = prepareData(this.getSchema().exportRow());
+            const { keys, columns, prepared } = prepareData(this.getSchema().exportRow());
             Application.getDatabase().getClient().get(`INSERT OR REPLACE INTO ${this.tableName}(${columns.join(", ")}) VALUES (${keys.join(", ")})`, prepared, err => {
                 if (err)
                     reject(err);
                 else
                     resolve();
-            })
+            });
         });
     }
 
     async delete(): Promise<void> {
-        return Entity.removeEntriesForEntity(this.entity_const, this.service, this.channel, where().eq("id", this.id), this.optional_param);
+        return this.entityConstructor.removeEntries(this.params, where().eq("id", this.id));
     }
 
     async load(): Promise<boolean> {
@@ -90,22 +118,22 @@ export default abstract class Entity implements Serializable  {
                         resolve(true);
                     }
                 }
-            })
+            });
         });
     }
 
     async update(obj: { [key: string]: any }): Promise<boolean> {
         let updated = false;
-        for (let [key, value] of Object.entries(obj)) {
-            if (this.hasOwnProperty(key)) {
+        for (const [key, value] of Object.entries(obj)) {
+            if (objectHasProperties(this, key)) {
                 this[key] = value;
                 updated = true;
             }
         }
 
         if (updated) {
-            if (this.hasOwnProperty("updated_at")) {
-                this["updated_at"] = moment();
+            if (objectHasProperties(this, "updatedAt")) {
+                this["updatedAt"] = moment();
             }
 
             await this.save();
@@ -115,55 +143,98 @@ export default abstract class Entity implements Serializable  {
         return false;
     }
 
-    static async get<T extends Entity>(id: number, service?: string, channel?: string, optional_param?: string): Promise<T|null> {
-        return Entity.retrieve(this as unknown as EntityConstructor<T>, service, channel, where().eq("id", id), optional_param);
+    static async get<T extends Entity<T>>(this: EntityConstructor<T>, id: number, params: EntityParameters): Promise<T|null> {
+        return this.retrieve(params, where().eq("id", id));
     }
 
-    static async getAll<T extends Entity>(service?: string, channel?: string, optional_param?: string): Promise<T[]> {
-        return Entity.retrieveAll(this as unknown as EntityConstructor<T>, service, channel, undefined, optional_param);
+    static async getAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters): Promise<T[]> {
+        return this.retrieveAll(params, undefined);
     }
 
-    static async createTable<T extends Entity>(service?: string, channel?: string, optional_param?: string): Promise<void> {
-        return Entity.createTableForEntity(this as unknown as EntityConstructor<T>, service, channel, optional_param);
-    }
-
-    static async dropTable<T extends Entity>(service?: string, channel?: string, optional_param?: string): Promise<void> {
-        return Entity.dropTableForEntity(this as unknown as EntityConstructor<T>, service, channel, optional_param);
-    }
-
-    static async make<T extends Entity>(service: string, channel: string, data: RawRowData, optional_param?: string) {
-        return Entity.makeEntity(this as unknown as EntityConstructor<T>, service, channel, data, optional_param);
-    }
-
-    static async removeEntries<T extends Entity>(service: string, channel: string, where?: Where<any>, optional_param?: string) {
-        return Entity.removeEntriesForEntity(this as unknown as EntityConstructor<T>, service, channel, where, optional_param);
-    }
-
-    static async retrieve<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, where: Where<any>, optional_param?: string): Promise<T|null> {
-        return Entity.retrieveAll<T>(entity_const, service, channel, where, optional_param).then(models => models.length < 1 ? null : models[0]);
-    }
-
-    static async retrieveAll<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, where_clause?: Where<any>, optional_param?: string): Promise<T[]> {
-        let tableName = getTableName(entity_const, service, channel, optional_param);
-        if (!where_clause) where_clause = where();
+    static async createTable<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters): Promise<void> {
+        const tableName = getTableName(this, normalizeParams(params));
+        const columns = formatForCreate(this);
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().all(`SELECT * FROM ${tableName}` + where_clause.toString(), where_clause.getPreparedValues(),(err, rows) => {
+            Application.getDatabase().getClient().exec(`CREATE TABLE IF NOT EXISTS ${tableName}(${columns});`, function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+    static async dropTable<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters): Promise<void> {
+        const tableName = getTableName(this, normalizeParams(params));
+        return new Promise((resolve, reject) => {
+            Application.getDatabase().getClient().exec(`DROP TABLE ${tableName};`, function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
+
+    static async make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData): Promise<T|null>;
+    static async make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData[]): Promise<T[]>;
+    static async make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData|RawRowData[]): Promise<T|T[]|null> {
+        return Array.isArray(data) ?
+            Entity.makeEntities(this, params, data) :
+            Entity.makeEntity(this, params, data);
+    }
+
+
+    static async retrieve<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>): Promise<T|null> {
+        return this.retrieveAll<T>(params, whereClause).then(models => models.length < 1 ? null : models[0]);
+    }
+
+    static async retrieveAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where<any>): Promise<T[]> {
+        const tableName = getTableName(this, normalizeParams(params));
+        if (!whereClause) whereClause = where();
+        return new Promise((resolve, reject) => {
+            Application.getDatabase().getClient().all(`SELECT * FROM ${tableName}` + whereClause.toString(), whereClause.getPreparedValues(),(err, rows) => {
                 if (err)
                     reject(err);
                 else {
                     resolve(rows.map(row => {
-                        let model = new entity_const(row.id, service, channel);
+                        const model = new this(row.id, params);
                         model.getSchema().importRow(row);
                         return model;
                     }));
                 }
-            })
+            });
         });
     }
 
-    static async makeEntity<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, data: RawRowData, optional_param?: string): Promise<T|null> {
-        let tableName = getTableName(entity_const, service, channel, optional_param);
-        let { columns, keys, prepared } = prepareData(data);
+    static async retrieveOrMake<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>, data: RawRowData): Promise<T|null> {
+        return this.retrieve(params, whereClause).then(entity => entity === null ? this.make(params, data) : entity);
+    }
+
+    static createFromRow<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowDataWithId): T {
+        const entity = new this(data.id, params);
+        entity.getSchema().importRow(data);
+        return entity;
+    }
+
+    static async removeEntries<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where<any>): Promise<void> {
+        const tableName = getTableName(this, normalizeParams(params));
+        if (!whereClause) whereClause = where();
+        return new Promise((resolve, reject) => {
+            Application.getDatabase().getClient().get(`DELETE FROM ${tableName}${whereClause.toString()};`, whereClause.getPreparedValues(),(err) => {
+                if (err)
+                    reject(err);
+                else
+                    resolve();
+            });
+        });
+    }
+
+    static async makeEntity<T extends Entity<T>>(entityConstructor: EntityConstructor<T>, params: EntityParameters, data: RawRowData): Promise<T|null> {
+        const tableName = getTableName(entityConstructor, normalizeParams(params));
+        const { columns, keys, prepared } = prepareData(data);
         return new Promise((resolve, reject) => {
             Application.getDatabase().getClient().run(`INSERT OR ABORT INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
                 if (err) {
@@ -174,67 +245,52 @@ export default abstract class Entity implements Serializable  {
 
                     reject(err);
                 } else {
-                    let model = new entity_const(this.lastID, service, channel);
+                    const model = new entityConstructor(this.lastID, params);
                     model.load().then(() => resolve(model)).catch(reject);
                 }
-            })
-        });
-    }
-
-    static async createTableForEntity<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, optional_param?: string): Promise<void> {
-        let tableName = getTableName(entity_const, service, channel, optional_param);
-        let columns = formatForCreate(entity_const);
-        return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().exec(`CREATE TABLE IF NOT EXISTS ${tableName}(${columns});`, function (err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve();
-                }
-            })
-        });
-    }
-
-    static async dropTableForEntity<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, optional_param?: string): Promise<void> {
-        let tableName = getTableName(entity_const, service, channel, optional_param);
-        return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().exec(`DROP TABLE ${tableName};`, function (err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve();
-                }
-            })
-        });
-    }
-
-    static async removeEntriesForEntity<T extends Entity>(entity_const: EntityConstructor<T>, service: string, channel: string, where_clause?: Where<any>, optional_param?: string): Promise<void> {
-        let tableName = getTableName(entity_const, service, channel, optional_param);
-        if (!where_clause) where_clause = where();
-        return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().get(`DELETE FROM ${tableName}${where_clause.toString()};`, where_clause.getPreparedValues(),(err) => {
-                if (err)
-                    reject(err);
-                else
-                    resolve();
             });
+        });
+    }
+
+    static async makeEntities<T extends Entity<T>>(entityConstructor: EntityConstructor<T>, params: EntityParameters, data: RawRowData[]): Promise<T[]> {
+        const tableName = getTableName(entityConstructor, normalizeParams(params));
+        return new Promise((resolve, reject) => {
+            const db = Application.getDatabase().getClient();
+            const ops: Promise<T>[] = [];
+            db.serialize(function () {
+                db.run("BEGIN TRANSACTION", err => err ? reject(err) : null);
+                for (const row of data) {
+                    ops.push(new Promise((resolve, reject) => {
+                        const { columns, keys, prepared } = prepareData(data[0]);
+                        Application.getDatabase().getClient().run(`INSERT OR IGNORE INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                const model = new entityConstructor(this.lastID, params);
+                                model.getSchema().importRow(row);
+                                resolve(model);
+                            }
+                        });
+                    }));
+                }
+                db.run("COMMIT", err => err ? reject(err) : null);
+            });
+            resolve(Promise.all(ops));
         });
     }
 
     serialize(): string {
         return JSON.stringify({
-            service: this.getService(),
-            channel: this.getChannelName(),
-            optional_param: this.optional_param,
-            row_data: this.getSchema().exportRow()
+            params: this.params,
+            rowData: this.getSchema().exportRow()
         });
     }
 
-    static deserialize(input: string): Entity {
-        let json = JSON.parse(input);
-        let constructor = this as unknown as EntityConstructor<any>;
-        let model: Entity = new constructor(json.row_data.id, json.service, json.channel, json.optional_param);
-        model.getSchema().importRow(json.row_data);
+    static deserialize<T extends Entity<T>>(input: string): T {
+        const json = JSON.parse(input);
+        const constructor = this as unknown as EntityConstructor<any>;
+        const model: T = new constructor(json.rowData.id, json.params);
+        model.getSchema().importRow(json.rowData);
         return model;
     }
 }

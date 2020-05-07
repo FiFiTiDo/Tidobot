@@ -1,13 +1,14 @@
-import Entity from "./Entity";
+import Entity, {EntityParameters} from "./Entity";
 import {DataTypes} from "../Schema";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {where} from "../BooleanOperations";
+import ChannelEntity from "./ChannelEntity";
 
 @Table(service => `${service}_filters`)
-export default class FiltersEntity extends Entity {
-    constructor(id: number, service?: string, channel?: string) {
-        super(FiltersEntity, id, service, channel);
+export default class FiltersEntity extends Entity<FiltersEntity> {
+    constructor(id: number, params: EntityParameters) {
+        super(FiltersEntity, id, params);
     }
 
     @Column({ datatype: DataTypes.STRING })
@@ -16,13 +17,17 @@ export default class FiltersEntity extends Entity {
     @Column({ datatype: DataTypes.ARRAY })
     public domains: string[];
 
-    @Column({ datatype: DataTypes.ARRAY })
-    public bad_words: string[];
+    @Column({ name: "bad_words", datatype: DataTypes.ARRAY })
+    public badWords: string[];
 
     @Column({ datatype: DataTypes.ARRAY })
     public emotes: string[];
 
-    static getByChannelId(id: string, service: string) {
-        return Entity.retrieve(FiltersEntity, service, null, where().eq("channel_id", id));
+    static getByChannelId(id: string, service: string): Promise<FiltersEntity|null> {
+        return FiltersEntity.retrieve({ service }, where().eq("channel_id", id));
+    }
+
+    static getByChannel(channel: ChannelEntity): Promise<FiltersEntity|null> {
+        return this.getByChannelId(channel.channelId, channel.getService());
     }
 }

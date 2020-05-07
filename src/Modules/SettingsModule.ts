@@ -1,75 +1,140 @@
 import AbstractModule from "./AbstractModule";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
-import CommandModule, {CommandEvent} from "./CommandModule";
-import Application from "../Application/Application";
-import Channel from "../Chat/Channel";
-import {__, parseBool} from "../Utilities/functions";
-import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
+import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ExpressionModule from "./ExpressionModule";
-import moment from "moment";
+import {Key} from "../Utilities/Translator";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import {Role} from "../Systems/Permissions/Role";
+import Permission from "../Systems/Permissions/Permission";
+import Logger from "../Utilities/Logger";
+import SettingsEntity from "../Database/Entities/SettingsEntity";
+import SettingsSystem from "../Systems/Settings/SettingsSystem";
+import {ConvertedSetting} from "../Systems/Settings/Setting";
 
-export type SettingType = "string" | "integer" | "float" | "boolean" | "timezone";
-export function convertSetting(value: string, type: SettingType) {
-    switch(type) {
-        case "integer":
-            let intVal = parseInt(value);
-            if (isNaN(intVal)) return null;
-            return intVal;
-        case "float":
-            let floatVal = parseFloat(value);
-            if (isNaN(floatVal)) return null;
-            return floatVal;
-        case "boolean":
-            return parseBool(value);
-        case "timezone":
-            return moment.tz.zone(value);
-        default:
-            return value;
+class SetCommand extends Command {
+    constructor() {
+        super("set", "<setting> <value>");
+    }
+
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "set <setting> <value>",
+            arguments: [
+                {
+                    value: {
+                        type: "string",
+                    },
+                    required: true
+                },
+                {
+                    value: {
+                        type: "string",
+                    },
+                    required: true,
+                    greedy: true
+                }
+            ],
+            permission: "settings.set"
+        });
+        if (args === null) return;
+        const [key, value] = args;
+
+        msg.getChannel().getSettings().set(key, value)
+            .then(() => response.message(Key("settings.set.successful"), key, value))
+            .catch(e => {
+                response.message(Key("settings.set.failed"), key);
+                Logger.get().error("Unable to set setting", {cause: e});
+            });
+    }
+}
+
+class UnsetCommand extends Command {
+    constructor() {
+        super("unset", "<setting>");
+    }
+
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "unset <setting>",
+            arguments: [
+                {
+                    value: {
+                        type: "string",
+                    },
+                    required: true
+                }
+            ],
+            permission: "settings.reset"
+        });
+        if (args === null) return;
+        const key = args[0];
+        msg.getChannel().getSettings().unset(key)
+            .then(() => response.message(Key("settings.unset.successful"), key))
+            .catch(e => {
+                response.message(Key("settings.unset.failed"), key);
+                Logger.get().error("Unable to unset setting", {cause: e});
+            });
+    }
+}
+
+class ResetCommand extends Command {
+    constructor(private confirmationFactory: ConfirmationFactory) {
+        super("reset", "");
+    }
+
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "reset-settings",
+            permission: "settings.reset.all"
+        });
+        if (args === null) return;
+
+        const confirmation = await this.confirmationFactory(msg, response.translate(Key("settings.reset.confirmation")), 30);
+        confirmation.addListener(ConfirmedEvent, () => {
+            msg.getChannel().getSettings().reset()
+                .then(() => response.message(Key("settings.reset.successful")))
+                .catch((e) => {
+                    response.message(Key("settings.reset.failed"));
+                    Logger.get().error("Unable to reset the channel's settings", {cause: e});
+                });
+        });
+        confirmation.run();
     }
 }
 
 export default class SettingsModule extends AbstractModule {
-    private readonly settings: {
-        [key: string]: {
-            value: any,
-            type: SettingType
-        }
-    };
-
     constructor() {
         super(SettingsModule.name);
 
-        this.settings = {};
         this.coreModule = true;
     }
 
-    initialize() {
+    initialize(): void {
         const cmd = this.getModuleManager().getModule(CommandModule);
-        const perm = this.getModuleManager().getModule(PermissionModule);
+        const perm = PermissionSystem.getInstance();
 
-        perm.registerPermission("settings.set", PermissionLevel.MODERATOR);
-        perm.registerPermission("settings.reset", PermissionLevel.BROADCASTER);
-        perm.registerPermission("settings.reset.all", PermissionLevel.BROADCASTER);
+        perm.registerPermission(new Permission("settings.set", Role.MODERATOR));
+        perm.registerPermission(new Permission("settings.reset", Role.BROADCASTER));
+        perm.registerPermission(new Permission("settings.reset.all", Role.BROADCASTER));
 
-        cmd.registerCommand("set", this.setCommand, this);
-        cmd.registerCommand("unset", this.unsetCommand, this);
-        cmd.registerCommand("reset-settings", this.resetCommand, this);
+        cmd.registerCommand(new SetCommand(), this);
+        cmd.registerCommand(new UnsetCommand(), this);
+        cmd.registerCommand(new ResetCommand(this.makeConfirmation), this);
 
-        this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => {
-            return {
-                settings: {
-                    get: async (key: string, defVal?: any) => {
-                        if (defVal === undefined) defVal = null;
-                        let value = msg.getChannel().getSettings().get(key);
-                        return value === null ? defVal : value;
-                    }
+        this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => ({
+            settings: {
+                get: async <T> (key: string, defVal?: T): Promise<ConvertedSetting|T|null> => {
+                    if (defVal === undefined) defVal = null;
+                    const value = msg.getChannel().getSetting(key);
+                    return value === null ? defVal : value;
                 }
             }
-        });
+        }));
     }
 
-    createDatabaseTables(builder: ChannelSchemaBuilder) {
+    createDatabaseTables(builder: ChannelSchemaBuilder): void {
         builder.addTable("settings", table => {
             table.string("key").unique();
             table.string("value");
@@ -78,87 +143,14 @@ export default class SettingsModule extends AbstractModule {
         });
     }
 
-    public async onCreateTables(channel: Channel) {
-        await channel.query("settings").insert(Object.entries(this.settings).map(([key, {value, type}]) => {
-            return {key, value, type, default_value: value};
-        })).or("IGNORE").exec();
-    }
-
-    registerSetting(setting: string, defaultValue: string, type: SettingType) {
-        this.settings[setting] = {value: defaultValue, type};
-    }
-
-    getAllSettings() {
-        return this.settings;
-    }
-
-    async setCommand(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
-            usage: "set <setting> <value>",
-            arguments: [
-                {
-                    type: "string",
-                    required: true
-                },
-                {
-                    type: "string",
-                    required: true,
-                    greedy: true
-                }
-            ],
-            permission: "settings.set"
-        });
-        if (args === null) return;
-        let [key, value] = args;
-
-        msg.getChannel().getSettings().set(key, value)
-            .then(() => msg.reply(__("settings.set.successful", key, value)))
-            .catch(e => {
-                msg.reply(__("settings.set.failed", key));
-                Application.getLogger().error("Unable to set setting", {cause: e});
-            });
-    }
-
-    async unsetCommand(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
-            usage: "unset <setting>",
-            arguments: [
-                {
-                    type: "string",
-                    required: true
-                }
-            ],
-            permission: "settings.reset"
-        });
-        if (args === null) return;
-        let key = args[0];
-        msg.getChannel().getSettings().unset(key)
-            .then(() => msg.reply(__("settings.unset.successful", key)))
-            .catch(e => {
-                msg.reply(__("settings.unset.failed", key));
-                Application.getLogger().error("Unable to unset setting", {cause: e});
-            });
-    }
-
-    async resetCommand(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
-            usage: "reset-settings",
-            permission: "settings.reset.all"
-        });
-        if (args === null) return;
-
-        let confirmation = await ConfirmationModule.make(msg, __("settings.reset.confirmation"), 30);
-        confirmation.addListener(ConfirmedEvent, () => {
-            msg.getChannel().getSettings().reset()
-                .then(() => msg.reply(__("settings.reset.successful")))
-                .catch((e) => {
-                    msg.reply(__("settings.reset.failed"));
-                    Application.getLogger().error("Unable to reset the channel's settings", {cause: e});
-                });
-        });
-        confirmation.run();
+    public async onCreateTables(channel: ChannelEntity): Promise<void> {
+        await SettingsEntity.make({ channel },
+            SettingsSystem.getInstance().getAll().map(setting => ({
+                key: setting.getKey(),
+                value: setting.getDefaultValue(),
+                type: setting.getType(),
+                default_value: setting.getDefaultValue()
+            }))
+        );
     }
 }

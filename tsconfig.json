@@ -4,8 +4,15 @@
     "esModuleInterop": true,
     "downlevelIteration": true,
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
-
+    "experimentalDecorators": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "types": [
+      "node", "reflect-metadata"
+    ],
+    "lib": [
+      "es6", "dom"
+    ]
   },
   "include": [
     "src/**/*"

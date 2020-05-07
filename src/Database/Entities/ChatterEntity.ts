@@ -1,20 +1,24 @@
-import Entity from "./Entity";
+import Entity, {EntityParameters} from "./Entity";
 import {DataTypes} from "../Schema";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import GroupsEntity from "./GroupsEntity";
-import {ManyToMany, OneToMany} from "../Decorators/Relationships";
+import {ManyToMany, ManyToOne, OneToMany} from "../Decorators/Relationships";
 import GroupMembersEntity from "./GroupMembersEntity";
 import UserPermissionsEntity from "./UserPermissionsEntity";
+import {where} from "../BooleanOperations";
+import UserEntity from "./UserEntity";
+import ChannelEntity, {ChannelStateList} from "./ChannelEntity";
+import Permission from "../../Systems/Permissions/Permission";
 
-@Table((service, channel) => `${service}_${channel}_chatters`)
-export default class ChatterEntity extends Entity {
-    constructor(id: number, service?: string, channel?: string) {
-        super(ChatterEntity, id, service, channel);
+@Table(({service, channel}) => `${service}_${channel.name}_chatters`)
+export default class ChatterEntity extends Entity<ChatterEntity> {
+    constructor(id: number, params: EntityParameters) {
+        super(ChatterEntity, id, params);
     }
 
-    @Column({ datatype: DataTypes.STRING, unique: true })
-    public user_id: string;
+    @Column({ name: "user_id", datatype: DataTypes.STRING, unique: true })
+    public userId: string;
 
     @Column({ datatype: DataTypes.STRING })
     public name: string;
@@ -28,32 +32,35 @@ export default class ChatterEntity extends Entity {
     @Column({ datatype: DataTypes.BOOLEAN })
     public regular: boolean;
 
+    @ManyToOne(UserEntity, "user_id", "user_id")
+    public async user(): Promise<UserEntity> { return null; }
+
     @ManyToMany(GroupsEntity, GroupMembersEntity, "user_id", "user_id", "id", "group_id")
     public async groups(): Promise<GroupsEntity[]> { return []; }
 
     @OneToMany(UserPermissionsEntity, "user_id", "user_id")
     public async permissions(): Promise<UserPermissionsEntity[]> { return []; }
 
-    public async hasPermission(perm_str: string) {
-        for (let permission of await this.permissions())
-            if (permission.permission === perm_str)
+    public async hasPermission(perm: Permission): Promise<boolean> {
+        for (const permission of await this.permissions())
+            if (permission.permission === perm.getPermission())
                 return permission.allowed;
 
-        let groups = await this.groups();
+        const groups = await this.groups();
         if (groups.length < 1) return false;
 
-        for (let group of groups)
-            if (!(await group.hasPermission(perm_str)))
+        for (const group of groups)
+            if (!(await group.hasPermission(perm)))
                 return false;
         return true;
     }
 
-    public async withdraw(amount: number) {
+    public async withdraw(amount: number): Promise<void> {
         this.balance -= amount;
         return this.save();
     }
 
-    public async deposit(amount: number) {
+    public async deposit(amount: number): Promise<void> {
         this.balance += amount;
         return this.save();
     }
@@ -63,5 +70,57 @@ export default class ChatterEntity extends Entity {
         this.balance -= amount;
         await this.save();
         return true;
+    }
+
+    public static async findByName(name: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
+        return ChatterEntity.retrieve({ channel }, where().eq("name", name));
+    }
+
+    public static async from(user_id: string, name: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
+        return this.make({ channel }, { user_id, name, balance: 0.0, banned: 0, regular: 0 });
+    }
+}
+export type ChatterStateListItem<T> = [ChatterEntity, T];
+export class ChatterStateList<T> {
+    private readonly list: ChannelStateList<{ [key: string]: T }>;
+    private readonly users: Map<string, ChatterEntity>;
+
+    constructor(private readonly defVal: T) {
+        this.list = new ChannelStateList({});
+        this.users = new Map();
+    }
+
+    hasChatter(chatter: ChatterEntity): boolean {
+        return Object.prototype.hasOwnProperty.call(this.list.getChannel(chatter.getChannel()), chatter.userId);
+    }
+
+    getChatter(chatter: ChatterEntity): T {
+        if (!this.hasChatter(chatter))
+            this.setChatter(chatter, this.defVal);
+
+        return this.list.getChannel(chatter.getChannel())[chatter.userId];
+    }
+
+    setChatter(chatter: ChatterEntity, value: T): void {
+        this.list.getChannel(chatter.getChannel())[chatter.userId] = value;
+        this.users.set(chatter.userId, chatter);
+    }
+
+    removeChatter(chatter: ChatterEntity): void {
+        delete this.list.getChannel(chatter.getChannel())[chatter.userId];
+    }
+
+    size(channel: ChannelEntity): number {
+        return Object.keys(this.list.getChannel(channel)).length;
+    }
+
+    *entries(channel: ChannelEntity): Generator<ChatterStateListItem<T>, any, unknown> {
+        for (const [ user_id, num ] of Object.entries(this.list.getChannel(channel))) {
+            yield [this.users.get(user_id), num];
+        }
+    }
+
+    clear(channel: ChannelEntity): void {
+        this.list.deleteChannel(channel);
     }
 }

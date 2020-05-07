@@ -1,75 +1,53 @@
 import AbstractModule from "./AbstractModule";
-import Chatter from "../Chat/Chatter";
-import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
-import {__, spam_message} from "../Utilities/functions";
-import SettingsModule from "./SettingsModule";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
+import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
+import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
+import {Key} from "../Utilities/Translator";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import Permission from "../Systems/Permissions/Permission";
+import {Role} from "../Systems/Permissions/Role";
+import Setting, {SettingType} from "../Systems/Settings/Setting";
+import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import request = require("request-promise-native");
 
 interface StrawpollGetResponse {
-    id: number,
-    title: string,
-    multi: boolean,
-    options: string[],
-    votes: number[]
+    id: number;
+    title: string;
+    multi: boolean;
+    options: string[];
+    votes: number[];
 }
 
 interface StrawpollPostResponse {
-    id: number,
-    title: string,
-    options: string[],
-    multi: boolean,
-    dupcheck: string,
-    captcha: boolean
+    id: number;
+    title: string;
+    options: string[];
+    multi: boolean;
+    dupcheck: string;
+    captcha: boolean;
 }
 
-export default class PollsModule extends AbstractModule {
-    private lastStrawpoll: Map<string, number>;
-    private runningPolls: Map<string, Poll>;
+class StrawpollCommand extends Command {
+    private lastStrawpoll: ChannelStateList<number>;
 
     constructor() {
-        super(PollsModule.name);
+        super("strawpoll", "<create|check>");
 
-        this.runningPolls = new Map();
-        this.lastStrawpoll = new Map();
+        this.addSubcommand("create", this.create);
+        this.addSubcommand("check", this.check);
+
+        this.lastStrawpoll = new ChannelStateList<number>(-1);
     }
 
-    initialize() {
-        let cmd = this.getModuleManager().getModule(CommandModule);
-        cmd.registerCommand("poll", this.pollCmd, this);
-        cmd.registerCommand("vote", this.voteCmd, this);
-        cmd.registerCommand("strawpoll", this.strawpollCmd, this);
-
-        let perm = this.getModuleManager().getModule(PermissionModule);
-        perm.registerPermission("polls.vote", PermissionLevel.NORMAL);
-        perm.registerPermission("polls.run", PermissionLevel.MODERATOR);
-        perm.registerPermission("polls.stop", PermissionLevel.MODERATOR);
-        perm.registerPermission("polls.results", PermissionLevel.MODERATOR);
-        perm.registerPermission("polls.strawpoll.check", PermissionLevel.MODERATOR);
-        perm.registerPermission("polls.strawpoll.create", PermissionLevel.MODERATOR);
-
-        let settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("polls.announceVotes", "true", "boolean");
-        settings.registerSetting("polls.spamStrawpollLink", "5", "integer");
-    }
-
-    async strawpollCmd(event: CommandEvent) {
-        new SubcommandHelper.Builder()
-            .addSubcommand("create", this.createStrawpoll)
-            .addSubcommand("check", this.checkStrawpoll)
-            .showUsageOnDefault("strawpoll <create|check>")
-            .build(this)
-            .handle(event)
-    }
-
-    async checkStrawpoll(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "strawpoll check [poll id]",
             arguments: [
                 {
-                    type: "integer",
+                    value: {
+                        type: "integer",
+                    },
                     required: false
                 }
             ]
@@ -78,89 +56,157 @@ export default class PollsModule extends AbstractModule {
 
         let pollId;
         if (args.length < 1) {
-            if (!this.lastStrawpoll.has(msg.getChannel().getId())) {
-                await msg.reply(__("polls.strawpoll.not_found"));
+            if (!this.lastStrawpoll.hasChannel(msg.getChannel())) {
+                await response.message(Key("polls.strawpoll.not_found"));
                 return;
             }
 
-            pollId = this.lastStrawpoll.get(msg.getChannel().getId());
+            pollId = this.lastStrawpoll.getChannel(msg.getChannel());
         } else {
             pollId = args[0];
         }
 
-        let res: StrawpollGetResponse = await request({
+        const res: StrawpollGetResponse = await request({
             uri: "https://www.strawpoll.me/api/v2/polls/" + pollId,
             json: true
         }).promise();
 
-        let total = res.votes.reduce((prev, next) => prev + next);
-        let response = res.options.map((option, index) => option + ": " + ((res.votes[index] / total) * 100) + "%").join(", ");
-        await msg.reply(__("polls.results", response));
-    };
+        const total = res.votes.reduce((prev, next) => prev + next);
+        const resp = res.options.map((option, index) => option + ": " + ((res.votes[index] / total) * 100) + "%").join(", ");
+        await response.message(Key("polls.results"), resp);
+    }
 
-    async createStrawpoll(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "strawpoll create --title \"title\" <option 1> <option 2> ... [option n]",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                     key: "title"
                 },
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                     key: "_"
                 },
                 {
-                    type: "boolean",
+                    value: {
+                        type: "boolean",
+                    },
                     required: false,
                     defaultValue: "false",
                     key: "multi"
                 },
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                        accepted: ["normal", "permissive", "disabled"],
+                    },
                     required: false,
-                    accepted: ["normal", "permissive", "disabled"],
                     defaultValue: "normal",
                     key: "dupcheck"
                 },
                 {
-                    type: "boolean",
+                    value: {
+                        type: "boolean",
+                    },
                     required: false,
                     defaultValue: "false",
                     key: "captcha"
                 }
             ],
-            cli_args: true,
+            cliArgs: true,
             permission: "polls.strawpoll.create"
         });
         if (args === null) return;
-        let { title, _: options, multi, dupcheck, captcha } = args;
+        const {title, _: options, multi, dupcheck, captcha} = args;
 
-        if (options.length < 2) return msg.reply(__("polls.strawpoll.no_options"));
+        if (options.length < 2) return response.message(Key("polls.strawpoll.no_options"));
 
-        let resp: StrawpollPostResponse = await request({
+        const resp: StrawpollPostResponse = await request({
             uri: "https://www.strawpoll.me/api/v2/polls",
             method: "post",
             json: true,
-            body: { title, options, multi, dupcheck, captcha }
+            body: {title, options, multi, dupcheck, captcha}
         }).promise();
 
-        let times = await msg.getChannel().getSettings().get("polls.spamStrawpollLink");
+        let times = await msg.getChannel().getSetting<number>("polls.spamStrawpollLink");
         if (isNaN(times)) times = 1;
-        await spam_message(__("polls.strawpoll.created", "https://www.strawpoll.me/" + resp.id), msg.getChannel(), times);
-    };
+        await response.spam(Key("polls.strawpoll.created"), times, 1, `https://www.strawpoll.me/${resp.id}`);
+    }
+}
 
-    async voteCmd(event: CommandEvent) {
-        let msg = event.getMessage();
-        let announce = await msg.getChannel().getSettings().get("polls.announceVotes");
-        let args = await event.validate({
+class Poll {
+    private _open: boolean;
+    private readonly votes: { [key: string]: ChatterEntity[] };
+    private userVotes: ChatterStateList<string>;
+
+    constructor(private readonly options: string[], private channel: ChannelEntity) {
+        this.votes = {};
+        this.userVotes = new ChatterStateList<string>("");
+
+        for (const option of options)
+            this.votes[option] = [];
+    }
+
+    validateVote(option: string, chatter: ChatterEntity): boolean {
+        return this.options.indexOf(option) >= 0 && this.userVotes.hasChatter(chatter);
+    }
+
+    addVote(option: string, chatter: ChatterEntity): boolean {
+        if (!this.validateVote(option, chatter)) return false;
+        this.votes[option].push(chatter);
+        this.userVotes.setChatter(chatter, option);
+        return true;
+    }
+
+    removeVote(chatter: ChatterEntity): boolean {
+        const option = this.userVotes.getChatter(chatter);
+        if (!option) return false;
+        this.votes[option].splice(this.votes[option].indexOf(chatter), 1);
+        return true;
+    }
+
+    open(): void {
+        this._open = true;
+    }
+
+    close(): void {
+        this._open = false;
+    }
+
+    getOption(index: number): string|null {
+        return index < 0 || index >= this.options.length ? null : this.options[index];
+    }
+
+    getTotalVotes(): number {
+        return this.userVotes.size(this.channel);
+    }
+
+    getResults(): { [key: string]: ChatterEntity[] } {
+        return this.votes;
+    }
+}
+
+class VoteCommand extends Command {
+    constructor(private runningPolls: ChannelStateList<Poll>) {
+        super("vote", "<option #>");
+    }
+
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const announce = await msg.getChannel().getSettings().get("polls.announceVotes");
+        const args = await event.validate({
             usage: "vote <option #>",
             arguments: [
                 {
-                    type: "integer",
+                    value: {
+                        type: "integer",
+                    },
                     required: true,
                     silentFail: !announce
                 }
@@ -169,49 +215,50 @@ export default class PollsModule extends AbstractModule {
         });
         if (args === null) return;
 
-        if (!this.runningPolls.has(msg.getChannel().getId())) return;
-        let poll = this.runningPolls.get(msg.getChannel().getId());
-        let optionNum = args[0] as number;
+        if (!this.runningPolls.hasChannel(msg.getChannel())) return;
+        const poll = this.runningPolls.getChannel(msg.getChannel());
+        const optionNum = args[0] as number;
 
-        let option = poll.getOption(optionNum);
+        const option = poll.getOption(optionNum);
         if (option === null) {
             if (announce)
                 await this.getModuleManager().getModule(CommandModule).showInvalidArgument("option #", event.getArgument(1), "vote <option #>", msg);
             return;
         }
 
-        let successful = poll.addVote(option, msg.getChatter());
+        const successful = poll.addVote(option, msg.getChatter());
         if (announce)
-            return successful ? msg.reply(__("polls.vote_accepted")) : msg.reply(__("polls.already_voted"));
+            return successful ? response.message(Key("polls.vote_accepted")) : response.message(Key("polls.already_voted"));
+    }
+}
+
+class PollCommand extends Command {
+    constructor(private runningPolls: ChannelStateList<Poll>) {
+        super("poll", "<run|stop|results>");
+
+        this.addSubcommand("run", this.run);
+        this.addSubcommand("stop", this.stop);
+        this.addSubcommand("results", this.results);
+        this.addSubcommand("res", this.results);
     }
 
-    async pollCmd(event: CommandEvent) {
-        new SubcommandHelper.Builder()
-            .addSubcommand("run", this.run)
-            .addSubcommand("stop", this.stop)
-            .addSubcommand("results", this.results)
-            .addSubcommand("res", this.results)
-            .showUsageOnDefault("poll <run|stop|results>")
-            .build(this)
-            .handle(event);
-    }
-
-    private async getPoll(msg: Message) {
-        if (!this.runningPolls.has(msg.getChannel().getId())) {
-            await msg.reply(__("polls.not_running", await this.getModuleManager().getModule(CommandModule).getPrefix(msg.getChannel())));
+    private async getPoll(msg: Message): Promise<Poll> {
+        if (!this.runningPolls.hasChannel(msg.getChannel())) {
+            await msg.getResponse().message(Key("polls.not_running"), await this.getModuleManager().getModule(CommandModule).getPrefix(msg.getChannel()));
             return;
         }
 
-        return this.runningPolls.get(msg.getChannel().getId());
+        return this.runningPolls.getChannel(msg.getChannel());
     }
 
-    async run(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async run({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "!poll run <option 1> <option 2> ... <option n>",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                     array: true
                 }
@@ -219,112 +266,80 @@ export default class PollsModule extends AbstractModule {
             permission: "polls.run"
         });
         if (args === null) return;
-        let options = args[0] as string[];
-        let prefix = await this.getModuleManager().getModule(CommandModule).getPrefix(msg.getChannel());
+        const options = args[0] as string[];
+        const prefix = await this.getModuleManager().getModule(CommandModule).getPrefix(msg.getChannel());
 
-        if (this.runningPolls.has(msg.getChannel().getId())) {
-            await msg.reply(__("polls.already_running", prefix));
+        if (this.runningPolls.hasChannel(msg.getChannel())) {
+            await response.message(Key("polls.already_running"), prefix);
             return;
         }
 
-        let poll = new Poll(options);
-        this.runningPolls.set(msg.getChannel().getId(), poll);
+        const poll = new Poll(options, msg.getChannel());
+        this.runningPolls.setChannel(msg.getChannel(), poll);
 
-        await msg.reply(__("polls.open", prefix));
-        await msg.reply(__("polls.options", options.map(((value, index) => "#" + (index + 1) + ": " + value))));
-    };
+        await response.message(Key("polls.open"), prefix);
+        await response.message(Key("polls.options"), options.map(((value, index) => "#" + (index + 1) + ": " + value)));
+    }
 
-    async stop(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async stop({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "poll stop",
             permission: "polls.stop"
         });
         if (args === null) return;
 
-        let poll = await this.getPoll(msg);
+        const poll = await this.getPoll(msg);
         poll.close();
-        await msg.reply(__("polls.closed"));
-        await msg.reply(__("polls.drumroll_please"));
+        await response.message(Key("polls.closed"));
+        await response.message(Key("polls.drumroll_please"));
 
         setTimeout(() => {
-            let votes = poll.getResults();
-            let response = Object.keys(votes).map(option => option + ": " + ((votes[option].length / poll.getTotalVotes()) * 100) + "%").join(", ");
-            msg.reply(__("polls.results", response));
+            const votes = poll.getResults();
+            const resp = Object.keys(votes).map(option => option + ": " + ((votes[option].length / poll.getTotalVotes()) * 100) + "%").join(", ");
+            response.message(Key("polls.results"), resp);
         }, 5000);
-    };
+    }
 
-    async results(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async results({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "poll results",
             permission: "polls.results"
         });
         if (args === null) return;
 
         if (!(await msg.checkPermission("polls.results"))) return;
-        let poll = await this.getPoll(msg);
-        let votes = poll.getResults();
-        let response = Object.keys(votes).map(option => option + ": " + ((votes[option].length / poll.getTotalVotes()) * 100) + "%").join(", ");
-        await msg.reply(__("polls.results", response));
-    };
+        const poll = await this.getPoll(msg);
+        const votes = poll.getResults();
+        const resp = Object.keys(votes).map(option => option + ": " + ((votes[option].length / poll.getTotalVotes()) * 100) + "%").join(", ");
+        await response.message(Key("polls.results"), resp);
+    }
 }
 
-class Poll {
-    private _open: boolean;
-    private readonly options: string[];
-    private readonly votes: { [key: string]: Chatter[] };
-    private userVotes: Map<Chatter, string>;
+export default class PollsModule extends AbstractModule {
+    private readonly runningPolls: ChannelStateList<Poll>;
 
-    constructor(options: string[]) {
-        this.options = options;
-        this.votes = {};
-        this.userVotes = new Map();
+    constructor() {
+        super(PollsModule.name);
 
-        for (let option of options) {
-            this.votes[option] = [];
-        }
+        this.runningPolls = new ChannelStateList<Poll>(null);
     }
 
-    validateVote(option: string, chatter: Chatter) {
-        return this.options.indexOf(option) >= 0 && this.userVotes.has(chatter);
-    }
+    initialize(): void {
+        const cmd = this.getModuleManager().getModule(CommandModule);
+        cmd.registerCommand(new PollCommand(this.runningPolls), this);
+        cmd.registerCommand(new VoteCommand(this.runningPolls), this);
+        cmd.registerCommand(new StrawpollCommand(), this);
 
-    addVote(option: string, chatter: Chatter) {
-        if (!this.validateVote(option, chatter)) return false;
-        this.votes[option].push(chatter);
-        this.userVotes.set(chatter, option);
-        return true;
-    }
+        const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("polls.vote", Role.NORMAL));
+        perm.registerPermission(new Permission("polls.run", Role.MODERATOR));
+        perm.registerPermission(new Permission("polls.stop", Role.MODERATOR));
+        perm.registerPermission(new Permission("polls.results", Role.MODERATOR));
+        perm.registerPermission(new Permission("polls.strawpoll.check", Role.MODERATOR));
+        perm.registerPermission(new Permission("polls.strawpoll.create", Role.MODERATOR));
 
-    removeVote(chatter: Chatter) {
-        let option = this.userVotes.get(chatter);
-        if (!option) return false;
-        this.votes[option].splice(this.votes[option].indexOf(chatter), 1);
-        return true;
-    }
-
-    isOpen() {
-        return this._open;
-    }
-
-    open() {
-        this._open = true;
-    }
-
-    close() {
-        this._open = false;
-    }
-
-    getOption(index: number) {
-        return index < 0 || index >= this.options.length ? null : this.options[index];
-    }
-
-    getTotalVotes() {
-        return this.userVotes.size;
-    }
-
-    getResults() {
-        return this.votes;
+        const settings = SettingsSystem.getInstance();
+        settings.registerSetting(new Setting("polls.announceVotes", "true", SettingType.BOOLEAN));
+        settings.registerSetting(new Setting("polls.spamStrawpollLink", "5", SettingType.INTEGER));
     }
 }

@@ -1,4 +1,4 @@
-import Event from "../../Event/Event";
+import Event from "../../Systems/Event/Event";
 import Message from "../Message";
 
 export default class MessageEvent extends Event<MessageEvent> {

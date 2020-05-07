@@ -1,18 +1,18 @@
 import AbstractModule from "./AbstractModule";
-import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
-import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
-import Application from "../Application/Application";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
-import Channel from "../Chat/Channel";
-import {__} from "../Utilities/functions";
-import Chatter from "../Chat/Chatter";
-import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
+import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import Message from "../Chat/Message";
-import {where} from "../Database/BooleanOperations";
-import {RowData} from "../Database/QueryBuilder";
 import GroupsEntity from "../Database/Entities/GroupsEntity";
 import GroupMembersEntity from "../Database/Entities/GroupMembersEntity";
-import Entity from "../Database/Entities/Entity";
+import GroupPermissionsEntity from "../Database/Entities/GroupPermissionsEntity";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import Permission from "../Systems/Permissions/Permission";
+import {Role} from "../Systems/Permissions/Role";
+import {Key} from "../Utilities/Translator";
+import Logger from "../Utilities/Logger";
+import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {EventHandler} from "../Systems/Event/decorators";
 
 export default class GroupsModule extends AbstractModule {
     constructor() {
@@ -21,225 +21,268 @@ export default class GroupsModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    initialize() {
+    initialize(): void {
         const cmd = this.getModuleManager().getModule(CommandModule);
-        const perm = this.getModuleManager().getModule(PermissionModule);
+        cmd.registerCommand(new GroupCommand(this.makeConfirmation), this);
 
-        cmd.registerCommand("group", this.groupCommand, this);
-        cmd.registerCommand("g", this.groupCommand, this);
-
-        perm.registerPermission("permission.group.add", PermissionLevel.MODERATOR);
-        perm.registerPermission("permission.group.remove", PermissionLevel.MODERATOR);
-        perm.registerPermission("permission.group.create", PermissionLevel.MODERATOR);
-        perm.registerPermission("permission.group.delete", PermissionLevel.BROADCASTER);
+        const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("permission.group.add", Role.MODERATOR));
+        perm.registerPermission(new Permission("permission.group.remove", Role.MODERATOR));
+        perm.registerPermission(new Permission("permission.group.create", Role.MODERATOR));
+        perm.registerPermission(new Permission("permission.group.delete", Role.BROADCASTER));
     }
 
-    private groupNameArgConverter = async (raw: string, msg: Message) => {
-        let id;
-        try {
-            id = this.getGroupId(msg.getChannel(), raw);
-        } catch (e) {
-            Application.getLogger().error("Unable to resolve group name to ID.", { cause: e });
-            return null;
-        }
+    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity|null> => GroupsEntity.findByName(raw, msg.getChannel());
 
-        if (id < 0) {
-            await msg.reply(__("permissions.group.unknown", raw));
-            return null;
-        }
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+        await GroupsEntity.createTable({ channel });
+        await GroupMembersEntity.createTable({ channel });
+    }
+}
 
-        return id;
-    };
+class GroupCommand extends Command {
+    constructor(private confirmationFactory: ConfirmationFactory) {
+        super("group", "<add|remove|create|delete|grant|deny|reset>", ["g"]);
 
-    createDatabaseTables(builder: ChannelSchemaBuilder) {
-        builder.addTable("groups", (table) => {
-            table.string('name').unique();
-        });
-        builder.addTable("groupMembers", (table) => {
-            table.integer('user_id').references(builder.getTableName("users"), "id");
-            table.integer('group_id').references(builder.getTableName("group"), "id");
-        });
+        this.addSubcommand("add", this.addMember);
+        this.addSubcommand("remove", this.removeMember);
+        this.addSubcommand("create", this.createGroup);
+        this.addSubcommand("delete", this.deleteGroup);
+        this.addSubcommand("grant", this.grantPerm);
+        this.addSubcommand("deny", this.denyPerm);
+        this.addSubcommand("reset", this.resetPerms);
     }
 
-    groupCommand(event: CommandEvent) {
-        new SubcommandHelper.Builder()
-            .addSubcommand("add", this.addToGroup)
-            .addSubcommand("remove", this.removeFromGroup)
-            .addSubcommand("create", this.createGroup)
-            .addSubcommand("delete", this.deleteGroup)
-            .showUsageOnDefault("group <add|remove|create|delete>")
-            .build(this)
-            .handle(event);
-    }
-
-    async getGroupId(channel: Channel, name: string): Promise<GroupsEntity> {
-        return GroupsEntity.findByName(name, this.getServiceName(), channel.getName());
-    }
-
-    async addToGroup(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async addMember({event, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "group add <group> <user>",
             arguments: [
                 {
-                    type: "custom",
-                    required: true,
-                    converter: this.groupNameArgConverter
+                    value: {
+                        type: "custom",
+                        converter: GroupsModule.groupArgConverter
+                    },
+                    required: true
                 },
                 {
-                    type: "chatter",
+                    value: {
+                        type: "chatter",
+                    },
                     required: true
                 }
             ],
             permission: "permission.group.add"
         });
         if (args === null) return;
-        let [group, chatter] = args as [GroupsEntity, Chatter];
+        const [group, chatter] = args as [GroupsEntity, ChatterEntity];
 
-        GroupMembersEntity.create(chatter.getId(), group)
+        GroupMembersEntity.create(chatter.userId, group)
             .then(added => {
-                if (added) msg.reply(__("permissions.group.user.added", chatter.getName(), group.name));
-                else msg.reply(__("permissions.group.user.already_a_member", chatter.getName(), group.name));
+                if (added) response.message(Key("permissions.group.user.added"), chatter.name, group.name);
+                else response.message(Key("permissions.group.user.already_a_member"), chatter.name, group.name);
             })
             .catch((e) => {
-                Application.getLogger().error("Unable to add user to group", {cause: e});
-                msg.reply(__("permissions.group.user.failed_to_add", chatter.getName(), group.name));
+                Logger.get().error("Unable to add user to group", {cause: e});
+                response.message(Key("permissions.group.user.failed_to_add"), chatter.name, group.name);
             });
-    };
+    }
 
-    async removeFromGroup(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async removeMember({event, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "group remove <group> <user>",
             arguments: [
                 {
-                    type: "custom",
-                    required: true,
-                    converter: this.groupNameArgConverter
+                    value: {
+                        type: "custom",
+                        converter: GroupsModule.groupArgConverter
+                    },
+                    required: true
                 },
                 {
-                    type: "chatter",
+                    value: {
+                        type: "chatter",
+                    },
                     required: true
                 }
             ],
             permission: "permission.group.remove"
         });
         if (args === null) return;
-        let [group, chatter] = args as [GroupsEntity, Chatter];
+        const [group, chatter] = args as [GroupsEntity, ChatterEntity];
 
         try {
-            let member = await GroupMembersEntity.findByUser(chatter.getId(), group);
+            const member = await GroupMembersEntity.findByUser(chatter, group);
             if (member === null)
-                return msg.reply(__("permissions.group.user.not_a_member", chatter.getName(), group));
+                return response.message(Key("permissions.group.user.not_a_member"), chatter.name, group);
             await member.delete();
-            return msg.reply(__("permissions.group.user.removed", chatter.getName(), group));
+            return response.message(Key("permissions.group.user.removed"), chatter.name, group);
         } catch (e) {
-            Application.getLogger().error("Unable to remove user from the group", {cause: e});
-            return msg.reply(__("permissions.group.user.failed_to_remove", chatter.getName(), group));
+            Logger.get().error("Unable to remove user from the group", {cause: e});
+            return response.message(Key("permissions.group.user.failed_to_remove"), chatter.name, group);
         }
     }
 
-    async createGroup(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async createGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "group create <group>",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true
                 }
             ],
             permission: "permission.group.create"
         });
         if (args === null) return;
-        let [name] = args;
+        const [name] = args;
 
         try {
-            let group = await GroupsEntity.create(name, this.getServiceName(), msg.getChannel().getName());
+            const group = await GroupsEntity.create(name, msg.getChannel());
             if (group === null)
-                return msg.reply(__("permissions.group.create.already_exists", name));
-            return msg.reply(__("permissions.group.create.successful", name))
+                return response.message(Key("permissions.group.create.already_exists"), name);
+            return response.message(Key("permissions.group.create.successful"), name);
         } catch (e) {
-            Application.getLogger().error("Unable to create the group", {cause: e});
-            return msg.reply(__("permissions.group.create.failed", name));
+            Logger.get().error("Unable to create the group", {cause: e});
+            return response.message(Key("permissions.group.create.failed"), name);
         }
     }
 
-    async deleteGroup(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async deleteGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "group delete <group>",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "custom",
+                        converter: GroupsModule.groupArgConverter
+                    },
                     required: true
                 }
             ],
             permission: "permission.group.delete"
         });
         if (args === null) return;
-        let [group] = args as [GroupsEntity];
+        const [group] = args as [GroupsEntity];
 
-        let confirmation = await Application.getModuleManager().getModule(ConfirmationModule)
-            .make(msg, __("permissions.group.delete.confirmation", group), 30);
+        const confirmation = await this.confirmationFactory(msg, response.translate(Key("permissions.group.delete.confirmation"), group), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
                 await group.delete();
-                return msg.reply(__("permissions.group.delete.successful", group));
+                return response.message(Key("permissions.group.delete.successful"), group);
             } catch (e) {
-                Application.getLogger().error("Unable to delete the group", {cause: e});
-                return msg.reply(__("permissions.group.delete.failed", group));
+                Logger.get().error("Unable to delete the group", {cause: e});
+                return response.message(Key("permissions.group.delete.failed"), group);
             }
         });
         confirmation.run();
     }
-}
 
-export class Group {
-    constructor(private readonly id: number, private readonly name: string, private readonly channel: Channel) {
+    async grantPerm({event, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "group grant <group> <permission>",
+            arguments: [
+                {
+                    value: {
+                        type: "custom",
+                        converter: GroupsModule.groupArgConverter
+                    },
+                    required: true
+                },
+                {
+                    value: {
+                        type: "string",
+                    },
+                    required: true
+                }
+            ],
+            permission: "permission.grant"
+        });
+        if (args === null) return;
+        const [group, permStr] = args as [GroupsEntity, string];
+
+        await GroupPermissionsEntity.update(group, permStr, true)
+            .then(() => response.message(Key("groups.permission.granted.successful"), permStr, group.name))
+            .catch(e => {
+                response.message(Key("groups.permission.granted.failed"), permStr, group.name);
+                Logger.get().error("Unable to grant permission to group", { cause: e });
+            });
     }
 
-    static fromRow(row: RowData, channel: Channel) {
-        return new Group(row.id, row.name, channel);
+    async denyPerm({event, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "group deny <group> <permission>",
+            arguments: [
+                {
+                    value: {
+                        type: "custom",
+                        converter: GroupsModule.groupArgConverter
+                    },
+                    required: true
+                },
+                {
+                    value: {
+                        type: "string",
+                    },
+                    required: true
+                }
+            ],
+            permission: "permission.deny"
+        });
+        if (args === null) return;
+        const [group, permStr] = args as [GroupsEntity, string];
+
+        await GroupPermissionsEntity.update(group, permStr, false)
+            .then(() => response.message(Key("groups.permission.denied.successful"), group.name, permStr))
+            .catch(e => {
+                response.message(Key("groups.permission.denied.failed"), group.name, permStr);
+                Logger.get().error("Unable to deny permission for group", { cause: e });
+            });
     }
 
-    getName() {
-        return this.name;
-    }
+    async resetPerms({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "group reset <group> [permission]",
+            arguments: [
+                {
+                    value: {
+                        type: "custom",
+                        converter: GroupsModule.groupArgConverter
+                    },
+                    required: true
+                },
+                {
+                    value: {
+                        type: "string",
+                    },
+                    required: false
+                }
+            ],
+            permission: "permission.reset"
+        });
+        if (args === null) return;
+        const [group, permStr] = args as [GroupsEntity, string|undefined];
 
-    async isMember(user_id: string) {
-        return this.channel.query("groupMembers").exists().where().eq("group_id", this.id).eq("user_id", user_id).done().exec()
-    }
-
-    async getMembers() {
-        return this.channel.query("groupMembers").select().where().eq("group_id", this.id).done().all();
-    }
-
-    async getPermissions() {
-        return this.channel.query("groupPermissions").select().where().eq("group_id", this.id).done().all();
-    }
-
-    async hasPermission(permission: string) {
-        let perm = await this.channel.query("groupPermissions")
-            .select().where().eq("group_id", this.id).eq("permission", permission).done().first();
-        if (permission === null) return null;
-        return perm.allowed;
-    }
-
-    async reset() {
-        let where_clause = where().eq("id", this.id);
-        await this.channel.query("groupMembers").delete().where(where_clause).exec();
-        await this.channel.query("groupPermissions").delete().where(where_clause).exec();
-    }
-
-    async del() {
-        await this.reset();
-        await this.channel.query("groups").delete().where().eq("id", this.id).done().exec();
-    }
-
-    async retrieve(name: string, channel: Channel) {
-        let row = await channel.query("groups").select().where().eq("name", name).done().first();
-        if (row === null) return null;
-        return Group.fromRow(row, channel);
+        if (permStr) {
+            await GroupPermissionsEntity.delete(group, permStr)
+                .then(() => response.message(Key("groups.permission.deleted.specific.successful"), group.name, permStr))
+                .catch(e => {
+                    response.message(Key("groups.permission.deleted.specific.failed"), group.name, permStr);
+                    Logger.get().error("Unable to deny permission for group", { cause: e });
+                });
+        } else {
+            const confirmation = await this.confirmationFactory(msg, response.translate(Key("groups.permission.deleted.all.confirm")), 30);
+            confirmation.addListener(ConfirmedEvent, () => {
+                return GroupPermissionsEntity.clear(group)
+                    .then(() => response.message(Key("groups.permission.deleted.all.failed.successful"), group.name, permStr))
+                    .catch(e => {
+                        response.message(Key("groups.permission.deleted.all.failed"), group.name, permStr);
+                        Logger.get().error("Unable to deny permission for group", { cause: e });
+                    });
+            });
+            confirmation.run();
+        }
     }
 }

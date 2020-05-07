@@ -1,332 +1,348 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
-import SettingsModule from "./SettingsModule";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
-import Chatter from "../Chat/Chatter";
-import Application from "../Application/Application";
-import {__, pluralize} from "../Utilities/functions";
-import Channel from "../Chat/Channel";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
+import {pluralize} from "../Utilities/functions";
 import * as util from "util";
-import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
+import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
+import {Key} from "../Utilities/Translator";
+import winston from "winston";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import {Role} from "../Systems/Permissions/Role";
+import Permission from "../Systems/Permissions/Permission";
+import SettingsSystem from "../Systems/Settings/SettingsSystem";
+import Setting, {SettingType} from "../Systems/Settings/Setting";
+import Logger from "../Utilities/Logger";
 
-export default class CurrencyModule extends AbstractModule {
-    constructor() {
-        super(CurrencyModule.name);
+
+class BankCommand extends Command {
+    constructor(private confirmationFactory: ConfirmationFactory, private logger: winston.Logger, private currencyModule: CurrencyModule) {
+        super("bank", "<give|give-all|take|take-all|balance|reset|reset-all>");
+
+        this.addSubcommand("give", this.give);
+        this.addSubcommand("give-all", this.giveAll);
+        this.addSubcommand("take", this.take);
+        this.addSubcommand("take-all", this.takeAll);
+        this.addSubcommand("balance", this.balance);
+        this.addSubcommand("bal", this.balance);
+        this.addSubcommand("reset", this.reset);
+        this.addSubcommand("reset-all", this.resetAll);
     }
 
-    initialize() {
-        const cmd = this.getModuleManager().getModule(CommandModule);
-        cmd.registerCommand("bank", this.bankCommand, this);
-        cmd.registerCommand("balance", this.balanceCommand, this);
-        cmd.registerCommand("bal", this.balanceCommand, this);
-        cmd.registerCommand("pay", this.payCommand, this);
-
-        const perm = this.getModuleManager().getModule(PermissionModule);
-        perm.registerPermission("currency.pay", PermissionLevel.NORMAL);
-        perm.registerPermission("currency.balance", PermissionLevel.NORMAL);
-        perm.registerPermission("currency.bank.give", PermissionLevel.MODERATOR);
-        perm.registerPermission("currency.bank.give-all", PermissionLevel.MODERATOR);
-        perm.registerPermission("currency.bank.take", PermissionLevel.MODERATOR);
-        perm.registerPermission("currency.bank.take-all", PermissionLevel.MODERATOR);
-        perm.registerPermission("currency.bank.balance", PermissionLevel.MODERATOR);
-        perm.registerPermission("currency.bank.reset", PermissionLevel.MODERATOR);
-        perm.registerPermission("currency.bank.reset-all", PermissionLevel.BROADCASTER);
-
-        const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("currency.name.singular", "point", "string");
-        settings.registerSetting("currency.name.plural", "points", "string");
-        settings.registerSetting("currency.gain.online", "10", "float");
-        settings.registerSetting("currency.gain.offline", "2", "float");
-        settings.registerSetting("currency.only-active-all", "true", "boolean");
-
-        setInterval(this.tickHandler, 5 * 60 * 1000);
-    }
-
-    tickHandler = async () => {
-        let ops = [];
-        for (let channel of Application.getChannelManager().getAll()) {
-            if (this.isDisabled(channel)) continue;
-            let amount = channel.online.get() ?
-                await channel.getSettings().get("currency.gain.online") :
-                await channel.getSettings().get("currency.gain.offline");
-
-            for (let chatter of Application.getChatterManager().getAll(channel)) {
-                let balance = chatter.getBalance();
-                if (typeof balance === "undefined") balance = 0;
-                ops.push(chatter.deposit(amount));
-            }
-        }
-        return Promise.all(ops);
-    };
-
-    async charge(chatter: Chatter, amount: number): Promise<boolean|null> {
-        if (chatter.getBalance() < amount) return false;
-
-        try {
-            await chatter.withdraw(amount);
-        } catch(e) {
-            Application.getLogger().error("Failed to charge user", { cause: e });
-            return null;
-        }
-
-        return true;
-    }
-
-    async getPluralName(channel: Channel) {
-        return channel.getSettings().get("currency.name.plural");
-    }
-
-    async getSingularName(channel: Channel) {
-        return channel.getSettings().get("currency.name.singular");
-    }
-
-    async formatAmount(amount: number, channel: Channel) {
-        let singular = await this.getSingularName(channel);
-        let plural = await this.getPluralName(channel);
-
-        return util.format("%d %s", amount, pluralize(amount, singular, plural));
-    }
-
-    bankCommand(event: CommandEvent) {
-        new SubcommandHelper.Builder()
-            .addSubcommand("give", this.give)
-            .addSubcommand("give-all", this.giveAll)
-            .addSubcommand("take", this.take)
-            .addSubcommand("take-all", this.takeAll)
-            .addSubcommand("balance", this.balance)
-            .addSubcommand("bal", this.balance)
-            .addSubcommand("reset", this.reset)
-            .addSubcommand("reset-all", this.resetAll)
-            .build(this)
-            .handle(event);
-    }
-
-    async give(event: CommandEvent) {
-        const msg = event.getMessage();
+    async give({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bank give <user> <amount>",
             arguments: [
                 {
-                    type: "chatter",
+                    value: {
+                        type: "chatter",
+                    },
                     required: true
                 },
                 {
-                    type: "float",
+                    value: {
+                        type: "float",
+                    },
                     required: true
                 }
             ],
             permission: "currency.bank.give"
         });
         if (args === null) return;
-        let [chatter, amount] = args;
+        const [chatter, amount] = args;
 
         try {
             await chatter.deposit(amount);
-            await msg.reply(__("currency.give.successful", await this.formatAmount(args[2], msg.getChannel()), chatter.getName()));
-        } catch(e) {
-            await msg.reply(__("currency.give.failed"));
-            Application.getLogger().error("Failed to give money to chatter's bank account", { cause: e });
+            await response.message(Key("currency.give.successful"), await this.currencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
+        } catch (e) {
+            await response.message(Key("currency.give.failed"));
+            Logger.get().error("Failed to give money to chatter's bank account", {cause: e});
         }
-    };
+    }
 
-    async giveAll(event: CommandEvent) {
-        const msg = event.getMessage();
+    async giveAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bank give-all <amount>",
             arguments: [
                 {
-                    type: "float",
+                    value: {
+                        type: "float",
+                    },
                     required: true
                 }
             ],
             permission: "currency.bank.give-all"
         });
         if (args === null) return;
-        let [amount] = args;
+        const [amount] = args;
 
-        let only_active = msg.getChannel().getSettings().get("currency.only-active-all");
-        let chatters = only_active ? Application.getChatterManager().getAll(msg.getChannel()) : await Chatter.getAll(msg.getChannel());
+        const onlyActive = msg.getChannel().getSettings().get("currency.only-active-all");
+        const chatters: ChatterEntity[] = onlyActive ? msg.getChannel().getChatters() : await ChatterEntity.getAll({channel: msg.getChannel()});
 
-        let ops = [];
-        for (let chatter of chatters)
+        const ops = [];
+        for (const chatter of chatters)
             ops.push(chatter.deposit(amount));
 
         try {
             await Promise.all(ops);
-            await msg.reply(__("currency.give-all.successful", await this.formatAmount(amount, msg.getChannel())));
+            await response.message(Key("currency.give-all.successful"), await this.currencyModule.formatAmount(amount, msg.getChannel()));
         } catch (e) {
-            Application.getLogger().error("Failed to give amount to all chatter's accounts", { cause: e });
-            await msg.reply(__("currency.give-all.failed"));
+            Logger.get().error("Failed to give amount to all chatter's accounts", {cause: e});
+            await response.message(Key("currency.give-all.failed"));
         }
-    };
+    }
 
-    async take(event: CommandEvent) {
-        const msg = event.getMessage();
+    async take({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bank take <user> <amount>",
             arguments: [
                 {
-                    type: "chatter",
+                    value: {
+                        type: "chatter",
+                    },
                     required: true
                 },
                 {
-                    type: "float",
+                    value: {
+                        type: "float",
+                    },
                     required: true
                 }
             ],
             permission: "currency.bank.take"
         });
         if (args === null) return;
-        let [chatter, amount] = args;
+        const [chatter, amount] = args;
 
         try {
             await chatter.withdraw(amount);
-            await msg.reply(__("currency.take.successful", await this.formatAmount(args[2], msg.getChannel()), chatter.getName()));
-        } catch(e) {
-            await msg.reply(__("currency.take.failed"));
-            Application.getLogger().error("Failed to take money from chatter's bank account", { cause: e });
+            await response.message(Key("currency.take.successful"), await this.currencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
+        } catch (e) {
+            await response.message(Key("currency.take.failed"));
+            Logger.get().error("Failed to take money from chatter's bank account", {cause: e});
         }
-    };
+    }
 
-    async takeAll(event: CommandEvent) {
-        const msg = event.getMessage();
+    async takeAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bank take-all <amount>",
             arguments: [
                 {
-                    type: "float",
+                    value: {
+                        type: "float",
+                    },
                     required: true
                 }
             ],
             permission: "currency.bank.take-all"
         });
         if (args === null) return;
-        let [amount] = args;
+        const [amount] = args as [number];
 
-        let only_active = msg.getChannel().getSettings().get("currency.only-active-all");
-        let chatters = only_active ? Application.getChatterManager().getAll(msg.getChannel()) : await Chatter.getAll(msg.getChannel());
+        const onlyActive = msg.getChannel().getSettings().get("currency.only-active-all");
+        const chatters: ChatterEntity[] = onlyActive ? msg.getChannel().getChatters() : await msg.getChannel().chatters();
 
-        let ops = [];
-        for (let chatter of chatters)
+        const ops = [];
+        for (const chatter of chatters)
             ops.push(chatter.withdraw(amount));
 
         try {
             await Promise.all(ops);
-            await msg.reply(__("currency.take-all.successful", await this.formatAmount(amount, msg.getChannel())));
+            await response.message(Key("currency.take-all.successful"), await this.currencyModule.formatAmount(amount, msg.getChannel()));
         } catch (e) {
-            Application.getLogger().error("Failed to take amount out of all chatter's accounts", { cause: e });
-            await msg.reply(__("currency.take-all.failed"));
+            Logger.get().error("Failed to take amount out of all chatter's accounts", {cause: e});
+            await response.message(Key("currency.take-all.failed"));
         }
-    };
+    }
 
-    async balance(event: CommandEvent) {
-        const msg = event.getMessage();
+    async balance({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bank balance <user>",
             arguments: [
                 {
-                    type: "chatter",
+                    value: {
+                        type: "chatter",
+                    },
                     required: true
                 }
             ],
             permission: "currency.bank.balance"
         });
         if (args === null) return;
-        let [chatter] = args;
+        const [chatter] = args;
 
-        await msg.reply(__("currency.balance-other", chatter.getName(), await this.formatAmount(chatter.getBalance(), msg.getChannel())))
-    };
+        await response.message(Key("currency.balance-other"), chatter.getName(), await this.currencyModule.formatAmount(chatter.getBalance(), msg.getChannel()));
+    }
 
-    async reset(event: CommandEvent) {
-        const msg = event.getMessage();
+    async reset({event, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bank reset <user>",
             arguments: [
                 {
-                    type: "chatter",
+                    value: {
+                        type: "chatter",
+                    },
                     required: true
                 }
             ],
             permission: "currency.bank.reset"
         });
         if (args === null) return;
-        let [chatter] = args;
+        const [chatter] = args;
 
         try {
             await chatter.setBalance(0);
-            await msg.reply(__("currency.reset.successful", chatter.getName()));
-        } catch(e) {
-            await msg.reply(__("currency.reset.failed"));
-            Application.getLogger().error("Failed to reset chatter's bank account", { cause: e });
+            await response.message(Key("currency.reset.successful"), chatter.getName());
+        } catch (e) {
+            await response.message(Key("currency.reset.failed"));
+            Logger.get().error("Failed to reset chatter's bank account", {cause: e});
         }
-    };
+    }
 
-    async resetAll(event: CommandEvent) {
-        const msg = event.getMessage();
+    async resetAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bank reset-all",
             permission: "currency.bank.reset-all"
         });
         if (args === null) return;
 
-        let confirmation = await ConfirmationModule.make(msg, __("currency.reset-all.confirmation"), 30);
+        const confirmation = await this.confirmationFactory(msg, response.translate(Key("currency.reset-all.confirmation")), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
-           try {
-               let chatters = await msg.getChannel().query("chatters").select().all();
-               let ops = [];
-               for (let chatter of chatters) {
-                   chatter.balance = 0;
-                   ops.push(msg.getChannel().query("chatters").update(chatter).exec());
-               }
-               await Promise.all(ops);
-               await msg.reply(__("currency.reset-all.successful"));
-           } catch (e) {
-               await msg.reply(__("currency.reset-all.successful"));
-               Application.getLogger().error("Unable to reset currency module", { cause: e });
-           }
+            try {
+                const chatters: ChatterEntity[] = await ChatterEntity.getAll({channel: msg.getChannel()});
+                const ops = [];
+                for (const chatter of chatters) {
+                    chatter.balance = 0;
+                    ops.push(chatter.save());
+                }
+                await Promise.all(ops);
+                await response.message(Key("currency.reset-all.successful"));
+            } catch (e) {
+                await response.message(Key("currency.reset-all.successful"));
+                Logger.get().error("Unable to reset currency module", {cause: e});
+            }
         });
         confirmation.run();
-    };
+    }
+}
 
-    async balanceCommand(event: CommandEvent) {
-        const msg = event.getMessage();
+class BalanceCommand extends Command {
+    constructor(private currencyModule: CurrencyModule) {
+        super("balance", null, ["bal"]);
+    }
+
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "balance",
             permission: "currency.balance"
         });
         if (args === null) return;
 
-        let balance = msg.getChatter().getBalance();
-        await msg.reply(__("currency.balance", msg.getChatter().getName(), await this.formatAmount(balance, msg.getChannel())))
+        const balance = msg.getChatter().balance;
+        await response.message(Key("currency.balance"), msg.getChatter().name, await this.currencyModule.formatAmount(balance, msg.getChannel()));
+    }
+}
+
+class PayCommand extends Command {
+    constructor(private currencyModule: CurrencyModule) {
+        super("pay", "<user> <amount>");
     }
 
-    async payCommand(event: CommandEvent) {
-        const msg = event.getMessage();
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "pay <user> <amount>",
             arguments: [
                 {
-                    type: "chatter",
+                    value: {
+                        type: "chatter",
+                    },
                     required: true
                 },
                 {
-                    type: "float",
+                    value: {
+                        type: "float",
+                    },
                     required: true
                 }
             ],
             permission: "currency.pay"
         });
         if (args === null) return;
-        let [chatter, amount] = args as [Chatter, number];
+        const [chatter, amount] = args as [ChatterEntity, number];
 
-        let successful = await this.charge(msg.getChatter(), amount);
+        const successful = await msg.getChatter().charge(amount);
         if (successful === false) {
-            await msg.reply(__("currency.low-balance"));
+            await response.message(Key("currency.low-balance"));
         } else if (successful === null) {
-            await msg.reply(__("currency.pay.failed"));
+            await response.message(Key("currency.pay.failed"));
         } else {
             await chatter.deposit(amount);
-            await msg.reply(__("currency.pay.successful", await this.formatAmount(amount, msg.getChannel()), chatter.getName()));
+            await response.message(Key("currency.pay.successful"), await this.currencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
         }
+    }
+}
+
+export default class CurrencyModule extends AbstractModule {
+    constructor() {
+        super(CurrencyModule.name);
+    }
+
+    initialize(): void {
+        const cmd = this.moduleManager.getModule(CommandModule);
+        cmd.registerCommand(new BankCommand(this.makeConfirmation, Logger.get(), this), this);
+        cmd.registerCommand(new BalanceCommand(this), this);
+        cmd.registerCommand(new PayCommand(this), this);
+
+        const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("currency.pay", Role.NORMAL));
+        perm.registerPermission(new Permission("currency.balance", Role.NORMAL));
+        perm.registerPermission(new Permission("currency.bank.give", Role.MODERATOR));
+        perm.registerPermission(new Permission("currency.bank.give-all", Role.MODERATOR));
+        perm.registerPermission(new Permission("currency.bank.take", Role.MODERATOR));
+        perm.registerPermission(new Permission("currency.bank.take-all", Role.MODERATOR));
+        perm.registerPermission(new Permission("currency.bank.balance", Role.MODERATOR));
+        perm.registerPermission(new Permission("currency.bank.reset", Role.MODERATOR));
+        perm.registerPermission(new Permission("currency.bank.reset-all", Role.BROADCASTER));
+
+        const settings = SettingsSystem.getInstance();
+        settings.registerSetting(new Setting("currency.name.singular", "point", SettingType.STRING));
+        settings.registerSetting(new Setting("currency.name.plural", "points", SettingType.STRING));
+        settings.registerSetting(new Setting("currency.gain.online", "10", SettingType.FLOAT));
+        settings.registerSetting(new Setting("currency.gain.offline", "2", SettingType.FLOAT));
+        settings.registerSetting(new Setting("currency.only-active-all", "true", SettingType.BOOLEAN));
+
+        setInterval(this.tickHandler, 5 * 60 * 1000);
+    }
+
+    tickHandler = async (): Promise<void[]> => {
+        const ops = [];
+        for (const channel of this.channelManager.getAll()) {
+            if (this.isDisabled(channel)) continue;
+            const amount = channel.online.get() ?
+                await channel.getSetting<number>("currency.gain.online") :
+                await channel.getSetting<number>("currency.gain.offline");
+
+            for (const chatter of channel.getChatters()) {
+                let balance = chatter.balance;
+                if (typeof balance === undefined) balance = 0;
+                ops.push(chatter.deposit(amount));
+            }
+        }
+        return Promise.all(ops);
+    };
+
+    async getSingularName(channel: ChannelEntity): Promise<string> {
+        return channel.getSetting<string>("currency.name.singular");
+    }
+
+    async getPluralName(channel: ChannelEntity): Promise<string> {
+        return channel.getSetting<string>("currency.name.plural");
+    }
+
+    async formatAmount(amount: number, channel: ChannelEntity): Promise<string> {
+        const singular = await this.getSingularName(channel);
+        const plural = await this.getPluralName(channel);
+
+        return util.format("%d %s", amount, pluralize(amount, singular, plural));
     }
 }

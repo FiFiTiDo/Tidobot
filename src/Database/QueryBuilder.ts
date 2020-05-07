@@ -1,51 +1,10 @@
 import Database from "./Database";
 import {TableBuilder, TableBuilderCallback} from "./Table";
 import {Where} from "./BooleanOperations";
-import {PreparedColumn, PreparedRow} from "./PreparedData";
-import {DatabaseError, QueryError} from "./DatabaseErrors";
+import {PreparedRow} from "./PreparedData";
+import {DatabaseError, QueryBuilderError, QueryError} from "./DatabaseErrors";
 
 export type RowData = { [key: string]: any };
-export default class QueryBuilder {
-    private readonly db: Database;
-    private readonly table: string;
-
-    constructor(db: Database, table: string) {
-        this.db = db;
-        this.table = table;
-    }
-
-    select(expr = "*") {
-        return new SelectQuery(this.db, this.table, expr);
-    }
-
-    count(expr = "*") {
-        return new CountQuery(this.db, this.table, expr);
-    }
-
-    exists(expr = "*") {
-        return new ExistsQuery(this.db, this.table, expr);
-    }
-
-    delete() {
-        return new DeleteQuery(this.db, this.table);
-    }
-
-    insert(data: RowData|RowData[]) {
-        return new InsertQuery(this.db, this.table, Array.isArray(data) ? data : [data]);
-    }
-
-    update(data: RowData) {
-        return new UpdateQuery(this.db, this.table, data);
-    }
-
-    create(cb: TableBuilderCallback) {
-        return new CreateTableQuery(this.db, this.table, cb);
-    }
-
-    drop() {
-        return new DropTableQuery(this.db, this.table);
-    }
-}
 
 export abstract class AbstractQuery {
     protected db: Database;
@@ -59,14 +18,14 @@ export abstract class AbstractQuery {
     async exec(): Promise<any> {
         return new Promise((resolve, reject) => {
             try {
-                let sql = this.toSql();
+                const sql = this.toSql();
                 this.db.getClient().exec(sql, (err) => {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
                         resolve();
                     }
-                })
+                });
             } catch (e) {
                 reject(e);
             }
@@ -98,14 +57,14 @@ abstract class PreparedQuery<T extends PreparedQuery<T>> extends WhereQuery<T> {
     async exec(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
-                let sql = this.toSql();
+                const sql = this.toSql();
                 this.db.getClient().run(sql, this.getPreparedValues(), (err) => {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
                         resolve();
                     }
-                })
+                });
             } catch (e) {
                 reject(e);
             }
@@ -120,7 +79,7 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
         this._where = new Where(null, this);
     }
 
-    toSql() {
+    toSql(): string {
         return `SELECT ${this.expr} FROM ${this.table}${this._where.toString()};`;
     }
 
@@ -133,14 +92,14 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
     async all(): Promise<RowData[]> {
         return new Promise((resolve, reject) => {
             try {
-                let sql = this.toSql();
+                const sql = this.toSql();
                 this.db.getClient().all(sql, this._where.getPreparedValues(), (err, rows) => {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
                         resolve(rows.map(this.postExecute.bind(this)));
                     }
-                })
+                });
             } catch (e) {
                 reject(e);
             }
@@ -150,14 +109,14 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
     async first(): Promise<RowData|null> {
         return new Promise((resolve, reject) => {
             try {
-                let sql = this.toSql();
+                const sql = this.toSql();
                 this.db.getClient().get(sql, this._where.getPreparedValues(), (err, row) => {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
                         resolve(typeof row === "undefined" ? null : this.postExecute(row));
                     }
-                })
+                });
             } catch (e) {
                 reject(e);
             }
@@ -166,17 +125,17 @@ export class SelectQuery extends WhereQuery<SelectQuery> {
 }
 
 class CountQuery extends WhereQuery<CountQuery> {
-    private select_query: SelectQuery;
+    private selectQuery: SelectQuery;
 
     constructor(db: Database, table: string, expr: string) {
         super(db);
 
-        this.select_query = new SelectQuery(db, table, `COUNT(${expr}) AS count`);
+        this.selectQuery = new SelectQuery(db, table, `COUNT(${expr}) AS count`);
         this._where = new Where();
     }
 
     async exec(): Promise<number> {
-        return this.select_query.where(this._where).all().then(([{count}]) => count);
+        return this.selectQuery.where(this._where).all().then(([{count}]) => count);
     }
 
     toSql(): string {
@@ -185,17 +144,17 @@ class CountQuery extends WhereQuery<CountQuery> {
 }
 
 class ExistsQuery extends WhereQuery<ExistsQuery> {
-    private count_query: CountQuery;
+    private countQuery: CountQuery;
 
     constructor(db: Database, table: string, expr: string) {
         super(db);
 
-        this.count_query = new CountQuery(db, table, expr);
+        this.countQuery = new CountQuery(db, table, expr);
         this._where = new Where();
     }
 
     async exec(): Promise<boolean> {
-        return this.count_query.where(this._where).exec().then(count => count > 0);
+        return this.countQuery.where(this._where).exec().then(count => count > 0);
     }
 
     toSql(): string {
@@ -212,7 +171,7 @@ class DeleteQuery extends PreparedQuery<DeleteQuery> {
         this._where = new Where();
     }
 
-    toSql() {
+    toSql(): string {
         return `DELETE FROM ${this.table}${this._where.toString()};`;
     }
 }
@@ -239,24 +198,24 @@ class InsertQuery extends AbstractQuery {
         return this;
     }
 
-    toSql() {
-        return`INSERT${this.resolution === null ? "" : " OR " + this.resolution} INTO ${this.table} (${this.data[0].formatColumns()}) VALUES (${this.data[0].formatKeys()});`;
+    toSql(): string {
+        return `INSERT${this.resolution === null ? "" : " OR " + this.resolution} INTO ${this.table} (${this.data[0].formatColumns()}) VALUES (${this.data[0].formatKeys()});`;
     }
 
     async exec(): Promise<number[]> {
         return new Promise((resolve, reject) => {
             try {
-                let sql = this.toSql();
-                let ids = [];
-                let stmt = this.db.getClient().prepare(sql);
-                for (let row of this.data) stmt.run(row.formatForRun(), function (err) {
+                const sql = this.toSql();
+                const ids = [];
+                const stmt = this.db.getClient().prepare(sql);
+                for (const row of this.data) stmt.run(row.formatForRun(), function (err) {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
                         ids.push(this.lastID);
                     }
                 });
-                stmt.finalize((err) => {
+                stmt.finalize((err ) => {
                     if (err) {
                         reject(new QueryError(sql, err));
                     } else {
@@ -282,7 +241,7 @@ class UpdateQuery extends PreparedQuery<UpdateQuery> {
         this.data.getKeys().forEach(this._where.addReservedKey.bind(this));
     }
 
-    toSql() {
+    toSql(): string {
         return `UPDATE ${this.table} SET ${this.data.formatForSet()}${this._where.toString()};`;
     }
 
@@ -294,28 +253,28 @@ class UpdateQuery extends PreparedQuery<UpdateQuery> {
 class CreateTableQuery extends AbstractQuery {
     private readonly table: string;
     private readonly cb: TableBuilderCallback;
-    private not_exists: boolean;
+    private notExists: boolean;
 
     constructor(db: Database, table: string, cb: TableBuilderCallback) {
         super(db);
         this.table = table;
         this.cb = cb;
-        this.not_exists = false;
+        this.notExists = false;
     }
 
-    ifNotExists() {
-        this.not_exists = true;
+    ifNotExists(): this {
+        this.notExists = true;
         return this;
     }
 
     toSql(): string {
         let sql = "CREATE TABLE";
-        if (this.not_exists) sql += " IF NOT EXISTS";
+        if (this.notExists) sql += " IF NOT EXISTS";
         return sql + ` ${this.table}(${this.getSchema().toSql()});`;
     }
 
-    getSchema() {
-        let tableBuilder = new TableBuilder();
+    getSchema(): TableBuilder {
+        const tableBuilder = new TableBuilder();
         this.cb(tableBuilder);
         return tableBuilder;
     }
@@ -334,8 +293,44 @@ class DropTableQuery extends AbstractQuery {
     }
 }
 
-export class QueryBuilderError extends Error {
-    constructor(message: string) {
-        super(message);
+export default class QueryBuilder {
+    private readonly db: Database;
+    private readonly table: string;
+
+    constructor(db: Database, table: string) {
+        this.db = db;
+        this.table = table;
+    }
+
+    select(expr = "*"): SelectQuery {
+        return new SelectQuery(this.db, this.table, expr);
+    }
+
+    count(expr = "*"): CountQuery {
+        return new CountQuery(this.db, this.table, expr);
+    }
+
+    exists(expr = "*"): ExistsQuery {
+        return new ExistsQuery(this.db, this.table, expr);
+    }
+
+    delete(): DeleteQuery {
+        return new DeleteQuery(this.db, this.table);
+    }
+
+    insert(data: RowData|RowData[]): InsertQuery {
+        return new InsertQuery(this.db, this.table, Array.isArray(data) ? data : [data]);
+    }
+
+    update(data: RowData): UpdateQuery {
+        return new UpdateQuery(this.db, this.table, data);
+    }
+
+    create(cb: TableBuilderCallback): CreateTableQuery {
+        return new CreateTableQuery(this.db, this.table, cb);
+    }
+
+    drop(): DropTableQuery {
+        return new DropTableQuery(this.db, this.table);
     }
 }

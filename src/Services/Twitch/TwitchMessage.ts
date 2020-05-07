@@ -1,41 +1,43 @@
 import Message from "../../Chat/Message";
-import * as tmi from 'tmi.js'
-import Chatter from "../../Chat/Chatter";
-import {PermissionLevel} from "../../Modules/PermissionModule";
+import * as tmi from "tmi.js";
 import TwitchAdapter from "./TwitchAdapter";
-import Application from "../../Application/Application";
 import deepmerge from "deepmerge";
-import Channel from "../../Chat/Channel";
 import {helix, kraken} from "./TwitchApi";
-import {ExpressionContext} from "../../Modules/ExpressionModule";
+import ExpressionModule, {ExpressionContext} from "../../Modules/ExpressionModule";
 import moment from "moment-timezone";
-import IStream = helix.IStream;
+import ChatterEntity from "../../Database/Entities/ChatterEntity";
+import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import {ResponseFactory} from "../../Chat/Response";
+import {Role} from "../../Systems/Permissions/Role";
+import Logger from "../../Utilities/Logger";
+import IStream = helix.Stream;
 
 export class TwitchMessage extends Message {
-    private readonly userstate: tmi.ChatUserstate;
     private api: helix.Api;
     private oldApi: kraken.Api;
 
-    constructor(message: string, chatter: Chatter, channel: Channel, userstate: tmi.ChatUserstate, adapter: TwitchAdapter) {
-        super(message, chatter, channel, adapter);
+    constructor(
+        message: string, chatter: ChatterEntity, channel: ChannelEntity, private readonly userstate: tmi.ChatUserstate,
+        adapter: TwitchAdapter, responseFactory: ResponseFactory, expr: ExpressionModule
+    ) {
+        super(message, chatter, channel, adapter, responseFactory, expr);
 
-        this.userstate = userstate;
         this.api = adapter.api;
         this.oldApi = adapter.oldApi;
     }
 
-    public async getUserLevels(): Promise<PermissionLevel[]> {
-        let levels = await super.getUserLevels();
+    public async getUserRoles(): Promise<Role[]> {
+        const levels = await super.getUserRoles();
 
-        if (this.userstate.badges.premium) levels.push(PermissionLevel.PREMIUM);
-        if (this.userstate.badges.turbo) levels.push(PermissionLevel.PREMIUM);
-        if (this.userstate.badges.subscriber) levels.push(PermissionLevel.SUBSCRIBER);
-        if (this.userstate.badges.moderator) levels.push(PermissionLevel.MODERATOR);
-        if (this.userstate.badges.global_mod) levels.push(PermissionLevel.MODERATOR);
-        if (this.userstate.badges.staff) levels.push(PermissionLevel.ADMIN);
-        if (this.userstate.badges.admin) levels.push(PermissionLevel.ADMIN);
-        if (this.userstate.badges.broadcaster) levels.push(PermissionLevel.BROADCASTER);
-        if (this.userstate.username.toLowerCase() === "fifitido") levels.push(PermissionLevel.OWNER);
+        if (this.userstate.badges.premium) levels.push(Role.PREMIUM);
+        if (this.userstate.badges.turbo) levels.push(Role.PREMIUM);
+        if (this.userstate.badges.subscriber) levels.push(Role.SUBSCRIBER);
+        if (this.userstate.badges.moderator) levels.push(Role.MODERATOR);
+        if (this.userstate.badges.global_mod) levels.push(Role.MODERATOR);
+        if (this.userstate.badges.staff) levels.push(Role.ADMIN);
+        if (this.userstate.badges.admin) levels.push(Role.ADMIN);
+        if (this.userstate.badges.broadcaster) levels.push(Role.BROADCASTER);
+        if (this.userstate.username.toLowerCase() === "fifitido") levels.push(Role.OWNER);
 
         return levels;
     }
@@ -45,70 +47,74 @@ export class TwitchMessage extends Message {
     }
 
     public async getExpressionContext(): Promise<ExpressionContext> {
-        const getStreamProperty = async (key: keyof IStream) => {
+        const getStreamProperty = async (key: keyof IStream): Promise<string|number|string[]> => {
             try {
-                let chanResp = await this.api.getStreams({user_id: this.getChannel().getId()});
+                const chanResp = await this.api.getStreams({user_id: this.getChannel().channelId});
                 if (chanResp.data.length > 0) {
-                    let chanData = chanResp.data[0];
+                    const chanData = chanResp.data[0];
 
                     return chanData[key];
                 } else {
-                    return "Channel is not live."
+                    return "Channel is not live.";
                 }
             } catch (e) {
-                Application.getLogger().error("Twitch API error", {cause: e});
+                Logger.get().error("Twitch API error", {cause: e});
                 return "<<An error has occurred with the Twitch API.>>";
             }
         };
 
-        let ctx: ExpressionContext = {
+        const ctx: ExpressionContext = {
             channel: {
-                getTitle: async () => getStreamProperty("title"),
-                getGame: async () => {
+                getTitle: (): Promise<string> => getStreamProperty("title") as Promise<string>,
+                getGame: async (): Promise<string> => {
                     try {
-                        let chanResp = await this.api.getStreams({user_id: this.getChannel().getId()});
+                        const chanResp = await this.api.getStreams({user_id: this.getChannel().channelId});
                         if (chanResp.data.length > 0) {
-                            let chanData = chanResp.data[0];
-                            let gameResp = await this.api.getGames({id: chanData.game_id});
-                            let gameData = gameResp.data[0];
+                            const chanData = chanResp.data[0];
+                            const gameResp = await this.api.getGames({id: chanData.game_id});
+                            const gameData = gameResp.data[0];
 
                             return gameData.name;
                         } else {
-                            return "Channel is not live."
+                            return "Channel is not live.";
                         }
                     } catch (e) {
-                        Application.getLogger().error("Twitch API error", {cause: e});
+                        Logger.get().error("Twitch API error", {cause: e});
                         return "<<An error has occurred with the Twitch API.>>";
                     }
                 },
-                getViewerCount: async () => getStreamProperty("viewer_count")
+                getViewerCount: (): Promise<number> => getStreamProperty("viewer_count") as Promise<number>
             },
             sender: {
-                getFollowAge: async (format?: string) => {
+                getFollowAge: async (format?: string): Promise<string> => {
                     return this.api.getUserFollow({
-                        from_id: this.getChatter().getId(),
-                        to_id: this.getChannel().getId()
+                        from_id: this.getChatter().userId,
+                        to_id: this.getChannel().channelId
                     }).then(async resp => {
                         if (resp.total < 1) return "Sender is not following the channel.";
-                        let timezone = await this.getChannel().getSettings().get("timezone") as moment.MomentZone;
+                        const timezone = await this.getChannel().getSetting<moment.MomentZone>("timezone");
                         return moment.parseZone(resp.data[0].followed_at, timezone.name).format(format ? format : "Y-m-d h:i:s");
                     }).catch(e => {
-                        Application.getLogger().error("Unable to determine follow age", {cause: e});
-                        return "Cannot determine follow age."
-                    })
+                        Logger.get().error("Unable to determine follow age", {cause: e});
+                        return "Cannot determine follow age.";
+                    });
                 },
-                isFollowing: async() => {
+                isFollowing: async(): Promise<boolean> => {
                     return this.api.getUserFollow({
-                        from_id: this.getChatter().getId(),
-                        to_id: this.getChannel().getId()
+                        from_id: this.getChatter().userId,
+                        to_id: this.getChannel().channelId
                     }).then(async resp => resp.total > 0).catch(e => {
-                        Application.getLogger().error("Unable to determine if the user is following", {cause: e});
-                        return "Cannot determine if the user is following follow."
-                    })
+                        Logger.get().error("Unable to determine if the user is following", {cause: e});
+                        return false;
+                    });
                 }
             }
         };
 
         return deepmerge(await super.getExpressionContext(), ctx);
     }
+}
+
+export interface TwitchMessageFactory {
+    (message: string, chatter: ChatterEntity, channel: ChannelEntity, userstate: tmi.ChatUserstate): TwitchMessage;
 }

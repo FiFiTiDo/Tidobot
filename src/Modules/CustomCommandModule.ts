@@ -1,123 +1,41 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import Application from "../Application/Application";
-import {__} from "../Utilities/functions";
-import Dispatcher from "../Event/Dispatcher";
-import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
 import ExpressionModule from "./ExpressionModule";
 import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
+import {Key} from "../Utilities/Translator";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import {Role} from "../Systems/Permissions/Role";
+import Permission from "../Systems/Permissions/Permission";
+import Logger from "../Utilities/Logger";
+import {EventArguments} from "../Systems/Event/Event";
+import {EventHandler} from "../Systems/Event/decorators";
+import {NewChannelEvent} from "../Chat/NewChannelEvent";
 
-export default class CustomCommandModule extends AbstractModule {
+
+class CommandCommand extends Command {
     constructor() {
-        super(CustomCommandModule.name);
+        super("command", "<add|edit|delete>", ["cmd", "c"]);
+
+        this.addSubcommand("add", this.add);
+        this.addSubcommand("edit", this.edit);
+        this.addSubcommand("delete", this.delete);
     }
 
-    registerListeners(dispatcher: Dispatcher) {
-        dispatcher.addListener(MessageEvent, this.messageHandler);
-    }
-
-    unregisterListeners(dispatcher: Dispatcher) {
-        dispatcher.removeListener(MessageEvent, this.messageHandler);
-    }
-
-    messageHandler = async (event: MessageEvent) => {
-        let msg = event.getMessage();
-
-        if (this.isDisabled(msg.getChannel())) return;
-        if (msg.getParts().length < 1) return;
-
-        let trigger = msg.getPart(0);
-        let commands = await CommandEntity.findByTrigger(trigger, this.getServiceName(), msg.getChannel().getName());
-        if (commands.length < 1) return;
-
-        let defCommands = [];
-        let doDefault = true;
-        for (let command of commands) {
-            let res = await command.checkCondition(msg);
-            if (res === CommandConditionResponse.RUN_NOW) {
-                await msg.reply(await command.getResponse(msg));
-                doDefault = false;
-            } else if (res === CommandConditionResponse.RUN_DEFAULT) {
-                defCommands.push(command);
-            }
-        }
-
-        if (doDefault) {
-            for (let command of defCommands) {
-                let res = await command.checkCondition(msg, true);
-                if (res === CommandConditionResponse.RUN_NOW) {
-                    await msg.reply(await command.getResponse(msg));
-                }
-            }
-        }
-    };
-
-    initialize() {
-        let cmd = this.getModuleManager().getModule(CommandModule);
-        cmd.registerCommand("command", this.commandCmd, this);
-        cmd.registerCommand("cmd", this.commandCmd, this);
-        cmd.registerCommand("c", this.commandCmd, this);
-
-        let perm = this.getModuleManager().getModule(PermissionModule);
-        perm.registerPermission("command.add", PermissionLevel.MODERATOR);
-        perm.registerPermission("command.edit", PermissionLevel.MODERATOR);
-        perm.registerPermission("command.delete", PermissionLevel.MODERATOR);
-        perm.registerPermission("command.free", PermissionLevel.MODERATOR);
-        perm.registerPermission("command.ignore-cooldown", PermissionLevel.MODERATOR);
-
-        this.getModuleManager().getModule(ExpressionModule).registerResolver(msg => {
-            return {
-                execute_cmd: async (command: unknown) => new Promise(async (resolve, reject) => {
-                    if (typeof command !== "string") return "Invalid argument, expected a string";
-                    let prefix = await this.getModuleManager().getModule(CommandModule).getPrefix(msg.getChannel());
-                    let cmd = prefix + command;
-                    if (msg.checkLoopProtection(cmd)) return "Infinite loop detected";
-                    let newMsg = msg.extend(cmd + " " + msg.getParts().slice(1).join(" "), resolve);
-                    newMsg.addToLoopProtection(cmd);
-                    this.messageHandler(new MessageEvent(newMsg));
-                })
-            }
-        });
-    }
-
-    createDatabaseTables(builder: ChannelSchemaBuilder) {
-        builder.addTable("commands", (table) => {
-            table.string('trigger');
-            table.string('response');
-            table.string('condition');
-            table.float('price');
-            table.integer('cooldown');
-            table.timestamps();
-        });
-    }
-
-    async commandCmd(event: CommandEvent) {
-        let valid = new SubcommandHelper.Builder()
-            .addSubcommand("add", this.add)
-            .addSubcommand("edit", this.edit)
-            .addSubcommand("delete", this.delete)
-            .addSubcommand("del", this.delete)
-            .build(this)
-            .handle(event);
-        if (!valid) {
-            await this.getModuleManager().getModule(CommandModule).showInvalidSyntax("command <add|edit|delete> [arguments]", event.getMessage());
-        }
-    }
-
-    async add(event: CommandEvent) {
-        let msg = event.getMessage();
-
-        let args = await event.validate({
+    async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "command add <trigger> <response>",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                 },
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                     greedy: true
                 }
@@ -125,34 +43,38 @@ export default class CustomCommandModule extends AbstractModule {
             permission: "command.add"
         });
         if (args === null) return;
-
-        let [trigger, response] = args;
-        trigger = trigger.toLowerCase();
+        const trigger = (args[0] as string).toLowerCase();
+        const resp = args[1] as string;
 
         try {
-            let command = await CommandEntity.create(trigger, response, this.getServiceName(), msg.getChannel().getName());
-            await msg.reply(__("commands.add.successful", command.id));
+            const command = await CommandEntity.create(trigger, resp, msg.getChannel());
+            await response.message(Key("commands.add.successful"), command.id);
         } catch (e) {
-            Application.getLogger().error("Unable to add custom command", {cause: e});
-            await msg.reply(__("commands.add.failed"));
+            Logger.get().error("Unable to add custom command", {cause: e});
+            await response.message(Key("commands.add.failed"));
         }
-    };
+    }
 
-    async edit(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async edit({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "command edit <trigger|condition|response|price|cooldown> <id> <new value>",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true
                 },
                 {
-                    type: "integer",
+                    value: {
+                        type: "integer",
+                    },
                     required: true
                 },
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                     greedy: true
                 }
@@ -160,10 +82,10 @@ export default class CustomCommandModule extends AbstractModule {
             permission: "command.edit"
         });
         if (args === null) return;
-        let [type, id, value] = args;
-        let command: CommandEntity = await CommandEntity.get(id, this.getServiceName(), msg.getChannel().getName());
+        const [type, id, value] = args;
+        const command: CommandEntity = await CommandEntity.get(id, { channel: msg.getChannel() });
         if (command === null) {
-            await msg.reply(__("commands.unknown", id));
+            await response.message(Key("commands.unknown"), id);
             return;
         }
 
@@ -177,72 +99,137 @@ export default class CustomCommandModule extends AbstractModule {
             case "response":
                 command.response = value;
                 break;
-            case "price":
-                let price = parseFloat(value);
+            case "price": {
+                const price = parseFloat(value);
 
                 if (isNaN(price)) {
-                    await this.getModuleManager().getModule(CommandModule)
-                        .showInvalidArgument("new price", value, "command edit price <id> <new price>", msg);
+                    await CommandModule.showInvalidArgument("new price", value, "command edit price <id> <new price>", msg);
                     return;
                 }
 
                 command.price = price;
                 break;
-            case "cooldown":
-                let seconds = parseInt(value);
+            }
+            case "cooldown": {
+                const seconds = parseInt(value);
 
                 if (isNaN(seconds)) {
-                    await this.getModuleManager().getModule(CommandModule)
-                        .showInvalidArgument("seconds", value, "command edit cooldown <id> <seconds>", msg);
+                    await CommandModule.showInvalidArgument("seconds", value, "command edit cooldown <id> <seconds>", msg);
                     return;
                 }
 
                 command.cooldown = seconds;
                 break;
+            }
             default:
-                await this.getModuleManager().getModule(CommandModule)
-                    .showInvalidArgument("type", type, "command edit <trigger|condition|response|price> <id> <new value>", msg);
+                await CommandModule.showInvalidArgument("type", type, "command edit <trigger|condition|response|price> <id> <new value>", msg);
                 return;
         }
 
         command.save()
             .then(() => {
                 if (type === "response" || type === "condition")
-                    msg.reply(__("commands.edit." + type + ".successful", id));
+                    response.message(Key("commands.edit." + type + ".successful"), id);
                 else
-                    msg.reply(__("commands.edit." + type + ".successful", id, value));
+                    response.message(Key("commands.edit." + type + ".successful"), id, value);
             })
             .catch(e => {
-                msg.reply(__("commands.edit." + type + ".failed"));
-                Application.getLogger().error("Failed to save changes to custom command", {cause: e});
+                response.message(Key("commands.edit." + type + ".failed"));
+                Logger.get().error("Failed to save changes to custom command", {cause: e});
             });
-    };
+    }
 
-    async delete(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "command delete <id>",
             arguments: [
                 {
-                    type: "integer",
+                    value: {
+                        type: "integer",
+                    },
                     required: true
                 }
             ]
         });
         if (args === null) return;
 
-        let [id] = args;
-        let command = await CommandEntity.get(id, this.getServiceName(), msg.getChannel().getName());
+        const [id] = args;
+        const command = await CommandEntity.get(id, { channel: msg.getChannel() });
         if (command === null) {
-            await msg.reply(__("commands.unknown", id));
+            await response.message(Key("commands.unknown"), id);
             return;
         }
 
         command.delete()
-            .then(() => msg.reply(__("commands.delete.successful", id)))
+            .then(() => response.message(Key("commands.delete.successful"), id))
             .catch(e => {
-                msg.reply(__("commands.delete.failed"));
-                Application.getLogger().error("Failed to delete the custom command", {cause: e});
+                response.message(Key("commands.delete.failed"));
+                Logger.get().error("Failed to delete the custom command", {cause: e});
             });
-    };
+    }
+}
+
+export default class CustomCommandModule extends AbstractModule {
+    constructor() {
+        super(CustomCommandModule.name);
+    }
+
+    @EventHandler(MessageEvent)
+    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
+        const msg = event.getMessage();
+
+        if (this.isDisabled(msg.getChannel())) return;
+        if (msg.getParts().length < 1) return;
+
+        const trigger = msg.getPart(0);
+        const commands = await CommandEntity.findByTrigger(trigger, msg.getChannel());
+        if (commands.length < 1) return;
+
+        const defCommands = [];
+        let doDefault = true;
+        for (const command of commands) {
+            const res = await command.checkCondition(msg);
+            if (res === CommandConditionResponse.RUN_NOW) {
+                await msg.reply(await command.getResponse(msg));
+                doDefault = false;
+            } else if (res === CommandConditionResponse.RUN_DEFAULT) {
+                defCommands.push(command);
+            }
+        }
+
+        if (doDefault) {
+            for (const command of defCommands) {
+                const res = await command.checkCondition(msg, true);
+                if (res === CommandConditionResponse.RUN_NOW)
+                    await msg.reply(await command.getResponse(msg));
+            }
+        }
+    }
+
+    initialize(): void {
+        const cmd = this.moduleManager.getModule(CommandModule);
+        cmd.registerCommand(new CommandCommand(), this);
+
+        const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("command.add", Role.MODERATOR));
+        perm.registerPermission(new Permission("command.edit", Role.MODERATOR));
+        perm.registerPermission(new Permission("command.delete", Role.MODERATOR));
+        perm.registerPermission(new Permission("command.free", Role.MODERATOR));
+        perm.registerPermission(new Permission("command.ignore-cooldown", Role.MODERATOR));
+
+        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
+            execute_cmd: async (command: unknown): Promise<string> => new Promise( resolve => {
+                if (typeof command !== "string") return "Invalid argument, expected a string";
+                if (msg.checkLoopProtection(command)) return "Infinite loop detected";
+                const newMsg = msg.extend(`${command} ${msg.getParts().slice(1).join(" ")}`, resolve);
+                newMsg.addToLoopProtection(command);
+                this.handleMessage({ event: new MessageEvent(newMsg) });
+            })
+        }));
+    }
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+        await CommandEntity.createTable({ channel });
+    }
 }

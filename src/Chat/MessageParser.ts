@@ -1,17 +1,17 @@
 export default class MessageParser {
     static parse(input: string): string[] {
-        let parts = [];
+        const parts = [];
         let i = 0;
         let escapeSeq = false;
         let part = "";
 
         while (i < input.length) {
-            let last = input.charAt(i - 1);
-            let curr = input.charAt(i);
-            let next = input.charAt(i + 1);
+            const last = input.charAt(i - 1);
+            const curr = input.charAt(i);
+            const next = input.charAt(i + 1);
 
             if (escapeSeq) {
-                if (curr == '}') {
+                if (curr == "}") {
                     parts.push("${" + part + "}");
                     part = "";
                     i++;
@@ -23,7 +23,7 @@ export default class MessageParser {
                 }
             }
 
-            if (curr == ' ' && last != '\\') {
+            if (curr == " " && last != "\\") {
                 if (part.length < 1) {
                     i++;
                     continue;
@@ -35,7 +35,7 @@ export default class MessageParser {
                 continue;
             }
 
-            if (curr == '$' && next == '{') {
+            if (curr == "$" && next == "{") {
                 escapeSeq = true;
                 i += 2;
                 continue;

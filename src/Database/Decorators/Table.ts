@@ -1,27 +1,29 @@
-import {EntityConstructor} from "../Entities/Entity";
+import Entity, {EntityConstructor, EntityParameters} from "../Entities/Entity";
 import {DataTypes} from "../Schema";
 import {getColumns} from "./Columns";
 import {formatConstraints} from "./Constraints";
+import {getMetadata, setMetadata} from "../../Utilities/DeccoratorUtils";
 
-type TableNameFormatter = (service: string, channel: string, optional_param?: string) => string;
-const tableName_map: Map<string, TableNameFormatter> = new Map();
-export function Table(tableNameFormatter: TableNameFormatter) {
-    return function (target: any) {
-        tableName_map.set(target.name, tableNameFormatter);
-    }
+const TABLE_NAME_KEY = "entity:table_name";
+type TableNameFormatter = (params: EntityParameters) => string;
+
+export function Table(tableNameFormatter: TableNameFormatter): Function {
+    return function <T> (target: T): void {
+        setMetadata(TABLE_NAME_KEY, target, tableNameFormatter);
+    };
 }
 
-export function getTableName(entity_const: EntityConstructor<any>, service: string, channel: string, optional_param?: string) {
-    const f = tableName_map.get(entity_const.name);
-    if (f === null) return null;
-    return f(service, channel, optional_param);
+export function getTableName<T extends Entity>(entityConstructor: EntityConstructor<T>, params: EntityParameters): string|null {
+    const formatter = getMetadata<TableNameFormatter>(TABLE_NAME_KEY, entityConstructor);
+    if (formatter === null) return null;
+    return formatter(params);
 }
 
-export function formatForCreate(entity_const: EntityConstructor<any>) {
-    let columns = getColumns(entity_const);
-    let constraints = formatConstraints(entity_const);
-    let parts = [];
-    for (let { settings: column } of columns.values()) {
+export function formatForCreate<T extends Entity>(entityConstructor: EntityConstructor<T>): string {
+    const columns = getColumns(entityConstructor);
+    const constraints = formatConstraints(entityConstructor);
+    const parts = [];
+    for (const { settings: column } of columns.values()) {
         let type = "BLOB";
         switch (column.datatype) {
             case DataTypes.INTEGER:

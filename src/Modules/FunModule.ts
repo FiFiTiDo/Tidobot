@@ -1,65 +1,83 @@
 import AbstractModule from "./AbstractModule";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
-import CommandModule, {CommandEvent} from "./CommandModule";
-import Application from "../Application/Application";
-import {__, array_rand} from "../Utilities/functions";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
+import {array_rand} from "../Utilities/ArrayUtils";
+import {Key} from "../Utilities/Translator";
+import Bot from "../Application/Bot";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import Permission from "../Systems/Permissions/Permission";
+import {Role} from "../Systems/Permissions/Role";
+
+class RouletteCommand extends Command {
+    constructor(private bot: Bot) {
+        super("roulette", null);
+    }
+
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "roulette",
+            permission: "fun.roulette"
+        });
+        if (args === null) return;
+
+        await response.action(Key("fun.roulette.lead_up"), msg.getChatter().name);
+        setTimeout(() => {
+            if (Math.random() > 1 / 6) {
+                response.message(Key("fun.roulette.safe"), msg.getChatter().name);
+            } else {
+                response.message(Key("fun.roulette.hit"), msg.getChatter().name);
+                this.bot.tempbanChatter(msg.getChatter(), 60, response.translate(Key("fun.roulette.reason")));
+            }
+        }, 1000);
+    }
+}
+
+class SeppukuCommand extends Command {
+    constructor(private bot: Bot) {
+        super("seppuku", null);
+    }
+
+    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "seppuku",
+            permission: "fun.seppuku"
+        });
+        if (args === null) return;
+
+        return this.bot.tempbanChatter(msg.getChatter(), 30, response.translate(Key("fun.seppuku.reason")));
+    }
+}
+
+class Magic8BallCommand extends Command {
+    constructor() {
+        super("8ball", null);
+    }
+
+    async execute({event, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "8ball",
+            permission: "fun.8ball"
+        });
+        if (args === null) return;
+
+        const resp = array_rand(response.getTranslator().get("fun.8ball.responses"));
+        await response.message(Key("fun.8ball.response"), resp);
+    }
+}
 
 export default class FunModule extends AbstractModule {
     constructor() {
         super(FunModule.name);
     }
 
-    initialize() {
+    initialize(): void {
         const cmd = this.getModuleManager().getModule(CommandModule);
-        cmd.registerCommand("roulette", this.roulette, this);
-        cmd.registerCommand("seppuku", this.seppuku, this);
-        cmd.registerCommand("8ball", this.magic8Ball, this);
+        cmd.registerCommand(new RouletteCommand(this.bot), this);
+        cmd.registerCommand(new SeppukuCommand(this.bot), this);
+        cmd.registerCommand(new Magic8BallCommand(), this);
 
-        const perm = this.getModuleManager().getModule(PermissionModule);
-        perm.registerPermission("fun.roulette", PermissionLevel.NORMAL);
-        perm.registerPermission("fun.seppuku", PermissionLevel.NORMAL);
-        perm.registerPermission("fun.8ball", PermissionLevel.NORMAL);
-    }
-
-    async roulette(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
-            usage: "roulette",
-            permission: "fun.roulette"
-        });
-        if (args === null) return;
-
-        Application.getAdapter().sendAction(__("fun.roulette.lead_up", msg.getChatter().getName()), msg.getChannel());
-        setTimeout(() => {
-            if (Math.random() > 1 / 6) {
-                msg.reply(__("fun.roulette.safe", msg.getChatter().getName()));
-            } else {
-                msg.reply(__("fun.roulette.hit", msg.getChatter().getName()));
-                Application.getAdapter().tempbanChatter(msg.getChatter(), 60, __("fun.roulette.reason"));
-            }
-        }, 1000);
-    }
-
-    async seppuku(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
-            usage: "seppuku",
-            permission: "fun.seppuku"
-        });
-        if (args === null) return;
-
-        Application.getAdapter().tempbanChatter(msg.getChatter(), 30, __("fun.seppuku.reason"));
-    }
-
-    async magic8Ball(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
-            usage: "8ball",
-            permission: "fun.8ball"
-        });
-        if (args === null) return;
-
-        let response = array_rand(Application.getTranslator().get("fun.8ball.responses"));
-        await msg.reply(__("fun.8ball.response", response));
+        const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("fun.roulette", Role.NORMAL));
+        perm.registerPermission(new Permission("fun.seppuku", Role.NORMAL));
+        perm.registerPermission(new Permission("fun.8ball", Role.NORMAL));
     }
 }

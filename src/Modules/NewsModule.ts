@@ -1,112 +1,46 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {CommandEvent, SubcommandHelper} from "./CommandModule";
-import PermissionModule, {PermissionLevel} from "./PermissionModule";
+import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import ChannelSchemaBuilder from "../Database/ChannelSchemaBuilder";
-import Channel from "../Chat/Channel";
-import Application from "../Application/Application";
-import {__} from "../Utilities/functions";
-import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
+import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import Dispatcher from "../Event/Dispatcher";
-import SettingsModule from "./SettingsModule";
 import TickEvent from "../Application/TickEvent";
 import NewsEntity from "../Database/Entities/NewsEntity";
-import Entity from "../Database/Entities/Entity";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import {Role} from "../Systems/Permissions/Role";
+import Permission from "../Systems/Permissions/Permission";
+import {Key} from "../Utilities/Translator";
+import Logger from "../Utilities/Logger";
+import Setting, {SettingType} from "../Systems/Settings/Setting";
+import SettingsSystem from "../Systems/Settings/SettingsSystem";
+import {EventArguments} from "../Systems/Event/Event";
+import {EventHandler} from "../Systems/Event/decorators";
 
 interface LastMessage {
     item: NewsEntity;
     timestamp: moment.Moment;
-    message_count: number;
+    messageCount: number;
 }
 
-export default class NewsModule extends AbstractModule {
-    private last_message: Map<string, LastMessage>;
+class NewsCommand extends Command {
+    constructor(private confirmationFactory: ConfirmationFactory) {
+        super("news", "<add|remove|clear>");
 
-    constructor() {
-        super(NewsModule.name);
-
-        this.last_message = new Map();
+        this.addSubcommand("add", this.add);
+        this.addSubcommand("remove", this.remove);
+        this.addSubcommand("rem", this.remove);
+        this.addSubcommand("clear", this.clear);
     }
 
-    initialize() {
-        const cmd = this.getModuleManager().getModule(CommandModule);
-        cmd.registerCommand("news", this.newsCommand, this);
-
-        const perm = this.getModuleManager().getModule(PermissionModule);
-        perm.registerPermission("news.add", PermissionLevel.MODERATOR);
-        perm.registerPermission("news.remove", PermissionLevel.MODERATOR);
-        perm.registerPermission("news.clear", PermissionLevel.MODERATOR);
-        perm.registerPermission("news.reload", PermissionLevel.MODERATOR);
-
-        const settings = this.getModuleManager().getModule(SettingsModule);
-        settings.registerSetting("news.message-count", "5", "integer");
-        settings.registerSetting("news.interval", "30", "integer");
-    }
-
-    registerListeners(dispatcher: Dispatcher) {
-        dispatcher.addListener(MessageEvent, this.messageHandler);
-        dispatcher.addListener(TickEvent, this.tickHandler);
-    }
-
-    unregisterListeners(dispatcher: Dispatcher) {
-        dispatcher.removeListener(MessageEvent, this.messageHandler);
-        dispatcher.removeListener(TickEvent, this.tickHandler);
-    }
-
-    createDatabaseTables(builder: ChannelSchemaBuilder) {
-        builder.addTable("news", table => {
-            table.string("value");
-        });
-    }
-
-    tryNext = async (channel: Channel, increment = false) => {
-        if (this.isDisabled(channel)) return;
-        if (this.last_message.has(channel.getId())) {
-            let last_msg = this.last_message.get(channel.getId());
-            let message_count = await channel.getSettings().get("news.message-count");
-            let interval = moment.duration(await channel.getSettings().get("news.interval"), "seconds");
-
-            if (increment) last_msg.message_count++;
-            let expires = last_msg.timestamp.clone().add(interval);
-            if (last_msg.message_count >= message_count && moment().isAfter(expires))
-                await this.showNextMessage(channel);
-        } else {
-            await this.showNextMessage(channel);
-        }
-    };
-
-    tickHandler = async () => Promise.all(Application.getChannelManager().getAll().map(channel => this.tryNext(channel)));
-    messageHandler = async (event: MessageEvent) => this.tryNext(event.getMessage().getChannel(), true);
-
-    async newsCommand(event: CommandEvent) {
-        let args = await event.validate({
-            usage: "news <add|remove|clear> [arguments]",
-            arguments: [
-                {
-                    type: "string",
-                    required: true
-                }
-            ]
-        });
-        if (args === null) return;
-
-        new SubcommandHelper.Builder()
-            .addSubcommand("add", this.add)
-            .addSubcommand("remove", this.remove)
-            .addSubcommand("rem", this.remove)
-            .addSubcommand("clear", this.clear)
-            .build(this)
-            .handle(event);
-    }
-
-    async add(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "news add <message>",
             arguments: [
                 {
-                    type: "string",
+                    value: {
+                        type: "string",
+                    },
                     required: true,
                     greedy: true
                 }
@@ -114,95 +48,148 @@ export default class NewsModule extends AbstractModule {
             permission: "news.add"
         });
         if (args === null) return;
-        let [value] = args;
+        const [value] = args;
 
         try {
-            let item = await NewsEntity.create(value, msg.getChannel());
-            await msg.reply(__("news.add.successful", item.id));
+            const item = await NewsEntity.create(value, msg.getChannel());
+            await response.message(Key("news.add.successful"), item.id);
         } catch (e) {
-            await msg.reply(__("news.add.failed"));
-            Application.getLogger().error("Failed to add news item", {cause: e});
+            await response.message(Key("news.add.failed"));
+            Logger.get().error("Failed to add news item", {cause: e});
         }
-    };
+    }
 
-    async remove(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "news remove <index>",
             arguments: [
                 {
-                    type: "integer",
+                    value: {
+                        type: "integer",
+                    },
                     required: true
                 }
             ],
             permission: "news.remove"
         });
         if (args === null) return;
-        let [id] = args as [number];
+        const [id] = args as [number];
 
-        let item = await NewsEntity.get(id, this.getServiceName(), msg.getChannel().getName());
+        const item = await NewsEntity.get(id, { channel: msg.getChannel() });
         if (item === null) {
-            await msg.reply(__("news.invalid_id", id));
+            await response.message(Key("news.invalid_id"), id);
             return;
         }
 
         try {
             await item.delete();
-            await msg.reply(__("news.remove.successful", id));
+            await response.message(Key("news.remove.successful"), id);
         } catch (e) {
-            await msg.reply(__("news.remove.failed"));
-            Application.getLogger().error("Failed to remove news item", {cause: e});
+            await response.message(Key("news.remove.failed"));
+            Logger.get().error("Failed to remove news item", {cause: e});
         }
-    };
+    }
 
-    async clear(event: CommandEvent) {
-        let msg = event.getMessage();
-        let args = await event.validate({
+    async clear({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
             usage: "news clear",
             permission: "news.clear"
         });
         if (args === null) return;
 
-        let confirmation = await ConfirmationModule.make(msg, "Are you sure you want to clear all news items?", 30);
+        const confirmation = await this.confirmationFactory(msg, "Are you sure you want to clear all news items?", 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
-                await msg.getChannel().query("news").delete().exec();
-                await msg.reply(__("news.clear.successful"));
+                await NewsEntity.removeEntries({ channel: msg.getChannel() });
+                await response.message(Key("news.clear.successful"));
             } catch (e) {
-                await msg.reply(__("news.clear.failed"));
-                Application.getLogger().error("Failed to clear news items", {cause: e});
+                await response.message(Key("news.clear.failed"));
+                Logger.get().error("Failed to clear news items", {cause: e});
             }
         });
         confirmation.run();
+    }
+}
+
+export default class NewsModule extends AbstractModule {
+    private lastMessage: Map<string, LastMessage>;
+
+    constructor() {
+        super(NewsModule.name);
+
+        this.lastMessage = new Map();
+    }
+
+    initialize(): void {
+        const cmd = this.getModuleManager().getModule(CommandModule);
+        cmd.registerCommand(new NewsCommand(this.makeConfirmation), this);
+
+        const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("news.add", Role.MODERATOR));
+        perm.registerPermission(new Permission("news.remove", Role.MODERATOR));
+        perm.registerPermission(new Permission("news.clear", Role.MODERATOR));
+        perm.registerPermission(new Permission("news.reload", Role.MODERATOR));
+
+        const settings = SettingsSystem.getInstance();
+        settings.registerSetting(new Setting("news.message-count", "5", SettingType.INTEGER));
+        settings.registerSetting(new Setting("news.interval", "30", SettingType.INTEGER));
+    }
+
+    createDatabaseTables(builder: ChannelSchemaBuilder): void {
+        builder.addTable("news", table => {
+            table.string("value");
+        });
+    }
+
+    tryNext = async (channel: ChannelEntity, increment = false): Promise<void> => {
+        if (this.isDisabled(channel)) return;
+        if (this.lastMessage.has(channel.channelId)) {
+            const lastMessage = this.lastMessage.get(channel.channelId);
+            const messageCount = await channel.getSetting<number>("news.message-count");
+            const interval = moment.duration(await channel.getSetting<number>("news.interval"), "seconds");
+
+            if (increment) lastMessage.messageCount++;
+            const expires = lastMessage.timestamp.clone().add(interval);
+            if (lastMessage.messageCount >= messageCount && moment().isAfter(expires))
+                await this.showNextMessage(channel);
+        } else {
+            await this.showNextMessage(channel);
+        }
     };
 
-    private async showNextMessage(channel: Channel): Promise<void> {
-        let items: NewsEntity[] = await NewsEntity.getAll(this.getServiceName(), channel.getName());
+    @EventHandler(TickEvent)
+    tickHandler = async (): Promise<void[]> => Promise.all(this.channelManager.getAll().map(channel => this.tryNext(channel)));
+
+    @EventHandler(MessageEvent)
+    messageHandler = async ({event}: EventArguments<MessageEvent>): Promise<void> => this.tryNext(event.getMessage().getChannel(), true);
+
+    private async showNextMessage(channel: ChannelEntity): Promise<void> {
+        const items: NewsEntity[] = await NewsEntity.getAll({ channel });
         if (items.length < 1) return;
-        let next_item: NewsEntity = null;
-        if (this.last_message.has(channel.getId())) {
-            let last_msg = this.last_message.get(channel.getId());
+        let nextItem: NewsEntity = null;
+        if (this.lastMessage.has(channel.channelId)) {
+            const lastMessage = this.lastMessage.get(channel.channelId);
             for (let i = 0; i < items.length; i++) {
-                let item = items[i];
-                if (item.id === last_msg.item.id) {
-                    let j = (i + 1) % items.length;
-                    next_item = items[j];
+                const item = items[i];
+                if (item.id === lastMessage.item.id) {
+                    const j = (i + 1) % items.length;
+                    nextItem = items[j];
                     break;
                 }
 
-                if (item.id > last_msg.item.id) {
-                    next_item = item;
+                if (item.id > lastMessage.item.id) {
+                    nextItem = item;
                     break;
                 }
             }
         }
-        if (next_item === null) next_item = items[0];
+        if (nextItem === null) nextItem = items[0];
 
-        this.last_message.set(channel.getId(), {
-            item: next_item,
+        this.lastMessage.set(channel.channelId, {
+            item: nextItem,
             timestamp: moment(),
-            message_count: 0
+            messageCount: 0
         });
-        await Application.getAdapter().sendMessage(next_item.value, channel);
+        await this.bot.send(nextItem.value, channel);
     }
 }

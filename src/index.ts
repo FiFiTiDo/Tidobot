@@ -1,10 +1,10 @@
+import "reflect-metadata";
 import Application from "./Application/Application";
-import TwitchAdapter from "./Services/Twitch/TwitchAdapter";
+import container from "./inversify.config";
 
-require('source-map-support').install({
+require("source-map-support").install({
     hookRequire: true
 });
 
-let app = new Application();
-app.registerAdapter("twitch", new TwitchAdapter());
+const app = container.get<Application>(Application);
 app.start(process.argv);

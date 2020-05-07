@@ -1,14 +1,21 @@
-export type RawRowData = { [key: string]: string|number };
-export type PreparedData = {
-    columns: string[],
-    keys: string[],
-    prepared: { [key: string]: any }
+export interface RawRowData {
+    [key: string]: string|number;
+}
+
+export interface RawRowDataWithId extends RawRowData {
+    id: number;
+}
+
+export interface PreparedData {
+    columns: string[];
+    keys: string[];
+    prepared: { [key: string]: any };
 }
 
 export function prepareData(data: RawRowData): PreparedData {
-    let preparedData: PreparedData = { columns: [], keys: [], prepared: {} };
-    for (let [column, value] of Object.entries(data)) {
-        let key = "$" + column;
+    const preparedData: PreparedData = { columns: [], keys: [], prepared: {} };
+    for (const [column, value] of Object.entries(data)) {
+        const key = "$" + column;
         preparedData.keys.push(key);
         preparedData.columns.push(column);
         preparedData.prepared[key] = value;

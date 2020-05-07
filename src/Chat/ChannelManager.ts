@@ -1,8 +1,7 @@
-import Channel from "./Channel";
-import Application from "../Application/Application";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
 
 export default class ChannelManager {
-    private readonly channels: Channel[];
+    private readonly channels: ChannelEntity[];
     private readonly ids: string[];
 
     constructor() {
@@ -10,28 +9,13 @@ export default class ChannelManager {
         this.ids = [];
     }
 
-    findChannelById(id: string) {
-        for (let channel of this.channels)
-            if (channel.getId() === id)
-                return channel;
-        return null;
-    }
-
-    getAll() {
+    getAll(): ChannelEntity[] {
         return this.channels;
     }
 
-    add(channel: Channel) {
-        if (this.ids.indexOf(channel.getId()) >= 0) return;
-
-        this.ids.push(channel.getId());
+    add(channel: ChannelEntity): void {
+        if (this.ids.indexOf(channel.channelId) >= 0) return;
+        this.ids.push(channel.channelId);
         this.channels.push(channel);
-    }
-
-    broadcast(message: string) {
-        let ops = [];
-        for (let channel of this.channels)
-            ops.push(Application.getAdapter().sendMessage(message, channel));
-        return Promise.all(ops);
     }
 }

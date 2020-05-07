@@ -1,48 +1,51 @@
-import Entity from "./Entity";
+import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {DataTypes} from "../Schema";
 import ListEntity from "./ListEntity";
 import {where} from "../BooleanOperations";
+import ChannelEntity from "./ChannelEntity";
 
-@Table((service, channel) => `${service}_${channel}_lists`)
-export default class ListsEntity extends Entity {
-    constructor(id: number, service: string, channel: string) {
-        super(ListsEntity, id, service, channel);
+@Table(({ service, channel }) => `${service}_${channel.name}_lists`)
+export default class ListsEntity extends Entity<ListsEntity> {
+    constructor(id: number, params: EntityParameters) {
+        super(ListsEntity, id, params);
     }
 
     @Column({ datatype: DataTypes.STRING })
     public name: string;
 
-    public async addItem(value: string) {
-        return ListEntity.make<ListEntity>(this.getService(), this.getChannelName(), { value }, this.name);
+    public async addItem(value: string): Promise<ListEntity|null> {
+        return ListEntity.make<ListEntity>({ channel: this.getChannel(), optionalParam: this.name }, { value });
     }
 
-    public async getItem(id: number) {
-        return ListEntity.get<ListEntity>(id, this.getService(), this.getChannelName(), this.name);
+    public async getItem(id: number): Promise<ListEntity|null> {
+        return ListEntity.retrieve({ channel: this.getChannel() }, where().eq("id", id));
     }
 
-    public async getAllItems() {
-        return ListEntity.getAll<ListEntity>(this.getService(), this.getChannelName(), this.name);
+    public async getAllItems(): Promise<ListEntity[]> {
+        return ListEntity.getAll<ListEntity>({ channel: this.getChannel(), optionalParam: this.name });
     }
 
-    public async getRandomItem() {
-        let items = await this.getAllItems();
+    public async getRandomItem(): Promise<ListEntity|null> {
+        const items = await this.getAllItems();
+        if (items.length < 1) return null;
         return items[Math.floor(Math.random() * items.length)];
     }
 
-    public async delete() {
+    public async delete(): Promise<void> {
         await super.delete();
-        await ListEntity.dropTable(this.getService(), this.getChannelName(), name);
+        await ListEntity.dropTable({ channel: this.getChannel(), optionalParam: this.name });
     }
 
-    static async findByName(name: string, service: string, channel: string) {
-        return Entity.retrieve<ListsEntity>(ListsEntity, service, channel, where().eq("name", name));
+    static async findByName(name: string, channel: ChannelEntity): Promise<ListsEntity|null> {
+        return ListsEntity.retrieve({ channel }, where().eq("name", name));
     }
 
-    static async create(name: string, service: string, channel: string) {
-        let list = await ListsEntity.make(service, channel, { name });
+    static async create(name: string, channel: ChannelEntity): Promise<ListsEntity|null> {
+        const list = await ListsEntity.make<ListsEntity>({ channel }, { name });
         if (list === null) return null;
-        await ListEntity.createTable(service, channel, name);
+        await ListEntity.createTable({ channel, optionalParam: name });
+        return list;
     }
 }

@@ -6,33 +6,30 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as util from "util";
-
-export interface IDictionary {
-    [key: string]: any
-}
+import GenericObject from "../Interfaces/GenericObject";
 
 /** @ignore */
-export function normalizeSegment(seg: string): any {
-    let num = Number(seg);
+export function normalizeSegment(seg: string): string|number {
+    const num = Number(seg);
     return isNaN(num) ? seg : num;
 }
 
 /** @ignore */
-export function getPathSegments(key: string) {
-    let segments = [];
+export function getPathSegments(key: string): string[] {
+    const segments = [];
 
     let segment = "";
     for (let i = 0; i < key.length; i++) {
-        let curr = key.charAt(i);
-        let next = key.charAt(i + 1);
+        const curr = key.charAt(i);
+        const next = key.charAt(i + 1);
 
-        if (curr === '\\' && next === '.') {
-            segment += '.';
+        if (curr === "\\" && next === ".") {
+            segment += ".";
             i++;
             continue;
         }
 
-        if (curr === '.' && segment.length > 0) {
+        if (curr === "." && segment.length > 0) {
             segments.push(normalizeSegment(segment));
             segment = "";
             continue;
@@ -49,29 +46,29 @@ export function getPathSegments(key: string) {
  * A generic dictionary class to make configs and other data easier to manage with dot notation.
  */
 export default class Dictionary {
-    private dict: IDictionary;
+    private dict: GenericObject;
 
     /**
      * Constructor for the Dictionary class
      *
      * @param initial The initial dictionary values
      */
-    constructor(initial: IDictionary = {}) {
+    constructor(initial: GenericObject = {}) {
         this.dict = initial;
     }
 
-    get(key: string): any {
-        let segs = getPathSegments(key);
+    get<T>(key: string): T {
+        const segs = getPathSegments(key);
         let curr = this.dict;
 
-        for (let seg of segs) {
+        for (const seg of segs) {
             if (!(curr instanceof Object)) throw new Error("Key not found: " + key);
-            if (!curr.propertyIsEnumerable(seg)) throw new Error("Key not found: " + key);
+            if (!Object.prototype.propertyIsEnumerable.call(curr, seg)) throw new Error("Key not found: " + key);
 
             curr = curr[seg];
         }
 
-        return curr;
+        return curr as T;
     }
 
     /**
@@ -86,7 +83,7 @@ export default class Dictionary {
      *         foo: "bar"
      *     }
      * });
-     * let test = dict.get('example.foo'); // "bar"
+     * let test = dict.get("example.foo"); // "bar"
      * ```
      *
      * @param key The key of the element to retrieve
@@ -94,7 +91,7 @@ export default class Dictionary {
      *
      * @returns The value located at the key or the default value if the key is not found
      */
-    getOrDefault(key: string, def: any = null): any {
+    getOrDefault<T>(key: string, def: T = null): T {
         try {
             return this.get(key);
         } catch (e) {
@@ -109,7 +106,7 @@ export default class Dictionary {
      * By executing the following code:
      * ```typescript
      * let dict = new Dictionary();
-     * dict.put('example.foo', 'bar');
+     * dict.put("example.foo", "bar");
      * ```
      * The resulting json would look like:
      * ```json
@@ -123,14 +120,14 @@ export default class Dictionary {
      * @param key   The key of the element to retrieve
      * @param value The value to put into the dictionary
      */
-    put(key: string, value: any): void {
-        let segs = getPathSegments(key);
+    put<T>(key: string, value: T): void {
+        const segs = getPathSegments(key);
         let curr = this.dict;
 
         for (let i = 0; i < segs.length - 1; i++) {
-            let seg = segs[i];
+            const seg = segs[i];
 
-            if (!curr.propertyIsEnumerable(seg)) curr[seg] = {};
+            if (!Object.prototype.propertyIsEnumerable.call(curr, seg)) curr[seg] = {};
 
             curr = curr[seg];
         }
@@ -150,7 +147,7 @@ export default class Dictionary {
      *         foo: "bar"
      *     }
      * });
-     * dict.remove('example.foo'); // Removes
+     * dict.remove("example.foo"); // Removes
      * ```
      * The resulting json would look like:
      * ```json
@@ -162,15 +159,15 @@ export default class Dictionary {
      *
      * @param key The key name
      */
-    remove(key: string) {
-        let segs = getPathSegments(key);
+    remove(key: string): void {
+        const segs = getPathSegments(key);
         let curr = this.dict;
 
         for (let i = 0; i < segs.length - 1; i++) {
-            let seg = segs[i];
+            const seg = segs[i];
 
             if (!(curr instanceof Object)) return;
-            if (!curr.propertyIsEnumerable(seg)) return;
+            if (!Object.prototype.propertyIsEnumerable.call(curr, seg)) return;
 
             curr = curr[seg];
         }
@@ -190,8 +187,8 @@ export default class Dictionary {
      *         foo: "bar"
      *     }
      * });
-     * let test1 = dict.exists('example.foo'); // True
-     * let test2 = dict.exists('not.a.key');   // False
+     * let test1 = dict.exists("example.foo"); // True
+     * let test2 = dict.exists("not.a.key");   // False
      * ```
      *
      * @param key The key of the element to retrieve
@@ -199,12 +196,12 @@ export default class Dictionary {
      * @returns The value located at the key or the default value if the key is not found
      */
     exists(key: string): boolean {
-        let segs = getPathSegments(key);
+        const segs = getPathSegments(key);
         let curr = this.dict;
 
-        for (let seg of segs) {
+        for (const seg of segs) {
             if (!(curr instanceof Object)) return false;
-            if (!curr.propertyIsEnumerable(seg)) return false;
+            if (!Object.prototype.propertyIsEnumerable.call(curr, seg)) return false;
 
             curr = curr[seg];
         }
@@ -222,7 +219,7 @@ export default class Dictionary {
      *
      * @returns If the value is in the dictionary
      */
-    contains(value: any): boolean {
+    contains<T>(value: T): boolean {
         return Object.values(this.dict).indexOf(value) !== -1;
     }
 
@@ -234,12 +231,12 @@ export default class Dictionary {
      *
      * @param value The value to look for the key of
      *
-     * @returns The key of the value or null if it's not found
+     * @returns The key of the value or null if it"s not found
      */
-    keyOf(value: any): string {
+    keyOf<T>(value: T): string {
         if (!this.contains(value)) return null;
 
-        let index = Object.values(this.dict).indexOf(value);
+        const index = Object.values(this.dict).indexOf(value);
         return Object.keys(this.dict)[index];
     }
 
@@ -248,65 +245,67 @@ export default class Dictionary {
      *
      * @returns An object
      */
-    all() {
+    all(): GenericObject {
         return this.dict;
     }
 
-    merge(dict: Dictionary) {
+    merge(dict: Dictionary): void {
         this.dict = Object.assign(this.dict, dict);
     }
 }
 
 /**
- * Parses a file's contents into whatever the [[FileDictionaryParser]] should put in the dictionary
+ * Parses a file"s contents into whatever the [[FileDictionaryParser]] should put in the dictionary
  */
-export type FileParser = (contents: string) => any;
+export interface FileParser<T> {
+    (contents: string): T;
+}
 
 /**
  * Parses a directory of files into a [[Dictionary]],
  * used to load configuration or language files.
  */
 export class FileDictionaryParser {
-    static async parse(directory: string, fileParser: FileParser): Promise<Dictionary> {
+    static async parse<T>(directory: string, fileParser: FileParser<T>): Promise<Dictionary> {
         const dictionary = new Dictionary();
-        const base_path = path.resolve(process.cwd(), directory);
+        const basePath = path.resolve(process.cwd(), directory);
 
-        let entries = await util.promisify(fs.readdir).call(fs, base_path);
-        for (let entry of entries) {
-            let file = path.resolve(base_path, entry);
-            let stats = await util.promisify(fs.lstat).call(fs, file);
+        const entries = await util.promisify(fs.readdir).call(fs, basePath);
+        for (const entry of entries) {
+            const file = path.resolve(basePath, entry);
+            const stats = await util.promisify(fs.lstat).call(fs, file);
 
             if (stats.isDirectory()) {
-                let sub = await FileDictionaryParser.parse(file, fileParser);
+                const sub = await FileDictionaryParser.parse(file, fileParser);
                 dictionary.put(entry, sub.all());
             } else {
-                let buffer = await util.promisify(fs.readFile).call(fs, base_path + '/' + entry);
-                let parsed = fileParser(buffer.toString());
+                const buffer = await util.promisify(fs.readFile).call(fs, basePath + "/" + entry);
+                const parsed = fileParser(buffer.toString());
 
-                dictionary.put(entry.substring(0, entry.lastIndexOf('.')), parsed);
+                dictionary.put(entry.substring(0, entry.lastIndexOf(".")), parsed);
             }
         }
 
         return dictionary;
     }
 
-    static parseSync(directory: string, fileParser: FileParser): Dictionary {
+    static parseSync<T>(directory: string, fileParser: FileParser<T>): Dictionary {
         const dictionary = new Dictionary();
-        const base_path = path.resolve(process.cwd(), directory);
+        const basePath = path.resolve(process.cwd(), directory);
 
-        let entries = fs.readdirSync(base_path);
-        for (let entry of entries) {
-            let file = path.resolve(base_path, entry);
-            let stats = fs.lstatSync(file);
+        const entries = fs.readdirSync(basePath);
+        for (const entry of entries) {
+            const file = path.resolve(basePath, entry);
+            const stats = fs.lstatSync(file);
 
             if (stats.isDirectory()) {
-                let sub = FileDictionaryParser.parseSync(file, fileParser);
+                const sub = FileDictionaryParser.parseSync(file, fileParser);
                 dictionary.put(entry, sub.all());
             } else {
-                let buffer = fs.readFileSync(file);
-                let parsed = fileParser(buffer.toString());
+                const buffer = fs.readFileSync(file);
+                const parsed = fileParser(buffer.toString());
 
-                dictionary.put(entry.substring(0, entry.lastIndexOf('.')), parsed);
+                dictionary.put(entry.substring(0, entry.lastIndexOf(".")), parsed);
             }
         }
 

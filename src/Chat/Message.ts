@@ -123,7 +123,3 @@ export default class Message {
         };
     }
 }
-
-export interface MessageFactory {
-    (raw: string, chatter: ChatterEntity, channel: ChannelEntity): Message;
-}

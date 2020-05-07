@@ -8,7 +8,6 @@ export default {
     ResponseFactory: Symbol("Response Factory"),
     CommandEventFactory: Symbol("Command Event Factory"),
     ConfirmationFactory: Symbol("Confirmation Factory"),
-    MessageFactory: Symbol("Message Factory"),
     TwitchMessageFactory: Symbol("Twitch Message Factory"),
 };
 

@@ -6,7 +6,7 @@ import GroupsEntity from "./GroupsEntity";
 import {ManyToMany, ManyToOne, OneToMany} from "../Decorators/Relationships";
 import GroupMembersEntity from "./GroupMembersEntity";
 import UserPermissionsEntity from "./UserPermissionsEntity";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import UserEntity from "./UserEntity";
 import ChannelEntity, {ChannelStateList} from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";

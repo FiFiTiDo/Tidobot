@@ -13,13 +13,13 @@ export function Table(tableNameFormatter: TableNameFormatter): Function {
     };
 }
 
-export function getTableName<T extends Entity>(entityConstructor: EntityConstructor<T>, params: EntityParameters): string|null {
+export function getTableName<T extends Entity<T>>(entityConstructor: EntityConstructor<T>, params: EntityParameters): string|null {
     const formatter = getMetadata<TableNameFormatter>(TABLE_NAME_KEY, entityConstructor);
     if (formatter === null) return null;
     return formatter(params);
 }
 
-export function formatForCreate<T extends Entity>(entityConstructor: EntityConstructor<T>): string {
+export function formatForCreate<T extends Entity<T>>(entityConstructor: EntityConstructor<T>): string {
     const columns = getColumns(entityConstructor);
     const constraints = formatConstraints(entityConstructor);
     const parts = [];

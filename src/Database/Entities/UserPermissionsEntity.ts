@@ -4,7 +4,7 @@ import {Column} from "../Decorators/Columns";
 import {DataTypes} from "../Schema";
 import {Unique} from "../Decorators/Constraints";
 import ChannelEntity from "./ChannelEntity";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import ChatterEntity from "./ChatterEntity";
 
 @Unique("UserPermission", ["permission", "user_id"])

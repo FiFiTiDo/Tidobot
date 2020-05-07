@@ -1,4 +1,4 @@
-import Database from "./Database/Database";
+import {Database} from "sqlite3";
 
 export default {
     Config: Symbol("config"),

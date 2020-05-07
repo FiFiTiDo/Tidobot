@@ -3,7 +3,7 @@ import {DataTypes} from "../Schema";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import ChannelEntity from "./ChannelEntity";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 
 @Table(({service, channel}) => `${service}_${channel.name}_news`)
 export default class CountersEntity extends Entity<CountersEntity> {

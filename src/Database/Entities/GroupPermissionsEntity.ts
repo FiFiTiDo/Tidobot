@@ -3,7 +3,7 @@ import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {DataTypes} from "../Schema";
 import {Unique} from "../Decorators/Constraints";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import GroupsEntity from "./GroupsEntity";
 
 @Unique("GroupPermission", ["permission", "group_id"])

@@ -8,11 +8,11 @@ interface Constraint {
     sql: string;
 }
 
-export function getConstraints(entity: Entity|EntityConstructor<any>): Constraint[] {
+export function getConstraints<T extends Entity<T>>(entity: T|EntityConstructor<T>): Constraint[] {
     return getMetadata<Constraint[]>(CONSTRAINTS_KEY, entity) || [];
 }
 
-export function formatConstraints(entity: Entity|EntityConstructor<any>): string[] {
+export function formatConstraints<T extends Entity<T>>(entity: T|EntityConstructor<T>): string[] {
     return getConstraints(entity).map(({name, sql}) => `CONSTRAINT ${name} ${sql}`);
 }
 

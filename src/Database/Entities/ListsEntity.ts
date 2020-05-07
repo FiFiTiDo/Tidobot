@@ -3,7 +3,7 @@ import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {DataTypes} from "../Schema";
 import ListEntity from "./ListEntity";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 
 @Table(({ service, channel }) => `${service}_${channel.name}_lists`)

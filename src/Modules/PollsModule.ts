@@ -222,7 +222,7 @@ class VoteCommand extends Command {
         const option = poll.getOption(optionNum);
         if (option === null) {
             if (announce)
-                await this.getModuleManager().getModule(CommandModule).showInvalidArgument("option #", event.getArgument(1), "vote <option #>", msg);
+                await CommandModule.showInvalidArgument("option #", event.getArgument(1), "vote <option #>", msg);
             return;
         }
 
@@ -244,7 +244,7 @@ class PollCommand extends Command {
 
     private async getPoll(msg: Message): Promise<Poll> {
         if (!this.runningPolls.hasChannel(msg.getChannel())) {
-            await msg.getResponse().message(Key("polls.not_running"), await this.getModuleManager().getModule(CommandModule).getPrefix(msg.getChannel()));
+            await msg.getResponse().message(Key("polls.not_running"), await CommandModule.getPrefix(msg.getChannel()));
             return;
         }
 
@@ -267,7 +267,7 @@ class PollCommand extends Command {
         });
         if (args === null) return;
         const options = args[0] as string[];
-        const prefix = await this.getModuleManager().getModule(CommandModule).getPrefix(msg.getChannel());
+        const prefix = await CommandModule.getPrefix(msg.getChannel());
 
         if (this.runningPolls.hasChannel(msg.getChannel())) {
             await response.message(Key("polls.already_running"), prefix);

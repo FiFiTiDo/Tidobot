@@ -3,7 +3,7 @@ import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
 import {DataTypes} from "../Schema";
 import ChannelEntity from "./ChannelEntity";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import Logger from "../../Utilities/Logger";
 import SettingsSystem from "../../Systems/Settings/SettingsSystem";

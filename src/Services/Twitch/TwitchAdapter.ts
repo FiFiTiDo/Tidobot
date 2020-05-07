@@ -11,7 +11,6 @@ import LeaveEvent from "../../Chat/Events/LeaveEvent";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../../Utilities/Config";
-import Cache from "../../Systems/Cache/Cache";
 import {inject, injectable} from "inversify";
 import symbols from "../../symbols";
 import Logger from "../../Utilities/Logger";

@@ -1,7 +1,11 @@
-import {PreparedColumn, PreparedData} from "./PreparedData";
-import {AbstractQuery} from "./QueryBuilder";
+export type PreparedColumn = {
+    column: string;
+    key: string;
+    value: any;
+}
+export type PreparedData = PreparedColumn[];
 
-type BooleanCallback<T extends AbstractQuery> = (where: Where<T>) => void;
+type BooleanCallback = (where: Where) => void;
 
 abstract class BooleanOperation {
     abstract toString(): string;
@@ -77,12 +81,12 @@ class EqualsExpression extends BooleanOperation {
     }
 }
 
-export class Where<T extends AbstractQuery> {
+export class Where {
     private readonly data: BooleanOperation[];
     private readonly preparedValues: { [key: string]: any };
     private readonly reservedKeys: string[];
 
-    constructor(private parent: Where<T> = null, private query: T = null) {
+    constructor(private parent: Where = null) {
         this.data = [];
         this.preparedValues = {};
         this.reservedKeys = [];
@@ -115,15 +119,15 @@ export class Where<T extends AbstractQuery> {
         return this.reservedKeys.indexOf(key) >= 0;
     }
 
-    and(func: BooleanCallback<T>): this {
-        const where = new Where(this, null);
+    and(func: BooleanCallback): this {
+        const where = new Where(this);
         func.call(null, where);
         this.add(new AndExpression(where.getData()));
         return this;
     }
 
-    or(func: BooleanCallback<T>): this {
-        const where = new Where(this, null);
+    or(func: BooleanCallback): this {
+        const where = new Where(this);
         func.call(null, where);
         this.add(new OrExpression(where.getData()));
         return this;
@@ -162,12 +166,8 @@ export class Where<T extends AbstractQuery> {
     getData(): BooleanOperation[] {
         return this.data;
     }
-
-    done(): T {
-        return this.query;
-    }
 }
 
-export function where(): Where<null> {
-    return new Where(null, null);
+export function where(): Where {
+    return new Where(null);
 }

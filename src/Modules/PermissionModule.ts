@@ -1,7 +1,7 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
-import {where} from "../Database/BooleanOperations";
+import {where} from "../Database/Where";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
 import {Key} from "../Utilities/Translator";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";

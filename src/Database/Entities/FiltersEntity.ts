@@ -2,7 +2,7 @@ import Entity, {EntityParameters} from "./Entity";
 import {DataTypes} from "../Schema";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 
 @Table(service => `${service}_filters`)

@@ -2,7 +2,7 @@ import {DataTypes, TableSchema} from "../Schema";
 import Application from "../../Application/Application";
 import {prepareData, RawRowData, RawRowDataWithId} from "../RowData";
 import moment from "moment";
-import {Where, where} from "../BooleanOperations";
+import {Where, where} from "../Where";
 import {formatForCreate, getTableName} from "../Decorators/Table";
 import {Serializable} from "../../Utilities/Patterns/Serializable";
 import ChannelEntity from "./ChannelEntity";
@@ -22,11 +22,11 @@ export interface EntityConstructor<T extends Entity<T>>{
     make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData|RawRowData[]): Promise<T|T[]|null>;
     createFromRow<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowDataWithId): T;
 
-    retrieve<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>): Promise<T|null>;
-    retrieveAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where<any>): Promise<T[]>;
-    retrieveOrMake<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>, data: RawRowData): Promise<T|null>;
+    retrieve<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where): Promise<T|null>;
+    retrieveAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where): Promise<T[]>;
+    retrieveOrMake<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where, data: RawRowData): Promise<T|null>;
 
-    removeEntries<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, where?: Where<any>): Promise<void>;
+    removeEntries<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, where?: Where): Promise<void>;
 }
 
 export interface EntityParameters {
@@ -75,7 +75,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
 
     async exists(): Promise<boolean> {
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().get(`SELECT COUNT(*) as "count" FROM ${this.tableName} WHERE id = ?`, this.id,(err, row) => {
+            Application.getDatabase().get(`SELECT COUNT(*) as "count" FROM ${this.tableName} WHERE id = ?`, this.id,(err, row) => {
                 if (err)
                     reject(err);
                 else {
@@ -92,7 +92,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
     async save(): Promise<void> {
         return new Promise((resolve, reject) => {
             const { keys, columns, prepared } = prepareData(this.getSchema().exportRow());
-            Application.getDatabase().getClient().get(`INSERT OR REPLACE INTO ${this.tableName}(${columns.join(", ")}) VALUES (${keys.join(", ")})`, prepared, err => {
+            Application.getDatabase().get(`INSERT OR REPLACE INTO ${this.tableName}(${columns.join(", ")}) VALUES (${keys.join(", ")})`, prepared, err => {
                 if (err)
                     reject(err);
                 else
@@ -107,7 +107,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
 
     async load(): Promise<boolean> {
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().get(`SELECT * FROM ${this.tableName} WHERE id = ?`, this.id,(err, row) => {
+            Application.getDatabase().get(`SELECT * FROM ${this.tableName} WHERE id = ?`, this.id,(err, row) => {
                 if (err)
                     reject(err);
                 else {
@@ -155,7 +155,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
         const tableName = getTableName(this, normalizeParams(params));
         const columns = formatForCreate(this);
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().exec(`CREATE TABLE IF NOT EXISTS ${tableName}(${columns});`, function (err) {
+            Application.getDatabase().exec(`CREATE TABLE IF NOT EXISTS ${tableName}(${columns});`, function (err) {
                 if (err) {
                     reject(err);
                 } else {
@@ -168,7 +168,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
     static async dropTable<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters): Promise<void> {
         const tableName = getTableName(this, normalizeParams(params));
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().exec(`DROP TABLE ${tableName};`, function (err) {
+            Application.getDatabase().exec(`DROP TABLE ${tableName};`, function (err) {
                 if (err) {
                     reject(err);
                 } else {
@@ -187,15 +187,15 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
     }
 
 
-    static async retrieve<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>): Promise<T|null> {
+    static async retrieve<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where): Promise<T|null> {
         return this.retrieveAll<T>(params, whereClause).then(models => models.length < 1 ? null : models[0]);
     }
 
-    static async retrieveAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where<any>): Promise<T[]> {
+    static async retrieveAll<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where): Promise<T[]> {
         const tableName = getTableName(this, normalizeParams(params));
         if (!whereClause) whereClause = where();
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().all(`SELECT * FROM ${tableName}` + whereClause.toString(), whereClause.getPreparedValues(),(err, rows) => {
+            Application.getDatabase().all(`SELECT * FROM ${tableName}` + whereClause.toString(), whereClause.getPreparedValues(),(err, rows) => {
                 if (err)
                     reject(err);
                 else {
@@ -209,7 +209,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
         });
     }
 
-    static async retrieveOrMake<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where<any>, data: RawRowData): Promise<T|null> {
+    static async retrieveOrMake<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where, data: RawRowData): Promise<T|null> {
         return this.retrieve(params, whereClause).then(entity => entity === null ? this.make(params, data) : entity);
     }
 
@@ -219,11 +219,11 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
         return entity;
     }
 
-    static async removeEntries<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where<any>): Promise<void> {
+    static async removeEntries<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause?: Where): Promise<void> {
         const tableName = getTableName(this, normalizeParams(params));
         if (!whereClause) whereClause = where();
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().get(`DELETE FROM ${tableName}${whereClause.toString()};`, whereClause.getPreparedValues(),(err) => {
+            Application.getDatabase().get(`DELETE FROM ${tableName}${whereClause.toString()};`, whereClause.getPreparedValues(),(err) => {
                 if (err)
                     reject(err);
                 else
@@ -236,7 +236,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
         const tableName = getTableName(entityConstructor, normalizeParams(params));
         const { columns, keys, prepared } = prepareData(data);
         return new Promise((resolve, reject) => {
-            Application.getDatabase().getClient().run(`INSERT OR ABORT INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
+            Application.getDatabase().run(`INSERT OR ABORT INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
                 if (err) {
                     if ((err as any).errno === 19 && err.message.indexOf("UNIQUE") >= 0) {
                         resolve(null);
@@ -255,14 +255,14 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
     static async makeEntities<T extends Entity<T>>(entityConstructor: EntityConstructor<T>, params: EntityParameters, data: RawRowData[]): Promise<T[]> {
         const tableName = getTableName(entityConstructor, normalizeParams(params));
         return new Promise((resolve, reject) => {
-            const db = Application.getDatabase().getClient();
+            const db = Application.getDatabase();
             const ops: Promise<T>[] = [];
             db.serialize(function () {
                 db.run("BEGIN TRANSACTION", err => err ? reject(err) : null);
                 for (const row of data) {
                     ops.push(new Promise((resolve, reject) => {
                         const { columns, keys, prepared } = prepareData(data[0]);
-                        Application.getDatabase().getClient().run(`INSERT OR IGNORE INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
+                        Application.getDatabase().run(`INSERT OR IGNORE INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
                             if (err) {
                                 reject(err);
                             } else {

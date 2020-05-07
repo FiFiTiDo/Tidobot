@@ -28,12 +28,11 @@ export interface ColumnProp {
 export class TableSchema {
     private readonly columns: Map<string, ColumnProp>;
 
-    constructor(private entity: Entity) {
+    constructor(private entity: Entity<any>) {
         this.columns = new Map();
 
-        for (const col of getColumns(entity) as ColumnProp[]) {
+        for (const col of getColumns(entity) as ColumnProp[])
             this.addColumn(col.property, col.settings);
-        }
     }
 
     addColumn(property: string, settings: ColumnSettings): void {
@@ -100,11 +99,11 @@ export class TableSchema {
         for (const relationship of getRelationships(this.entity)) {
             const entities = await this.entity[relationship]();
             if (Array.isArray(entities)) {
-                relationshipData[relationship] = (entities as Entity[]).map(entity => entity.getSchema().exportRow());
+                relationshipData[relationship] = (entities as Entity<any>[]).map(entity => entity.getSchema().exportRow());
             } else if (entities === null) {
                 relationshipData[relationship] = null;
             } else {
-                relationshipData[relationship] = (entities as Entity).getSchema().exportRow();
+                relationshipData[relationship] = (entities as Entity<any>).getSchema().exportRow();
             }
         }
         return Object.assign(this.exportRow(), relationshipData);

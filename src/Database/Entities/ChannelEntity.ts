@@ -8,7 +8,7 @@ import PermissionEntity from "./PermissionEntity";
 import {ImportModel} from "../Decorators/Relationships";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import {Observable} from "../../Utilities/Patterns/Observable";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import ChatterList from "../../Chat/ChatterList";

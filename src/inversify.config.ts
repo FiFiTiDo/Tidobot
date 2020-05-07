@@ -9,14 +9,16 @@ import ChatterManager from "./Chat/ChatterList";
 import ChannelManager from "./Chat/ChannelManager";
 import ModuleManager from "./Modules/ModuleManager";
 import * as Modules from "./Modules";
-import {ALL_MODULES_KEY} from "./Modules";
 import Translator from "./Utilities/Translator";
-import Database from "./Database/Database";
 import Application from "./Application/Application";
 import Response, {ResponseFactory} from "./Chat/Response";
 import {TwitchMessage, TwitchMessageFactory} from "./Services/Twitch/TwitchMessage";
-import AbstractModule from "./Modules/AbstractModule";
 import Logger from "./Utilities/Logger";
+import * as sqlite3 from "sqlite3";
+import * as path from "path";
+import ChannelEntity from "./Database/Entities/ChannelEntity";
+import UserEntity from "./Database/Entities/UserEntity";
+import {Database} from "sqlite3";
 
 require("winston-daily-rotate-file");
 
@@ -38,11 +40,21 @@ container.bind<Adapter>(Adapter).toDynamicValue(ctx => {
             throw new Error("Unknown service type: " + service);
     }
 });
-container.bind<DatabaseProvider>(symbols.DB).toProvider<Database>(ctx => {
-    return (): Promise<Database> => {
-        const adapter = ctx.container.get<Adapter>(Adapter);
-        const modules = ctx.container.get<AbstractModule[]>(ALL_MODULES_KEY);
-        return Database.create(adapter.getName(), modules);
+container.bind<DatabaseProvider>(symbols.DB).toProvider<Database>(() => {
+    return async (): Promise<Database> => {
+        const service = process.env.SERVICE;
+        const db = new sqlite3.Database(path.join(process.cwd(), "data", "database.db"), sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
+
+        try {
+            await ChannelEntity.createTable({ service });
+            await UserEntity.createTable({ service });
+        } catch(e) {
+            console.error("Unable to create databases for channels and users");
+            console.error("Cause: " + e.message);
+            console.error(e.stack);
+        }
+
+        return db;
     };
 });
 container.bind<ChatterManager>(ChatterManager).toSelf();

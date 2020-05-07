@@ -1,4 +1,4 @@
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import Entity, {EntityConstructor} from "../Entities/Entity";
 import {getOrSetProp} from "../../Utilities/functions";
 import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";

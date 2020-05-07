@@ -3,7 +3,7 @@ import {DataTypes} from "../Schema";
 import moment, {Moment} from "moment";
 import {Table} from "../Decorators/Table";
 import {Column} from "../Decorators/Columns";
-import {where} from "../BooleanOperations";
+import {where} from "../Where";
 import Message from "../../Chat/Message";
 import MessageParser from "../../Chat/MessageParser";
 import ChannelEntity from "./ChannelEntity";
@@ -68,6 +68,6 @@ export default class CommandEntity extends Entity<CommandEntity> {
     }
 
     public static async findByTrigger(trigger: string, channel: ChannelEntity): Promise<CommandEntity[]> {
-        return Entity.retrieveAll(CommandEntity, { channel }, where().eq("trigger", trigger));
+        return CommandEntity.retrieveAll({ channel }, where().eq("trigger", trigger));
     }
 }

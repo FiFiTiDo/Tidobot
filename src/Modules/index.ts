@@ -10,7 +10,6 @@ import ListModule from "./ListModule";
 import PollsModule from "./PollsModule";
 import CounterModule from "./CounterModule";
 import FunModule from "./FunModule";
-import ExpressionModule from "./ExpressionModule";
 import NewsModule from "./NewsModule";
 import RaffleModule from "./RaffleModule";
 import CurrencyModule from "./CurrencyModule";
@@ -23,8 +22,8 @@ import symbols from "../symbols";
 
 export const ALL_MODULES = [
     ConfirmationModule, CommandModule, PermissionModule, GroupsModule, SettingsModule, GeneralModule, CustomCommandModule,
-    ListModule, PollsModule, CounterModule, FunModule, ExpressionModule, NewsModule, RaffleModule, CurrencyModule,
-    FilterModule, BettingModule, TidobotModule, UserModule
+    ListModule, PollsModule, CounterModule, FunModule, NewsModule, RaffleModule, CurrencyModule, FilterModule, BettingModule,
+    TidobotModule, UserModule
 ];
 
 export const ALL_MODULES_KEY = Symbol("All Modules");

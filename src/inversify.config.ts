@@ -15,7 +15,6 @@ import Database from "./Database/Database";
 import Application from "./Application/Application";
 import Response, {ResponseFactory} from "./Chat/Response";
 import Message, {MessageFactory} from "./Chat/Message";
-import ExpressionModule from "./Modules/ExpressionModule";
 import {TwitchMessage, TwitchMessageFactory} from "./Services/Twitch/TwitchMessage";
 import AbstractModule from "./Modules/AbstractModule";
 import Logger from "./Utilities/Logger";
@@ -63,17 +62,15 @@ Modules.createBindings(container);
 container.bind<MessageFactory>(symbols.MessageFactory).toFactory<Message>(ctx => (raw, chatter, channel): Message => {
     const adapter = ctx.container.get<Adapter>(Adapter);
     const responseFactory = ctx.container.get<ResponseFactory>(symbols.ResponseFactory);
-    const expr = ctx.container.get<ExpressionModule>(ExpressionModule);
 
-    return new Message(raw, chatter, channel, adapter, responseFactory, expr);
+    return new Message(raw, chatter, channel, adapter, responseFactory);
 });
 
 container.bind<TwitchMessageFactory>(symbols.TwitchMessageFactory).toFactory<TwitchMessage>(ctx => (raw, chatter, channel, userstate): TwitchMessage => {
     const adapter = ctx.container.get<Adapter>(Adapter) as TwitchAdapter;
     const responseFactory = ctx.container.get<ResponseFactory>(symbols.ResponseFactory);
-    const expr = ctx.container.get<ExpressionModule>(ExpressionModule);
 
-    return new TwitchMessage(raw, chatter, channel, userstate, adapter, responseFactory, expr);
+    return new TwitchMessage(raw, chatter, channel, userstate, adapter, responseFactory);
 });
 
 export default container;

@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
-import ExpressionModule from "./ExpressionModule";
 import moment from "moment-timezone";
 import {array_rand} from "../Utilities/ArrayUtils";
 import {Key} from "../Utilities/Translator";
@@ -10,6 +9,7 @@ import {Role} from "../Systems/Permissions/Role";
 import Logger from "../Utilities/Logger";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
+import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 
 
 class PingCommand extends Command {
@@ -155,7 +155,7 @@ export default class GeneralModule extends AbstractModule {
 
         settings.registerSetting(new Setting("timezone", "America/New_York", SettingType.TIMEZONE));
 
-        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
+        ExpressionSystem.getInstance().registerResolver(msg => ({
             datetime: async (format?: string): Promise<string> => {
                 const timezone = await msg.getChannel().getSetting<moment.MomentZone>("timezone");
                 return moment().tz(timezone.name).format(format ? format : "Y-m-d h:i:s");

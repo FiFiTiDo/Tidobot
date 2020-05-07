@@ -1,5 +1,5 @@
-import * as Lexer from "../../../src/Utilities/Expression/Lexer";
-import ExpressionParser from "../../../src/Utilities/Expression/Parser";
+import * as Lexer from "../../../src/Systems/Expressions/Lexer";
+import ExpressionParser from "../../../src/Systems/Expressions/Parser";
 const lexer = Lexer.default;
 import * as chai from 'chai'
 chai.should();

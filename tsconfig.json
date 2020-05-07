@@ -7,6 +7,7 @@
     "experimentalDecorators": true,
     "module": "commonjs",
     "moduleResolution": "node",
+    "target": "ES6",
     "types": [
       "node", "reflect-metadata"
     ],

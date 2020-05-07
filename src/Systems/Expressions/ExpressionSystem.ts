@@ -1,20 +1,19 @@
-import AbstractModule from "./AbstractModule";
-import Message from "../Chat/Message";
-import deepmerge from "deepmerge";
+import ExpressionParser from "./Parser";
+import ExpressionInterpreter from "./Interpreter";
+import Message from "../../Chat/Message";
 import rp from "request-promise-native";
-import Application from "../Application/Application";
+import Logger from "../../Utilities/Logger";
 import cheerio from "cheerio";
-import {format_duration} from "../Utilities/functions";
+import {array_rand} from "../../Utilities/ArrayUtils";
 import moment from "moment";
-import lexer from "../Utilities/Expression/Lexer";
-import Dictionary from "../Utilities/Structures/Dictionary";
-import chrono from "chrono-node";
-import ExpressionParser from "../Utilities/Expression/Parser";
-import ExpressionInterpreter from "../Utilities/Expression/Interpreter";
+import {format_duration} from "../../Utilities/functions";
 import prettyMilliseconds from "pretty-ms";
-import {array_rand} from "../Utilities/ArrayUtils";
-import Logger from "../Utilities/Logger";
-import {Key} from "../Utilities/Translator";
+import Application from "../../Application/Application";
+import lexer from "./Lexer";
+import Dictionary from "../../Utilities/Structures/Dictionary";
+import deepmerge from "deepmerge";
+import {Key} from "../../Utilities/Translator";
+import chrono from "chrono-node";
 
 export interface ExpressionContext {
     [key: string]: any;
@@ -24,15 +23,21 @@ export interface ExpressionContextResolver {
     (msg: Message): ExpressionContext;
 }
 
-export default class ExpressionModule extends AbstractModule {
-    private readonly resolvers: ExpressionContextResolver[];
+export default class ExpressionSystem {
+    private static instance: ExpressionSystem = null;
+
+    static getInstance(): ExpressionSystem {
+        if (this.instance == null) {
+            this.instance = new ExpressionSystem();
+        }
+
+        return this.instance;
+    }
+    private readonly resolvers: ExpressionContextResolver[] = [];
     private parser: ExpressionParser;
     private interpreter: ExpressionInterpreter;
 
     constructor() {
-        super(ExpressionModule.name);
-
-        this.resolvers = [];
         this.parser = new ExpressionParser();
         this.interpreter = new ExpressionInterpreter();
     }

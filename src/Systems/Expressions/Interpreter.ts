@@ -1,6 +1,6 @@
 import ExpressionParser from "./Parser";
 import {tokenMatcher} from "chevrotain";
-import Dictionary from "../Structures/Dictionary";
+import Dictionary from "../../Utilities/Structures/Dictionary";
 import * as Token from "./Lexer";
 import {IllegalStateError, OutOfBoundsError, UnknownKeyError} from "./InterpreterErrors";
 

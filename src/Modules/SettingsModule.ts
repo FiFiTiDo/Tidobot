@@ -1,7 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import ExpressionModule from "./ExpressionModule";
 import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
@@ -12,6 +11,7 @@ import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {ConvertedSetting} from "../Systems/Settings/Setting";
 import {EventHandler} from "../Systems/Event/decorators";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 
 class SetCommand extends Command {
     constructor() {
@@ -123,7 +123,7 @@ export default class SettingsModule extends AbstractModule {
         cmd.registerCommand(new UnsetCommand(), this);
         cmd.registerCommand(new ResetCommand(this.makeConfirmation), this);
 
-        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
+        ExpressionSystem.getInstance().registerResolver(msg => ({
             settings: {
                 get: async <T> (key: string, defVal?: T): Promise<ConvertedSetting|T|null> => {
                     if (defVal === undefined) defVal = null;

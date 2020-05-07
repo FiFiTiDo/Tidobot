@@ -1,7 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEvent, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
-import ExpressionModule from "./ExpressionModule";
 import ListsEntity from "../Database/Entities/ListsEntity";
 import ListEntity from "../Database/Entities/ListEntity";
 import {array_rand} from "../Utilities/ArrayUtils";
@@ -11,6 +10,7 @@ import Permission from "../Systems/Permissions/Permission";
 import {Key} from "../Utilities/Translator";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
 import {EventHandler} from "../Systems/Event/decorators";
+import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 
 export default class ListModule extends AbstractModule {
     constructor() {
@@ -32,7 +32,7 @@ export default class ListModule extends AbstractModule {
         perm.registerPermission(new Permission("list.view.specific", Role.NORMAL));
         perm.registerPermission(new Permission("list.view.random", Role.NORMAL));
 
-        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
+        ExpressionSystem.getInstance().registerResolver(msg => ({
             list: {
                 command: async (listName: unknown): Promise<string> => {
                     if (typeof listName !== "string") return "Invalid parameter, expected a string";

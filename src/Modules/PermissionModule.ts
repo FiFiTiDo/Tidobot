@@ -1,7 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
-import ExpressionModule from "./ExpressionModule";
 import {where} from "../Database/BooleanOperations";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
 import {Key} from "../Utilities/Translator";
@@ -11,6 +10,7 @@ import Permission from "../Systems/Permissions/Permission";
 import Logger from "../Utilities/Logger";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
 import {EventHandler} from "../Systems/Event/decorators";
+import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 
 export default class PermissionModule extends AbstractModule {
     constructor() {
@@ -30,7 +30,7 @@ export default class PermissionModule extends AbstractModule {
         perm.registerPermission(new Permission("permission.reset", Role.MODERATOR));
         perm.registerPermission(new Permission("permission.reset.all", Role.BROADCASTER));
 
-        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
+        ExpressionSystem.getInstance().registerResolver(msg => ({
             sender: {
                 isA: async (input: string): Promise<boolean> => {
                     const role = parseRole(input);

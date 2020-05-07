@@ -1,6 +1,6 @@
-import * as Lexer from "../../../src/Utilities/Expression/Lexer";
-import ExpressionParser from "../../../src/Utilities/Expression/Parser";
-import ExpressionInterpreter from "../../../src/Utilities/Expression/Interpreter";
+import * as Lexer from "../../../src/Systems/Expressions/Lexer";
+import ExpressionParser from "../../../src/Systems/Expressions/Parser";
+import ExpressionInterpreter from "../../../src/Systems/Expressions/Interpreter";
 const lexer = Lexer.default;
 import * as chai from 'chai'
 import Dictionary from "../../../src/Utilities/Structures/Dictionary";

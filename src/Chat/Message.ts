@@ -1,11 +1,11 @@
 import MessageParser from "./MessageParser";
 import Adapter from "../Services/Adapter";
-import ExpressionModule, {ExpressionContext} from "../Modules/ExpressionModule";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import Response, {ResponseFactory} from "./Response";
 import {Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 
 export default class Message {
 
@@ -15,7 +15,7 @@ export default class Message {
 
     constructor(
         private readonly raw: string, private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity,
-        private readonly adapter: Adapter, private readonly responseFactory: ResponseFactory, private readonly expr: ExpressionModule
+        private readonly adapter: Adapter, private readonly responseFactory: ResponseFactory
     ) {
         this.parts = MessageParser.parse(raw);
         this.loopProtection = [];
@@ -57,7 +57,7 @@ export default class Message {
     }
 
     public async evaluateExpression(expression: string): Promise<string> {
-        return this.expr.evaluate(expression, this);
+        return ExpressionSystem.getInstance().evaluate(expression, this);
     }
 
     public async checkPermission(permission: string): Promise<boolean> {
@@ -104,7 +104,7 @@ export default class Message {
         const msg = this;
         return new class extends Message {
             constructor() {
-                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter, msg.responseFactory, msg.expr);
+                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter, msg.responseFactory);
 
                 this.loopProtection = msg.loopProtection.slice();
             }

@@ -1,7 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import ExpressionModule from "./ExpressionModule";
 import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
 import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -11,6 +10,7 @@ import Logger from "../Utilities/Logger";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler} from "../Systems/Event/decorators";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 
 
 class CommandCommand extends Command {
@@ -217,7 +217,7 @@ export default class CustomCommandModule extends AbstractModule {
         perm.registerPermission(new Permission("command.free", Role.MODERATOR));
         perm.registerPermission(new Permission("command.ignore-cooldown", Role.MODERATOR));
 
-        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
+        ExpressionSystem.getInstance().registerResolver(msg => ({
             execute_cmd: async (command: unknown): Promise<string> => new Promise( resolve => {
                 if (typeof command !== "string") return "Invalid argument, expected a string";
                 if (msg.checkLoopProtection(command)) return "Infinite loop detected";

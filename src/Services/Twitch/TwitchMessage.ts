@@ -3,7 +3,6 @@ import * as tmi from "tmi.js";
 import TwitchAdapter from "./TwitchAdapter";
 import deepmerge from "deepmerge";
 import {helix, kraken} from "./TwitchApi";
-import ExpressionModule, {ExpressionContext} from "../../Modules/ExpressionModule";
 import moment from "moment-timezone";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
@@ -11,6 +10,7 @@ import {ResponseFactory} from "../../Chat/Response";
 import {Role} from "../../Systems/Permissions/Role";
 import Logger from "../../Utilities/Logger";
 import IStream = helix.Stream;
+import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
 
 export class TwitchMessage extends Message {
     private api: helix.Api;
@@ -18,9 +18,9 @@ export class TwitchMessage extends Message {
 
     constructor(
         message: string, chatter: ChatterEntity, channel: ChannelEntity, private readonly userstate: tmi.ChatUserstate,
-        adapter: TwitchAdapter, responseFactory: ResponseFactory, expr: ExpressionModule
+        adapter: TwitchAdapter, responseFactory: ResponseFactory
     ) {
-        super(message, chatter, channel, adapter, responseFactory, expr);
+        super(message, chatter, channel, adapter, responseFactory);
 
         this.api = adapter.api;
         this.oldApi = adapter.oldApi;

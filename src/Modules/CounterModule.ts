@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
-import ExpressionModule from "./ExpressionModule";
 import CountersEntity from "../Database/Entities/CountersEntity";
 import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -8,6 +7,7 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Logger from "../Utilities/Logger";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 
 class CounterCommand extends Command {
     constructor() {
@@ -217,7 +217,7 @@ export default class CounterModule extends AbstractModule {
         perm.registerPermission(new Permission("counter.create", Role.MODERATOR));
         perm.registerPermission(new Permission("counter.delete", Role.MODERATOR));
 
-        this.moduleManager.getModule(ExpressionModule).registerResolver(msg => ({
+        ExpressionSystem.getInstance().registerResolver(msg => ({
             counters: {
                 get: async (name: unknown): Promise<object|string> => {
                     if (typeof name !== "string") return "Expected a string for argument 1";

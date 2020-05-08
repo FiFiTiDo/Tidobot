@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEvent, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
 import ListsEntity from "../Database/Entities/ListsEntity";
 import ListEntity from "../Database/Entities/ListEntity";
@@ -9,16 +8,20 @@ import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import {Key} from "../Utilities/Translator";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
+import CommandSystem from "../Systems/Commands/CommandSystem";
+import {CommandEvent, CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import Command from "../Systems/Commands/Command";
 
+@HandlesEvents()
 export default class ListModule extends AbstractModule {
     constructor() {
         super(ListModule.name);
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         const listCommand = new ListCommand();
         cmd.registerCommand(listCommand, this);
 
@@ -36,7 +39,7 @@ export default class ListModule extends AbstractModule {
             list: {
                 command: async (listName: unknown): Promise<string> => {
                     if (typeof listName !== "string") return "Invalid parameter, expected a string";
-                    const prefix = await CommandModule.getPrefix(msg.getChannel());
+                    const prefix = await CommandSystem.getPrefix(msg.getChannel());
                     return new Promise((resolve) => {
                         let args = [];
                         if (msg.getParts().length < 1) {

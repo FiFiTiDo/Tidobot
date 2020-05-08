@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
 import {Key} from "../Utilities/Translator";
@@ -8,9 +7,12 @@ import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Logger from "../Utilities/Logger";
 import {EventArguments} from "../Systems/Event/Event";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 
 class CommandCommand extends Command {
@@ -103,7 +105,7 @@ class CommandCommand extends Command {
                 const price = parseFloat(value);
 
                 if (isNaN(price)) {
-                    await CommandModule.showInvalidArgument("new price", value, "command edit price <id> <new price>", msg);
+                    await CommandSystem.showInvalidArgument("new price", value, "command edit price <id> <new price>", msg);
                     return;
                 }
 
@@ -114,7 +116,7 @@ class CommandCommand extends Command {
                 const seconds = parseInt(value);
 
                 if (isNaN(seconds)) {
-                    await CommandModule.showInvalidArgument("seconds", value, "command edit cooldown <id> <seconds>", msg);
+                    await CommandSystem.showInvalidArgument("seconds", value, "command edit cooldown <id> <seconds>", msg);
                     return;
                 }
 
@@ -122,7 +124,7 @@ class CommandCommand extends Command {
                 break;
             }
             default:
-                await CommandModule.showInvalidArgument("type", type, "command edit <trigger|condition|response|price> <id> <new value>", msg);
+                await CommandSystem.showInvalidArgument("type", type, "command edit <trigger|condition|response|price> <id> <new value>", msg);
                 return;
         }
 
@@ -169,6 +171,7 @@ class CommandCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class CustomCommandModule extends AbstractModule {
     constructor() {
         super(CustomCommandModule.name);
@@ -207,7 +210,7 @@ export default class CustomCommandModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new CommandCommand(), this);
 
         const perm = PermissionSystem.getInstance();

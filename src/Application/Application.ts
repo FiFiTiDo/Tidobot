@@ -5,24 +5,28 @@ import {inject, injectable} from "inversify";
 import symbols from "../symbols";
 import Bot from "./Bot";
 import Logger from "../Utilities/Logger";
-import {Database} from "sqlite3";
+import {provide} from "inversify-binding-decorators";
+import Database from "../Database/Database";
 
-@injectable()
+@provide(Application)
 export default class Application {
     public static readonly DEFAULT_CHANNEL = "@@__default__@@";
 
-    private static db: Database;
     private static readonly startTime: moment.Moment = moment();
 
-    constructor(@inject(symbols.Logger) private logger: Logger, @inject(symbols.Logger) private db: Database, private bot: Bot) {
+    constructor(@inject(Bot) private bot: Bot) {
     }
 
-    public static getDatabase(): Database {
-        return this.db;
-    }
-
-    public start(argv: string[]): void {
-        Logger.get().debug("Application started.");
+    public async start(argv: string[]): Promise<void> {
+        Logger.get().info("Initializing database");
+        try {
+            await Database.initialize();
+        } catch (e) {
+            Logger.get().emerg("Unable to initialize the database", { cause: e });
+            process.exit(1);
+        }
+        Logger.get().info("Database initialized successfully");
+        Logger.get().info("Application started.");
 
         const options = args
             .option("service", "The service the bot will run.", "twitch")
@@ -32,7 +36,6 @@ export default class Application {
             .parse(argv);
 
         Logger.get().debug("Application#runCommand executed.");
-        Application.db = this.db;
         this.bot.start(options as AdapterOptions);
     }
 

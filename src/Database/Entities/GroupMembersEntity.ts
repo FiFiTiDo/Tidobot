@@ -1,14 +1,14 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
-import {DataTypes} from "../Schema";
+import {Column, DataTypes} from "../Decorators/Columns";
 import {where} from "../Where";
 import GroupsEntity from "./GroupsEntity";
 import ChatterEntity from "./ChatterEntity";
 import UserEntity from "./UserEntity";
+import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Table(({ service, channel }) => `${service}_${channel.name}_groupMembers`)
-export default class GroupMembersEntity extends Entity<GroupMembersEntity> {
+export default class GroupMembersEntity extends ChannelSpecificEntity<GroupMembersEntity> {
     constructor(id: number, params: EntityParameters) {
         super(GroupMembersEntity, id, params);
     }

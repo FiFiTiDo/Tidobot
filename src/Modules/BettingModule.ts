@@ -1,10 +1,8 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import CurrencyModule from "./CurrencyModule";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
 import {Key} from "../Utilities/Translator";
-import ModuleManager from "./ModuleManager";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -12,6 +10,9 @@ import Logger from "../Utilities/Logger";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import {objectHasProperties} from "../Utilities/ObjectUtils";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 enum PlaceBetResponse {
     INVALID_OPTION, LOW_BALANCE, TOO_LOW, TOO_HIGH, BET_PLACED
@@ -91,7 +92,7 @@ class BettingGame {
 class BetCommand extends Command {
     private betInstances: ChannelStateList<BettingGame>;
 
-    constructor(private moduleManager: ModuleManager) {
+    constructor() {
         super("bet", "<place|open|close|check>");
 
         this.betInstances = new ChannelStateList<BettingGame>(null);
@@ -135,7 +136,7 @@ class BetCommand extends Command {
                     await response.message(Key("betting.place.invalid_option"));
                     break;
                 case PlaceBetResponse.LOW_BALANCE:
-                    await response.message(Key("betting.place.low_balance"), await this.moduleManager.getModule(CurrencyModule).getPluralName(msg.getChannel()));
+                    await response.message(Key("betting.place.low_balance"), await CurrencyModule.getPluralName(msg.getChannel()));
                     break;
                 case PlaceBetResponse.TOO_LOW:
                     await response.message(Key("betting.place.too_low"));
@@ -144,7 +145,7 @@ class BetCommand extends Command {
                     await response.message(Key("betting.place.too_high"));
                     break;
                 case PlaceBetResponse.BET_PLACED:
-                    await response.message(Key("betting.place.placed"), await this.moduleManager.getModule(CurrencyModule).formatAmount(amount, msg.getChannel()), option);
+                    await response.message(Key("betting.place.placed"), await CurrencyModule.formatAmount(amount, msg.getChannel()), option);
                     break;
             }
         } catch (e) {
@@ -210,7 +211,7 @@ class BetCommand extends Command {
         if (winnings === null)
             return response.message(Key("betting.closed.invalid_option"));
         else
-            return response.message(Key("betting.close.successful"), game.getTitle(), option, await this.moduleManager.getModule(CurrencyModule).formatAmount(winnings, msg.getChannel()));
+            return response.message(Key("betting.close.successful"), game.getTitle(), option, await CurrencyModule.formatAmount(winnings, msg.getChannel()));
     }
 
     async check({ event, message: msg, response }: CommandEventArgs): Promise<void> {
@@ -227,7 +228,7 @@ class BetCommand extends Command {
         const grandTotal = game.getGrandTotal();
         const parts = [];
         for (const [option, total] of game.getTotals())
-            parts.push(response.getTranslator().translate("betting.check.part", option, await this.moduleManager.getModule(CurrencyModule).formatAmount(total, msg.getChannel()), (total / grandTotal) * 100));
+            parts.push(response.getTranslator().translate("betting.check.part", option, await CurrencyModule.formatAmount(total, msg.getChannel()), (total / grandTotal) * 100));
         await response.message(Key("betting.check.current_stats"), parts.join("; "));
     }
 }
@@ -238,8 +239,8 @@ export default class BettingModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
-        cmd.registerCommand(new BetCommand(this.moduleManager), this);
+        const cmd = CommandSystem.getInstance();
+        cmd.registerCommand(new BetCommand(), this);
 
         const perm = PermissionSystem.getInstance();
         perm.registerPermission(new Permission("bet.place", Role.NORMAL));

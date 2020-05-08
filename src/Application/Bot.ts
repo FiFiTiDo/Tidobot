@@ -12,8 +12,9 @@ import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelManager from "../Chat/ChannelManager";
 import Logger from "../Utilities/Logger";
 import EventSystem from "../Systems/Event/EventSystem";
+import {provide} from "inversify-binding-decorators";
 
-@injectable()
+@provide(Bot)
 export default class Bot {
     constructor(private adapter: Adapter, private channelManager: ChannelManager) {
     }
@@ -39,10 +40,6 @@ export default class Bot {
             Logger.get().info("Disconnected from the service.", {reason: event.getMetadata("reason", "Unknown reason")});
         }, EventPriority.MONITOR);
         this.adapter.run(options);
-    }
-
-    getChannelManager(): ChannelManager {
-        return this.channelManager;
     }
 
     async send(message: string, channel: ChannelEntity): Promise<void> {

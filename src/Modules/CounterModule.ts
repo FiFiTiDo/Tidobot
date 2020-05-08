@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import CountersEntity from "../Database/Entities/CountersEntity";
 import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -8,6 +7,10 @@ import {Role} from "../Systems/Permissions/Role";
 import Logger from "../Utilities/Logger";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 class CounterCommand extends Command {
     constructor() {
@@ -203,13 +206,14 @@ class CounterCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class CounterModule extends AbstractModule {
     constructor() {
         super(CounterModule.name);
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new CounterCommand(), this);
 
         const perm = PermissionSystem.getInstance();
@@ -256,6 +260,7 @@ export default class CounterModule extends AbstractModule {
         }));
     }
 
+    @EventHandler(NewChannelEvent)
     async onNewChannel({ channel}: NewChannelEvent.Arguments) {
         await CountersEntity.createTable({ channel });
     }

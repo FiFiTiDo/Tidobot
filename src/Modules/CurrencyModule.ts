@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {pluralize} from "../Utilities/functions";
 import * as util from "util";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
@@ -13,10 +12,16 @@ import Permission from "../Systems/Permissions/Permission";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import Logger from "../Utilities/Logger";
+import {inject, injectable} from "inversify";
+import symbols from "../symbols";
+import ChannelManager from "../Chat/ChannelManager";
+import CommandSystem from "../Systems/Commands/CommandSystem";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 
 
 class BankCommand extends Command {
-    constructor(private confirmationFactory: ConfirmationFactory, private logger: winston.Logger, private currencyModule: CurrencyModule) {
+    constructor(private confirmationFactory: ConfirmationFactory) {
         super("bank", "<give|give-all|take|take-all|balance|reset|reset-all>");
 
         this.addSubcommand("give", this.give);
@@ -53,7 +58,7 @@ class BankCommand extends Command {
 
         try {
             await chatter.deposit(amount);
-            await response.message(Key("currency.give.successful"), await this.currencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
+            await response.message(Key("currency.give.successful"), await CurrencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
         } catch (e) {
             await response.message(Key("currency.give.failed"));
             Logger.get().error("Failed to give money to chatter's bank account", {cause: e});
@@ -85,7 +90,7 @@ class BankCommand extends Command {
 
         try {
             await Promise.all(ops);
-            await response.message(Key("currency.give-all.successful"), await this.currencyModule.formatAmount(amount, msg.getChannel()));
+            await response.message(Key("currency.give-all.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()));
         } catch (e) {
             Logger.get().error("Failed to give amount to all chatter's accounts", {cause: e});
             await response.message(Key("currency.give-all.failed"));
@@ -116,7 +121,7 @@ class BankCommand extends Command {
 
         try {
             await chatter.withdraw(amount);
-            await response.message(Key("currency.take.successful"), await this.currencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
+            await response.message(Key("currency.take.successful"), await CurrencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
         } catch (e) {
             await response.message(Key("currency.take.failed"));
             Logger.get().error("Failed to take money from chatter's bank account", {cause: e});
@@ -148,7 +153,7 @@ class BankCommand extends Command {
 
         try {
             await Promise.all(ops);
-            await response.message(Key("currency.take-all.successful"), await this.currencyModule.formatAmount(amount, msg.getChannel()));
+            await response.message(Key("currency.take-all.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()));
         } catch (e) {
             Logger.get().error("Failed to take amount out of all chatter's accounts", {cause: e});
             await response.message(Key("currency.take-all.failed"));
@@ -171,7 +176,7 @@ class BankCommand extends Command {
         if (args === null) return;
         const [chatter] = args;
 
-        await response.message(Key("currency.balance-other"), chatter.getName(), await this.currencyModule.formatAmount(chatter.getBalance(), msg.getChannel()));
+        await response.message(Key("currency.balance-other"), chatter.getName(), await CurrencyModule.formatAmount(chatter.getBalance(), msg.getChannel()));
     }
 
     async reset({event, response}: CommandEventArgs): Promise<void> {
@@ -227,7 +232,7 @@ class BankCommand extends Command {
 }
 
 class BalanceCommand extends Command {
-    constructor(private currencyModule: CurrencyModule) {
+    constructor() {
         super("balance", null, ["bal"]);
     }
 
@@ -239,12 +244,12 @@ class BalanceCommand extends Command {
         if (args === null) return;
 
         const balance = msg.getChatter().balance;
-        await response.message(Key("currency.balance"), msg.getChatter().name, await this.currencyModule.formatAmount(balance, msg.getChannel()));
+        await response.message(Key("currency.balance"), msg.getChatter().name, await CurrencyModule.formatAmount(balance, msg.getChannel()));
     }
 }
 
 class PayCommand extends Command {
-    constructor(private currencyModule: CurrencyModule) {
+    constructor() {
         super("pay", "<user> <amount>");
     }
 
@@ -277,21 +282,24 @@ class PayCommand extends Command {
             await response.message(Key("currency.pay.failed"));
         } else {
             await chatter.deposit(amount);
-            await response.message(Key("currency.pay.successful"), await this.currencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
+            await response.message(Key("currency.pay.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
         }
     }
 }
 
 export default class CurrencyModule extends AbstractModule {
-    constructor() {
+    constructor(
+        @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory,
+        @inject(ChannelManager) private channelManager: ChannelManager
+    ) {
         super(CurrencyModule.name);
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
-        cmd.registerCommand(new BankCommand(this.makeConfirmation, Logger.get(), this), this);
-        cmd.registerCommand(new BalanceCommand(this), this);
-        cmd.registerCommand(new PayCommand(this), this);
+        const cmd = CommandSystem.getInstance();
+        cmd.registerCommand(new BankCommand(this.makeConfirmation), this);
+        cmd.registerCommand(new BalanceCommand(), this);
+        cmd.registerCommand(new PayCommand(), this);
 
         const perm = PermissionSystem.getInstance();
         perm.registerPermission(new Permission("currency.pay", Role.NORMAL));
@@ -331,15 +339,15 @@ export default class CurrencyModule extends AbstractModule {
         return Promise.all(ops);
     };
 
-    async getSingularName(channel: ChannelEntity): Promise<string> {
+    static async getSingularName(channel: ChannelEntity): Promise<string> {
         return channel.getSetting<string>("currency.name.singular");
     }
 
-    async getPluralName(channel: ChannelEntity): Promise<string> {
+    static async getPluralName(channel: ChannelEntity): Promise<string> {
         return channel.getSetting<string>("currency.name.plural");
     }
 
-    async formatAmount(amount: number, channel: ChannelEntity): Promise<string> {
+    static async formatAmount(amount: number, channel: ChannelEntity): Promise<string> {
         const singular = await this.getSingularName(channel);
         const plural = await this.getPluralName(channel);
 

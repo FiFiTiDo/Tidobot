@@ -1,7 +1,6 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
-import {DataTypes} from "../Schema";
+import {Column, DataTypes} from "../Decorators/Columns";
 import GroupPermissionsEntity from "./GroupPermissionsEntity";
 import GroupMembersEntity from "./GroupMembersEntity";
 import ChatterEntity from "./ChatterEntity";
@@ -9,9 +8,10 @@ import {ManyToMany, OneToMany} from "../Decorators/Relationships";
 import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
+import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Table(({ service, channel }) => `${service}_${channel.name}_groups`)
-export default class GroupsEntity extends Entity<GroupsEntity> {
+export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
     constructor(id: number, params: EntityParameters) {
         super(GroupsEntity, id, params);
     }

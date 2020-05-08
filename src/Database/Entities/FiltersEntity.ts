@@ -1,7 +1,6 @@
 import Entity, {EntityParameters} from "./Entity";
-import {DataTypes} from "../Schema";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
+import {Column, DataTypes} from "../Decorators/Columns";
 import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 

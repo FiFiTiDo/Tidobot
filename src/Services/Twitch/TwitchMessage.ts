@@ -6,7 +6,7 @@ import {helix, kraken} from "./TwitchApi";
 import moment from "moment-timezone";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import {ResponseFactory} from "../../Chat/Response";
+import {ResponseFactory} from "../../Chat/Message";
 import {Role} from "../../Systems/Permissions/Role";
 import Logger from "../../Utilities/Logger";
 import IStream = helix.Stream;

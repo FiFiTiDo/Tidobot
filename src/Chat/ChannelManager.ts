@@ -1,5 +1,8 @@
 import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {injectable} from "inversify";
+import {provide} from "inversify-binding-decorators";
 
+@provide(ChannelManager)
 export default class ChannelManager {
     private readonly channels: ChannelEntity[];
     private readonly ids: string[];

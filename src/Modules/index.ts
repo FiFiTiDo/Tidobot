@@ -1,6 +1,5 @@
 import {Container} from "inversify";
 import ConfirmationModule, {Confirmation, ConfirmationFactory} from "./ConfirmationModule";
-import CommandModule from "./CommandModule";
 import PermissionModule from "./PermissionModule";
 import GroupsModule from "./GroupsModule";
 import SettingsModule from "./SettingsModule";
@@ -19,17 +18,18 @@ import TidobotModule from "./TidobotModule";
 import AbstractModule from "./AbstractModule";
 import UserModule from "./UserModule";
 import symbols from "../symbols";
+import {autoProvide} from "inversify-binding-decorators";
 
 export const ALL_MODULES = [
-    ConfirmationModule, CommandModule, PermissionModule, GroupsModule, SettingsModule, GeneralModule, CustomCommandModule,
-    ListModule, PollsModule, CounterModule, FunModule, NewsModule, RaffleModule, CurrencyModule, FilterModule, BettingModule,
+    ConfirmationModule, PermissionModule, GroupsModule, SettingsModule, GeneralModule, CustomCommandModule, ListModule,
+    PollsModule, CounterModule, FunModule, NewsModule, RaffleModule, CurrencyModule, FilterModule, BettingModule,
     TidobotModule, UserModule
 ];
 
 export const ALL_MODULES_KEY = Symbol("All Modules");
 
 export function createBindings(container: Container): void {
-    for (const module of ALL_MODULES) container.bind<any>(module).toSelf();
+    autoProvide(container, ALL_MODULES);
     container.bind<AbstractModule[]>(ALL_MODULES_KEY).toDynamicValue(ctx => {
         const modules = [];
         for (const module of ALL_MODULES)

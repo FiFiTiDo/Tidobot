@@ -1,11 +1,14 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {array_rand} from "../Utilities/ArrayUtils";
 import {Key} from "../Utilities/Translator";
 import Bot from "../Application/Bot";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
+import {inject, injectable} from "inversify";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 class RouletteCommand extends Command {
     constructor(private bot: Bot) {
@@ -65,12 +68,12 @@ class Magic8BallCommand extends Command {
 }
 
 export default class FunModule extends AbstractModule {
-    constructor() {
+    constructor(@inject(Bot) private bot: Bot) {
         super(FunModule.name);
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new RouletteCommand(this.bot), this);
         cmd.registerCommand(new SeppukuCommand(this.bot), this);
         cmd.registerCommand(new Magic8BallCommand(), this);

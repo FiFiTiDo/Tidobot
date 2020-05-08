@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import Message from "../Chat/Message";
 import GroupsEntity from "../Database/Entities/GroupsEntity";
@@ -12,17 +11,23 @@ import {Role} from "../Systems/Permissions/Role";
 import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
+import {inject} from "inversify";
+import symbols from "../symbols";
+import CommandSystem from "../Systems/Commands/CommandSystem";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 
+@HandlesEvents()
 export default class GroupsModule extends AbstractModule {
-    constructor() {
+    constructor(@inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
         super(GroupsModule.name);
 
         this.coreModule = true;
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new GroupCommand(this.makeConfirmation), this);
 
         const perm = PermissionSystem.getInstance();

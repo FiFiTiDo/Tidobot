@@ -15,7 +15,7 @@ import {inject, injectable} from "inversify";
 import symbols from "../../symbols";
 import Logger from "../../Utilities/Logger";
 import EventSystem from "../../Systems/Event/EventSystem";
-import Bot from "../../Application/Bot";
+import ChannelManager from "../../Chat/ChannelManager";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
@@ -24,7 +24,7 @@ export default class TwitchAdapter extends Adapter {
     public oldApi: kraken.Api;
 
     constructor(
-        @inject(Bot) private bot: Bot, @inject(symbols.Config) private config: Config,
+        @inject(ChannelManager) private channelManager: ChannelManager, @inject(symbols.Config) private config: Config,
         @inject(symbols.TwitchMessageFactory) private messageFactory: TwitchMessageFactory
     ) {
         super();
@@ -113,14 +113,13 @@ export default class TwitchAdapter extends Adapter {
             } else {
                 chatter = await ChatterEntity.from(user.id, user.username, channel);
             }
-            await chatter.save();
         }
 
         return chatter;
     }
 
     async getChannelByName(channelName: string): Promise<ChannelEntity|null> {
-        let channel = this.bot.getChannelManager().findByName(channelName);
+        let channel = this.channelManager.findByName(channelName);
 
         if (channel === null) {
             let resp: helix.Response<helix.User>;

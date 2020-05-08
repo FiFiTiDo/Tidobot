@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
 import {where} from "../Database/Where";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
@@ -9,9 +8,13 @@ import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import Logger from "../Utilities/Logger";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
+import CommandSystem from "../Systems/Commands/CommandSystem";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 
+@HandlesEvents()
 export default class PermissionModule extends AbstractModule {
     constructor() {
         super(PermissionModule.name);
@@ -20,7 +23,7 @@ export default class PermissionModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new PermissionCommand(), this);
 
         const perm = PermissionSystem.getInstance();
@@ -57,7 +60,6 @@ export default class PermissionModule extends AbstractModule {
     async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
         await PermissionEntity.createTable({ channel });
     }
-
 }
 
 class PermissionCommand extends Command {

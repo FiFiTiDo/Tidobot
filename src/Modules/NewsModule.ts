@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import MessageEvent from "../Chat/Events/MessageEvent";
@@ -14,8 +13,15 @@ import Logger from "../Utilities/Logger";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {inject, injectable} from "inversify";
+import symbols from "../symbols";
+import ChannelManager from "../Chat/ChannelManager";
+import Bot from "../Application/Bot";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 interface LastMessage {
     item: NewsEntity;
@@ -111,17 +117,21 @@ class NewsCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class NewsModule extends AbstractModule {
     private lastMessage: Map<string, LastMessage>;
 
-    constructor() {
+    constructor(
+        @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory,
+        @inject(ChannelManager) private channelManager: ChannelManager, @inject(Bot) private bot: Bot
+    ) {
         super(NewsModule.name);
 
         this.lastMessage = new Map();
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new NewsCommand(this.makeConfirmation), this);
 
         const perm = PermissionSystem.getInstance();
@@ -157,10 +167,14 @@ export default class NewsModule extends AbstractModule {
     };
 
     @EventHandler(TickEvent)
-    tickHandler = async (): Promise<void[]> => Promise.all(this.channelManager.getAll().map(channel => this.tryNext(channel)));
+    async tickHandler(): Promise<void> {
+        await Promise.all(this.channelManager.getAll().map(channel => this.tryNext(channel)));
+    }
 
     @EventHandler(MessageEvent)
-    messageHandler = async ({event}: EventArguments<MessageEvent>): Promise<void> => this.tryNext(event.getMessage().getChannel(), true);
+    async messageHandler({event}: EventArguments<MessageEvent>): Promise<void> {
+        this.tryNext(event.getMessage().getChannel(), true);
+    }
 
     private async showNextMessage(channel: ChannelEntity): Promise<void> {
         const items: NewsEntity[] = await NewsEntity.getAll({ channel });

@@ -1,7 +1,6 @@
 import Entity, {EntityParameters} from "./Entity";
-import {DataTypes} from "../Schema";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
+import {Column, DataTypes} from "../Decorators/Columns";
 import GroupsEntity from "./GroupsEntity";
 import {ManyToMany, ManyToOne, OneToMany} from "../Decorators/Relationships";
 import GroupMembersEntity from "./GroupMembersEntity";
@@ -10,9 +9,10 @@ import {where} from "../Where";
 import UserEntity from "./UserEntity";
 import ChannelEntity, {ChannelStateList} from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
+import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Table(({service, channel}) => `${service}_${channel.name}_chatters`)
-export default class ChatterEntity extends Entity<ChatterEntity> {
+export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> {
     constructor(id: number, params: EntityParameters) {
         super(ChatterEntity, id, params);
     }

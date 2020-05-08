@@ -8,6 +8,16 @@ export default class Logger {
         if (this.instance === null) {
             this.instance = winston.createLogger({
                 level: "info",
+                levels: {
+                    emerg: 0,
+                    alert: 1,
+                    crit: 2,
+                    error: 3,
+                    warning: 4,
+                    notice: 5,
+                    info: 6,
+                    debug: 7
+                },
                 format: winston.format.combine(
                     winston.format.timestamp(),
                     error_format()

@@ -1,12 +1,16 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import UserPermissionsEntity from "../Database/Entities/UserPermissionsEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {inject, injectable} from "inversify";
+import symbols from "../symbols";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 class UserCommand extends Command {
     constructor(private confirmationFactory: ConfirmationFactory) {
@@ -121,15 +125,16 @@ class UserCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class UserModule extends AbstractModule {
-    constructor() {
+    constructor(@inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
         super(UserModule.name);
 
         this.coreModule = true;
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new UserCommand(this.makeConfirmation), this);
     }
 

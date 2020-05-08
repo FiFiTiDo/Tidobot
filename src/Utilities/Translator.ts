@@ -1,6 +1,7 @@
 import Dictionary, {FileDictionaryParser} from "./Structures/Dictionary";
 import YAML from "yaml"
 import * as util from "util"
+import {injectable} from "inversify";
 
 export class TranslationKey {
     constructor(public key: string) {
@@ -11,6 +12,7 @@ export function Key(key: string): TranslationKey {
     return new TranslationKey(key);
 }
 
+@injectable()
 export default class Translator {
     private readonly translations: Dictionary;
 

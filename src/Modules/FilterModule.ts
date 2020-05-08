@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import {TwitchMessage} from "../Services/Twitch/TwitchMessage";
@@ -17,7 +16,12 @@ import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
+import {inject, injectable} from "inversify";
+import symbols from "../symbols";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 const DOT = /\s?\(dot\)\s?/gi;
 const URL_PATTERN = /((http|ftp|https|sftp):\/\/)?(([\w.-]*)\.([\w]*))/igm;
@@ -221,11 +225,12 @@ class FilterCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class FilterModule extends AbstractModule {
     permits: ChatterStateList<moment.Moment>;
     strikes: ChatterStateList<number>;
 
-    constructor() {
+    constructor(@inject(Bot) private bot: Bot, @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
         super(FilterModule.name);
 
         this.permits = new ChatterStateList(null);
@@ -233,7 +238,7 @@ export default class FilterModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new PermitCommand(this), this);
         cmd.registerCommand(new PardonCommand(this), this);
         cmd.registerCommand(new PurgeCommand(this.bot), this);

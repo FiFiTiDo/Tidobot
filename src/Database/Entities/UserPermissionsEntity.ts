@@ -1,15 +1,15 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
-import {DataTypes} from "../Schema";
+import {Column, DataTypes} from "../Decorators/Columns";
 import {Unique} from "../Decorators/Constraints";
 import ChannelEntity from "./ChannelEntity";
 import {where} from "../Where";
 import ChatterEntity from "./ChatterEntity";
+import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Unique("UserPermission", ["permission", "user_id"])
 @Table(({service, channel}) => `${service}_${channel.name}_userPermissions`)
-export default class UserPermissionsEntity extends Entity<UserPermissionsEntity> {
+export default class UserPermissionsEntity extends ChannelSpecificEntity<UserPermissionsEntity> {
     constructor(id: number, params: EntityParameters) {
         super(UserPermissionsEntity, id, params);
     }

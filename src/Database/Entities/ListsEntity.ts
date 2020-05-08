@@ -1,13 +1,13 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
-import {DataTypes} from "../Schema";
+import {Column, DataTypes} from "../Decorators/Columns";
 import ListEntity from "./ListEntity";
 import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
+import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Table(({ service, channel }) => `${service}_${channel.name}_lists`)
-export default class ListsEntity extends Entity<ListsEntity> {
+export default class ListsEntity extends ChannelSpecificEntity<ListsEntity> {
     constructor(id: number, params: EntityParameters) {
         super(ListsEntity, id, params);
     }

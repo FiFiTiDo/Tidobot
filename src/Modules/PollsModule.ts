@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import Message from "../Chat/Message";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
@@ -10,6 +9,9 @@ import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import request = require("request-promise-native");
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 interface StrawpollGetResponse {
     id: number;
@@ -222,7 +224,7 @@ class VoteCommand extends Command {
         const option = poll.getOption(optionNum);
         if (option === null) {
             if (announce)
-                await CommandModule.showInvalidArgument("option #", event.getArgument(1), "vote <option #>", msg);
+                await CommandSystem.showInvalidArgument("option #", event.getArgument(1), "vote <option #>", msg);
             return;
         }
 
@@ -244,7 +246,7 @@ class PollCommand extends Command {
 
     private async getPoll(msg: Message): Promise<Poll> {
         if (!this.runningPolls.hasChannel(msg.getChannel())) {
-            await msg.getResponse().message(Key("polls.not_running"), await CommandModule.getPrefix(msg.getChannel()));
+            await msg.getResponse().message(Key("polls.not_running"), await CommandSystem.getPrefix(msg.getChannel()));
             return;
         }
 
@@ -267,7 +269,7 @@ class PollCommand extends Command {
         });
         if (args === null) return;
         const options = args[0] as string[];
-        const prefix = await CommandModule.getPrefix(msg.getChannel());
+        const prefix = await CommandSystem.getPrefix(msg.getChannel());
 
         if (this.runningPolls.hasChannel(msg.getChannel())) {
             await response.message(Key("polls.already_running"), prefix);
@@ -325,7 +327,7 @@ export default class PollsModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new PollCommand(this.runningPolls), this);
         cmd.registerCommand(new VoteCommand(this.runningPolls), this);
         cmd.registerCommand(new StrawpollCommand(), this);

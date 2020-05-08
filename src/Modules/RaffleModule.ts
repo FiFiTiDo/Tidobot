@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import {array_rand} from "../Utilities/ArrayUtils";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
@@ -12,7 +11,10 @@ import Permission from "../Systems/Permissions/Permission";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 enum RaffleState {
     OPEN = 1,
@@ -191,6 +193,7 @@ class RaffleCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class RaffleModule extends AbstractModule {
     private readonly raffles: ChannelStateList<Raffle>;
 
@@ -201,7 +204,7 @@ export default class RaffleModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new RaffleCommand(this.raffles), this);
 
         const perm = PermissionSystem.getInstance();

@@ -1,11 +1,11 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
-import {DataTypes} from "../Schema";
+import {Column, DataTypes} from "../Decorators/Columns";
 import ChannelEntity from "./ChannelEntity";
+import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Table(({ service, channel }) => `${service}_${channel.name}_news`)
-export default class NewsEntity extends Entity<NewsEntity> {
+export default class NewsEntity extends ChannelSpecificEntity<NewsEntity> {
     constructor(id: number, params: EntityParameters) {
         super(NewsEntity, id, params);
     }

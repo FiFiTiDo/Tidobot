@@ -1,8 +1,8 @@
 import request = require("request-promise-native");
 import Cache from "../../Systems/Cache/Cache";
 import {parse_duration} from "../../Utilities/functions";
-import {AccessToken, ClientCredentialTokenConfig, create as createOauth, OAuthClient} from "simple-oauth2";
 import Logger from "../../Utilities/Logger";
+import {AccessToken} from "./ApiAuthentication";
 
 const CACHE_EXPIRY = parse_duration(process.env.CACHE_LENGTH);
 
@@ -148,7 +148,6 @@ export namespace helix {
      */
     export class Api {
         readonly BASE_URL = "https://api.twitch.tv/helix/";
-        private oauth2: OAuthClient;
         private accessToken: AccessToken = null;
 
         /**
@@ -157,17 +156,7 @@ export namespace helix {
          * @param clientId The client id for the api
          * @param clientSecret The client secret for the api
          */
-        constructor(clientId: string, clientSecret: string) {
-            this.oauth2 = createOauth({
-                client: {
-                    id: clientId,
-                    secret: clientSecret
-                },
-                auth: {
-                    tokenHost: "https://id.twitch.tv",
-                    tokenPath: "/oauth2/token"
-                }
-            });
+        constructor(private clientId: string, private clientSecret: string) {
         }
 
         /**
@@ -178,24 +167,20 @@ export namespace helix {
          * @returns The AccessToken object
          */
         private async getAccessToken(): Promise<AccessToken> {
-            const tokenConfig: ClientCredentialTokenConfig = {};
             if (this.accessToken === null) { // Has not been retrieved yet
                 try {
-                    const result = await this.oauth2.clientCredentials.getToken(tokenConfig);
-                    this.accessToken = this.oauth2.accessToken.create(result);
+                    this.accessToken = await AccessToken.retrieve(this.clientId, this.clientSecret);
                 } catch (error) {
                     Logger.get().emerg("Unable to retrieve the access token", { cause: error });
                     process.exit(1);
                 }
-            } else { // Has been retrieved previously
-                if (this.accessToken.expired()) { // Token is expired
-                    try {
-                        this.accessToken = await this.accessToken.refresh(tokenConfig);
-                    } catch (error) {
-                        Logger.get().emerg("Unable to refresh the access token", { cause: error });
-                        process.exit(1);
-                    }
-                }
+            }
+
+            try {
+                await this.accessToken.validate();
+            } catch (error) {
+                Logger.get().emerg("Unable to validate access token", { cause: error });
+                process.exit(1);
             }
 
             return this.accessToken;

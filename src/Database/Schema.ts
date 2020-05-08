@@ -2,28 +2,8 @@ import {RawRowData} from "./RowData";
 import {DatabaseError} from "./DatabaseErrors";
 import moment, {Moment} from "moment";
 import Entity from "./Entities/Entity";
-import {getColumns} from "./Decorators/Columns";
+import {ColumnProp, ColumnSettings, DataTypes, getColumns} from "./Decorators/Columns";
 import {getRelationships} from "./Decorators/Relationships";
-
-export enum DataTypes {
-    STRING, INTEGER, FLOAT, BOOLEAN, DATE, ARRAY, ENUM
-}
-
-export interface ColumnSettings {
-    name?: string;
-    datatype: DataTypes;
-    primary?: boolean;
-    null?: boolean;
-    unique?: boolean;
-    increment?: boolean;
-    references?: string;
-    enum?: string[];
-}
-
-export interface ColumnProp {
-    property: string;
-    settings: ColumnSettings;
-}
 
 export class TableSchema {
     private readonly columns: Map<string, ColumnProp>;
@@ -31,7 +11,7 @@ export class TableSchema {
     constructor(private entity: Entity<any>) {
         this.columns = new Map();
 
-        for (const col of getColumns(entity) as ColumnProp[])
+        for (const col of getColumns(entity.constructor) as ColumnProp[])
             this.addColumn(col.property, col.settings);
     }
 

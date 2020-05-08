@@ -1,11 +1,13 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import Dispatcher from "../Systems/Event/Dispatcher";
 import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
 import {generate_random_code} from "../Utilities/functions";
 import * as util from "util";
 import {ChatterStateList} from "../Database/Entities/ChatterEntity";
+import CommandSystem from "../Systems/Commands/CommandSystem";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import Command from "../Systems/Commands/Command";
 
 export class ConfirmedEvent extends Event<ConfirmedEvent> {
     public static readonly NAME = "confirmed";
@@ -98,7 +100,7 @@ export default class ConfirmationModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new ConfirmCommand(this.confirmations), this);
     }
 
@@ -111,7 +113,7 @@ export default class ConfirmationModule extends AbstractModule {
 
         await message.getResponse().message(prompt);
         await message.getResponse().message("Run %sconfirm %s within %d seconds to verify your decision.",
-            (await CommandModule.getPrefix(message.getChannel())), code, seconds
+            (await CommandSystem.getPrefix(message.getChannel())), code, seconds
         );
         await message.getResponse().message("Warning: this action might not be able to be undone.");
 

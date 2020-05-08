@@ -1,8 +1,8 @@
-import Dispatcher from "../Systems/Event/Dispatcher";
 import TickEvent from "../Application/TickEvent";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import EventSystem from "../Systems/Event/EventSystem";
+import {injectable} from "inversify";
 
 export type AdapterOptions = {
     identity: string;
@@ -11,7 +11,8 @@ export type AdapterOptions = {
     [key: string]: any;
 }
 
-export default abstract class Adapter extends Dispatcher {
+@injectable()
+export default abstract class Adapter {
     public run(options: AdapterOptions): void {
         setInterval(() => {
             EventSystem.getInstance().dispatch(new TickEvent());

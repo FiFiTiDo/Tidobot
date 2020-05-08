@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {Key} from "../Utilities/Translator";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -7,6 +6,9 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Logger from "../Utilities/Logger";
 import UserEntity from "../Database/Entities/UserEntity";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 class TidobotCommand extends Command {
     constructor() {
@@ -221,7 +223,7 @@ export default class TidobotModule extends AbstractModule {
         perm.registerPermission(new Permission("regular.add", Role.MODERATOR));
         perm.registerPermission(new Permission("regular.remove", Role.MODERATOR));
 
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new TidobotCommand(), this);
         cmd.registerCommand(new RegularCommand(), this);
     }

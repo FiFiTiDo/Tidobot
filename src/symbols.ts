@@ -8,7 +8,7 @@ export default {
     ResponseFactory: Symbol("Response Factory"),
     CommandEventFactory: Symbol("Command Event Factory"),
     ConfirmationFactory: Symbol("Confirmation Factory"),
-    TwitchMessageFactory: Symbol("Twitch Message Factory"),
+    TwitchMessageFactory: Symbol("Twitch Message Factory")
 };
 
 export type DatabaseProvider = () => Promise<Database>;

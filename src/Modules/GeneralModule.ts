@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import moment from "moment-timezone";
 import {array_rand} from "../Utilities/ArrayUtils";
 import {Key} from "../Utilities/Translator";
@@ -10,7 +9,9 @@ import Logger from "../Utilities/Logger";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
-
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 class PingCommand extends Command {
     constructor() {
@@ -137,7 +138,7 @@ export default class GeneralModule extends AbstractModule {
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         const perm = PermissionSystem.getInstance();
         const settings = SettingsSystem.getInstance();
 

@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import CommandModule, {Command, CommandEventArgs} from "./CommandModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -9,9 +8,14 @@ import Logger from "../Utilities/Logger";
 import SettingsEntity from "../Database/Entities/SettingsEntity";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {ConvertedSetting} from "../Systems/Settings/Setting";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent} from "../Chat/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
+import {inject, injectable} from "inversify";
+import symbols from "../symbols";
+import Command from "../Systems/Commands/Command";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import CommandSystem from "../Systems/Commands/CommandSystem";
 
 class SetCommand extends Command {
     constructor() {
@@ -104,15 +108,16 @@ class ResetCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class SettingsModule extends AbstractModule {
-    constructor() {
+    constructor(@inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
         super(SettingsModule.name);
 
         this.coreModule = true;
     }
 
     initialize(): void {
-        const cmd = this.moduleManager.getModule(CommandModule);
+        const cmd = CommandSystem.getInstance();
         const perm = PermissionSystem.getInstance();
 
         perm.registerPermission(new Permission("settings.set", Role.MODERATOR));

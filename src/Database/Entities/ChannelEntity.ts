@@ -1,13 +1,10 @@
 import Entity, {EntityParameters} from "./Entity";
-import {DataTypes} from "../Schema";
 import ChatterEntity from "./ChatterEntity";
-import CommandEntity from "./CommandEntity";
 import SettingsEntity, {ChannelSettings} from "./SettingsEntity";
-import GroupsEntity from "./GroupsEntity";
 import PermissionEntity from "./PermissionEntity";
 import {ImportModel} from "../Decorators/Relationships";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
+import {Column, DataTypes} from "../Decorators/Columns";
 import {where} from "../Where";
 import {Observable} from "../../Utilities/Patterns/Observable";
 import StringLike from "../../Utilities/Interfaces/StringLike";
@@ -39,15 +36,6 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
 
     @ImportModel(ChatterEntity)
     async chatters(): Promise<ChatterEntity[]> { return []; }
-
-    @ImportModel(CommandEntity)
-    async commands(): Promise<CommandEntity[]> { return []; }
-
-    @ImportModel(SettingsEntity)
-    async settings(): Promise<SettingsEntity[]> { return []; }
-
-    @ImportModel(GroupsEntity)
-    async groups(): Promise<GroupsEntity[]> { return []; }
 
     @ImportModel(PermissionEntity)
     async permissions(): Promise<PermissionEntity[]> { return []; }

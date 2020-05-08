@@ -2,10 +2,11 @@ import Listener, {ListenerWrapper} from "./Listener";
 import Event, {EventConstructor} from "./Event";
 import {EventPriority} from "./EventPriority";
 import PriorityList from "../../Utilities/Structures/PriorityList";
-import Subscriber from "./Subscriber";
+import {injectable} from "inversify";
 
 type ListenerType<T extends Event<T>> = Listener<T>|ListenerWrapper<T>;
 
+@injectable()
 export default class Dispatcher {
     private listeners: Map<string, PriorityList<ListenerType<any>>> = new Map();
 
@@ -35,4 +36,10 @@ export default class Dispatcher {
             if (event.isPropagationStopped()) break;
         }
     }
+}
+
+export abstract class Subscriber {
+    abstract registerListeners(dispatcher: Dispatcher);
+
+    abstract unregisterListeners(dispatcher: Dispatcher);
 }

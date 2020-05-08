@@ -1,6 +1,5 @@
 import Entity, {EntityConstructor, EntityParameters} from "../Entities/Entity";
-import {DataTypes} from "../Schema";
-import {getColumns} from "./Columns";
+import {getColumns, DataTypes} from "./Columns";
 import {formatConstraints} from "./Constraints";
 import {getMetadata, setMetadata} from "../../Utilities/DeccoratorUtils";
 

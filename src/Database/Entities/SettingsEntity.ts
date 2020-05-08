@@ -1,7 +1,6 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column} from "../Decorators/Columns";
-import {DataTypes} from "../Schema";
+import {Column, DataTypes} from "../Decorators/Columns";
 import ChannelEntity from "./ChannelEntity";
 import {where} from "../Where";
 import StringLike from "../../Utilities/Interfaces/StringLike";
@@ -9,9 +8,10 @@ import Logger from "../../Utilities/Logger";
 import SettingsSystem from "../../Systems/Settings/SettingsSystem";
 import Cache from "../../Systems/Cache/Cache";
 import {ConvertedSetting} from "../../Systems/Settings/Setting";
+import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Table(({ service, channel }) => `${service}_${channel.name}_settings`)
-export default class SettingsEntity extends Entity<SettingsEntity> {
+export default class SettingsEntity extends ChannelSpecificEntity<SettingsEntity> {
     constructor(id: number, params: EntityParameters) {
         super(SettingsEntity, id, params);
     }

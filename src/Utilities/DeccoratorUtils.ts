@@ -21,11 +21,11 @@ function isKeyValuePair<T>(obj: unknown): obj is KeyValuePair<T> {
 export function addMetadata<T>(metaKey: string, target: any, value: T|KeyValuePair<T>): void {
     let data: any;
     if (isKeyValuePair(value)) {
-        data = getMetadata<T>(metaKey, target);
+        data = getMetadata<T>(metaKey, target) || {};
         data[value.key] = value.value;
     } else {
-        data = getMetadata<T[]>(metaKey, target);
+        data = getMetadata<T[]>(metaKey, target) || [];
         data.push(value);
     }
-    setMetadata(metaKey, target, value);
+    setMetadata(metaKey, target, data);
 }

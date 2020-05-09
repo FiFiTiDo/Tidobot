@@ -10,7 +10,7 @@ set:
   failed: "Failed to update counter's value"
 create:
   already_exists: "There already exists a counter by the name %s"
-  succssful: "Created counter %s"
+  successful: "Created counter %s"
   failed: "Failed to create counter"
 delete:
   succssful: "Deleted counter %s"

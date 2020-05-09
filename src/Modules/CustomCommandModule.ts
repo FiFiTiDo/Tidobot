@@ -8,7 +8,7 @@ import Permission from "../Systems/Permissions/Permission";
 import Logger from "../Utilities/Logger";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
@@ -232,7 +232,7 @@ export default class CustomCommandModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await CommandEntity.createTable({ channel });
     }
 }

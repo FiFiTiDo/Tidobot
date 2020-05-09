@@ -7,7 +7,7 @@ import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import {Key} from "../Utilities/Translator";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import CommandSystem from "../Systems/Commands/CommandSystem";
@@ -79,7 +79,7 @@ export default class ListModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await ListsEntity.createTable({ channel });
     }
 }
@@ -98,7 +98,7 @@ class ListCommand extends Command {
     }
 
     async execute(eventArgs: CommandEventArgs): Promise<void> {
-        if (super.execute(eventArgs)) return;
+        if (super.executeSubcommands(eventArgs)) return;
 
         const {event, message: msg, response} = eventArgs;
         const args = await event.validate({

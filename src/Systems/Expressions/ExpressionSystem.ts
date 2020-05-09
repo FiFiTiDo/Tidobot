@@ -14,6 +14,7 @@ import Dictionary from "../../Utilities/Structures/Dictionary";
 import deepmerge from "deepmerge";
 import {Key} from "../../Utilities/Translator";
 import chrono from "chrono-node";
+import {UnknownKeyError} from "./InterpreterErrors";
 
 export interface ExpressionContext {
     [key: string]: any;
@@ -147,6 +148,10 @@ export default class ExpressionSystem {
             const cst = this.parser.expression();
             return await this.interpreter.visit(cst, new Dictionary(deepmerge.all(objects)));
         } catch (e) {
+            if (e instanceof UnknownKeyError) {
+                return e.message;
+            }
+
             Logger.get().error("An error occurred with the expression parser", {cause: e});
             return msg.getResponse().translate(Key("general.failed_to_eval"));
         }

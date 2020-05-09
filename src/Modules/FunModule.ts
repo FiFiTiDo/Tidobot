@@ -9,6 +9,7 @@ import {inject, injectable} from "inversify";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import Logger from "../Utilities/Logger";
 
 class RouletteCommand extends Command {
     constructor(private bot: Bot) {
@@ -28,7 +29,12 @@ class RouletteCommand extends Command {
                 response.message(Key("fun.roulette.safe"), msg.getChatter().name);
             } else {
                 response.message(Key("fun.roulette.hit"), msg.getChatter().name);
-                this.bot.tempbanChatter(msg.getChatter(), 60, response.translate(Key("fun.roulette.reason")));
+                try {
+                    this.bot.tempbanChatter(msg.getChatter(), 60, response.translate(Key("fun.roulette.reason")));
+                } catch (e) {
+                    Logger.get().warning(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", { cause: e });
+                    return response.message("I'm afraid I cannot do that!");
+                }
             }
         }, 1000);
     }
@@ -46,7 +52,12 @@ class SeppukuCommand extends Command {
         });
         if (args === null) return;
 
-        return this.bot.tempbanChatter(msg.getChatter(), 30, response.translate(Key("fun.seppuku.reason")));
+        try {
+            return this.bot.tempbanChatter(msg.getChatter(), 30, response.translate(Key("fun.seppuku.reason")));
+        } catch (e) {
+            Logger.get().warning(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", { cause: e });
+            return response.message("I'm afraid I cannot do that!");
+        }
     }
 }
 

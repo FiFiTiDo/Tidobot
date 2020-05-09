@@ -1,4 +1,3 @@
-import {injectable} from "inversify";
 import Adapter, {AdapterOptions} from "../Services/Adapter";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import * as util from "util";
@@ -13,6 +12,8 @@ import ChannelManager from "../Chat/ChannelManager";
 import Logger from "../Utilities/Logger";
 import EventSystem from "../Systems/Event/EventSystem";
 import {provide} from "inversify-binding-decorators";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
+import {NewChatterEvent, NewChatterEventArgs} from "../Chat/Events/NewChatterEvent";
 
 @provide(Bot)
 export default class Bot {
@@ -39,6 +40,10 @@ export default class Bot {
         dispatcher.addListener(DisconnectedEvent, ({event}) => {
             Logger.get().info("Disconnected from the service.", {reason: event.getMetadata("reason", "Unknown reason")});
         }, EventPriority.MONITOR);
+        dispatcher.addListener(NewChannelEvent, async ({ channel }: NewChannelEventArgs) => {
+        });
+        dispatcher.addListener(NewChatterEvent, async ({ chatter }: NewChatterEventArgs) => {
+        });
         this.adapter.run(options);
     }
 

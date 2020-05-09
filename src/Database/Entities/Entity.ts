@@ -51,7 +51,6 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
         this.tableName = getTableName(entityConstructor, Entity.normalizeParameters(params));
         if (this.tableName === null) throw new Error("Model must use the @Table decorator to add the table name formatter.");
         this.schema = new TableSchema(this);
-        this.schema.addColumn("id", { datatype: DataTypes.INTEGER, primary: true, increment: true });
     }
 
     is(entity: Entity<any>): entity is this {

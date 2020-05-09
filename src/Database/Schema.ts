@@ -16,8 +16,6 @@ export class TableSchema {
     }
 
     addColumn(property: string, settings: ColumnSettings): void {
-        if (!settings.name) settings.name = property;
-
         this.columns.set(settings.name, { property, settings });
     }
 

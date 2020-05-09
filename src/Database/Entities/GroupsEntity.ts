@@ -1,6 +1,6 @@
-import Entity, {EntityParameters} from "./Entity";
+import {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import GroupPermissionsEntity from "./GroupPermissionsEntity";
 import GroupMembersEntity from "./GroupMembersEntity";
 import ChatterEntity from "./ChatterEntity";
@@ -10,6 +10,7 @@ import ChannelEntity from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
+@Id
 @Table(({ service, channel }) => `${service}_${channel.name}_groups`)
 export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
     constructor(id: number, params: EntityParameters) {

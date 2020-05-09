@@ -1,7 +1,7 @@
-import Entity, {EntityParameters} from "./Entity";
+import {EntityParameters} from "./Entity";
 import moment, {Moment} from "moment";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import {where} from "../Where";
 import Message from "../../Chat/Message";
 import MessageParser from "../../Chat/MessageParser";
@@ -12,6 +12,7 @@ export enum CommandConditionResponse {
     DONT_RUN, RUN_NOW, RUN_DEFAULT
 }
 
+@Id
 @Table(({service, channel}) => `${service}_${channel.name}_commands`)
 export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> {
     constructor(id: number, params: EntityParameters) {

@@ -1,16 +1,17 @@
 import Entity, {EntityParameters} from "./Entity";
 import ChatterEntity from "./ChatterEntity";
-import SettingsEntity, {ChannelSettings} from "./SettingsEntity";
+import {ChannelSettings} from "./SettingsEntity";
 import PermissionEntity from "./PermissionEntity";
 import {ImportModel} from "../Decorators/Relationships";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import {where} from "../Where";
 import {Observable} from "../../Utilities/Patterns/Observable";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import ChatterList from "../../Chat/ChatterList";
 import {ConvertedSetting} from "../../Systems/Settings/Setting";
 
+@Id
 @Table(({ service }) => `${service}_channels`)
 export default class ChannelEntity extends Entity<ChannelEntity> {
     private readonly settingsManager: ChannelSettings;
@@ -52,12 +53,16 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
         return this.getSettings().set(key, value);
     }
 
+    static async findById(id: string, service: string): Promise<ChannelEntity|null> {
+        return ChannelEntity.retrieve({ service }, where().eq("channel_id", id));
+    }
+
     static async findByName(name: string, service: string): Promise<ChannelEntity|null> {
         return ChannelEntity.retrieve({ service }, where().eq("name", name));
     }
 
     static async from(id: string, name: string, service: string): Promise<ChannelEntity|null> {
-        return this.retrieveOrMake({ service }, where().eq("channel_id", id), { channel_id: id, name, disabled_modules: "" });
+        return this.make({ service }, { channel_id: id, name, disabled_modules: "" });
     }
 
     findChatterById(id: string) {

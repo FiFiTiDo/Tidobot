@@ -14,7 +14,7 @@ import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {inject, injectable} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
@@ -146,7 +146,7 @@ export default class NewsModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await NewsEntity.createTable({ channel });
     }
 

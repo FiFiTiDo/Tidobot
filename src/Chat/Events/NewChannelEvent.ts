@@ -1,5 +1,5 @@
-import Event, {EventArguments} from "../Systems/Event/Event";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
+import Event, {EventArguments} from "../../Systems/Event/Event";
+import ChannelEntity from "../../Database/Entities/ChannelEntity";
 
 export class NewChannelEvent extends Event<NewChannelEvent> {
     public static readonly NAME = "channel:new";
@@ -8,15 +8,13 @@ export class NewChannelEvent extends Event<NewChannelEvent> {
         super(NewChannelEvent.NAME);
     }
 
-    getEventArgs(): NewChannelEvent.Arguments {
+    getEventArgs(): NewChannelEventArgs {
         return Object.assign(super.getEventArgs(), {
             channel: this.channel
         });
     }
 }
 
-export namespace NewChannelEvent {
-    export interface Arguments extends EventArguments<NewChannelEvent> {
-        channel: ChannelEntity
-    }
+export interface NewChannelEventArgs extends EventArguments<NewChannelEvent> {
+    channel: ChannelEntity
 }

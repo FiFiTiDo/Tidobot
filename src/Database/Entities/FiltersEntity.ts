@@ -1,9 +1,10 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 
+@Id
 @Table(service => `${service}_filters`)
 export default class FiltersEntity extends Entity<FiltersEntity> {
     constructor(id: number, params: EntityParameters) {

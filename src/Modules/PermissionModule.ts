@@ -7,7 +7,7 @@ import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import Logger from "../Utilities/Logger";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import CommandSystem from "../Systems/Commands/CommandSystem";
@@ -57,7 +57,7 @@ export default class PermissionModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await PermissionEntity.createTable({ channel });
     }
 }

@@ -1,5 +1,6 @@
-import {CommandListener} from "./CommandSystem";
+import CommandSystem, {CommandListener} from "./CommandSystem";
 import {CommandEventArgs} from "./CommandEvent";
+import ChannelEntity from "../../Database/Entities/ChannelEntity";
 
 export default class Command {
     private subcommands: Map<string, CommandListener>;
@@ -20,8 +21,8 @@ export default class Command {
         return this.usage;
     }
 
-    formatUsage(): string {
-        let usage = this.label;
+    async formatUsage(channel: ChannelEntity): Promise<string> {
+        let usage = await CommandSystem.getPrefix(channel) + this.label;
         if (this.usage !== null) usage += ` ${this.usage}`;
         return usage;
     }
@@ -30,12 +31,17 @@ export default class Command {
         this.subcommands.set(label, listener);
     }
 
-    execute(args: CommandEventArgs): Promise<void> {
-        const { event, response } = args;
+    async execute(args: CommandEventArgs): Promise<void> {
+        const {message, response } = args;
+        if (!this.executeSubcommands(args))
+            return response.message(await this.formatUsage(message.getChannel()));
+    }
+
+    protected async executeSubcommands(args: CommandEventArgs): Promise<boolean> {
+        const { event} = args;
         const subcommandLabel = event.getArgument(0);
-        if (this.subcommands.has(subcommandLabel))
-            this.subcommands.get(subcommandLabel).call(this, args);
-        else
-            return response.message(this.formatUsage());
+        if (!this.subcommands.has(subcommandLabel)) return false;
+        this.subcommands.get(subcommandLabel).call(this, args);
+        return true;
     }
 }

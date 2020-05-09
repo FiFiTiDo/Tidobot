@@ -1,11 +1,12 @@
-import Entity, {EntityParameters} from "./Entity";
+import {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import {Unique} from "../Decorators/Constraints";
 import {where} from "../Where";
 import GroupsEntity from "./GroupsEntity";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
+@Id
 @Unique("GroupPermission", ["permission", "group_id"])
 @Table(({ service, channel }) => `${service}_${channel.name}_groupPermissions`)
 export default class GroupPermissionsEntity extends ChannelSpecificEntity<GroupPermissionsEntity> {

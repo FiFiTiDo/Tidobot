@@ -5,7 +5,7 @@ import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {inject, injectable} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
@@ -139,7 +139,8 @@ export default class UserModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
+        await ChatterEntity.createTable({ channel });
         await UserPermissionsEntity.createTable({ channel });
     }
 }

@@ -1,6 +1,6 @@
-import Entity, {EntityParameters} from "./Entity";
+import {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import ChannelEntity from "./ChannelEntity";
 import {where} from "../Where";
 import StringLike from "../../Utilities/Interfaces/StringLike";
@@ -10,6 +10,7 @@ import Cache from "../../Systems/Cache/Cache";
 import {ConvertedSetting} from "../../Systems/Settings/Setting";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
+@Id
 @Table(({ service, channel }) => `${service}_${channel.name}_settings`)
 export default class SettingsEntity extends ChannelSpecificEntity<SettingsEntity> {
     constructor(id: number, params: EntityParameters) {

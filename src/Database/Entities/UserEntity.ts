@@ -1,8 +1,9 @@
 import Entity, {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import {where} from "../Where";
 
+@Id
 @Table(({service}) => `${service}_users`)
 export default class UserEntity extends Entity<UserEntity> {
     constructor(id: number, params: EntityParameters) {

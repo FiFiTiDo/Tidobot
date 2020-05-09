@@ -5,7 +5,7 @@ import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Logger from "../Utilities/Logger";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
@@ -261,7 +261,7 @@ export default class CounterModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel}: NewChannelEvent.Arguments) {
+    async onNewChannel({ channel}: NewChannelEventArgs) {
         await CountersEntity.createTable({ channel });
     }
 }

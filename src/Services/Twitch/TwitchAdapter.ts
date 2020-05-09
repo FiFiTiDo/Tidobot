@@ -16,6 +16,7 @@ import symbols from "../../symbols";
 import Logger from "../../Utilities/Logger";
 import EventSystem from "../../Systems/Event/EventSystem";
 import ChannelManager from "../../Chat/ChannelManager";
+import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
@@ -101,17 +102,30 @@ export default class TwitchAdapter extends Adapter {
             chatter = await ChatterEntity.findById(user.id, channel);
 
         if (chatter === null) {
+            let id: string, name: string;
             if (typeof user === "string") {
                 let resp;
                 try {
                     resp = await this.api.getUsers({login: user});
+                    id = resp.data[0].id;
+                    name = user;
                 } catch (e) {
                     Logger.get().emerg("Unable to retrieve user from the API", {cause: e});
                     process.exit(1);
                 }
-                chatter = await ChatterEntity.from(resp.data[0].id, user, channel);
             } else {
-                chatter = await ChatterEntity.from(user.id, user.username, channel);
+                id = user["user-id"];
+                name = user.username;
+            }
+
+            chatter = await ChatterEntity.findById(id, channel); // Try to find by id
+
+            if (chatter === null) { // Brand new chatter
+                chatter = await ChatterEntity.from(id, name, channel);
+                EventSystem.getInstance().dispatch(new NewChannelEvent(channel));
+            } else { // Returning chatter, change name just in case
+                chatter.name = name;
+                await channel.save();
             }
         }
 
@@ -131,9 +145,17 @@ export default class TwitchAdapter extends Adapter {
             }
             const { id, login: name } = resp.data[0];
 
-            channel = await ChannelEntity.from(id, name, "twitch");
-            channel.name = name;
-            await channel.save();
+            channel = await ChannelEntity.findById(id, this.getName());
+
+            if (channel === null) {
+                channel = await ChannelEntity.from(id, name, this.getName());
+                EventSystem.getInstance().dispatch(new NewChannelEvent(channel));
+            } else {
+                channel.name = name;
+                await channel.save();
+            }
+
+            this.channelManager.add(channel);
         }
 
         return channel;

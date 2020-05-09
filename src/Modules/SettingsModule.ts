@@ -9,7 +9,7 @@ import SettingsEntity from "../Database/Entities/SettingsEntity";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {ConvertedSetting} from "../Systems/Settings/Setting";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import {inject, injectable} from "inversify";
 import symbols from "../symbols";
@@ -140,7 +140,7 @@ export default class SettingsModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await SettingsEntity.createTable({ channel });
         await SettingsEntity.make({ channel },
             SettingsSystem.getInstance().getAll().map(setting => ({

@@ -1,8 +1,9 @@
-import Entity, {EntityParameters} from "./Entity";
+import {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
-import {Column, DataTypes} from "../Decorators/Columns";
+import {Column, DataTypes, Id} from "../Decorators/Columns";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
+@Id
 @Table(({ service, channel }) => `${service}_${channel.name}_permissions`)
 export default class PermissionEntity extends ChannelSpecificEntity<PermissionEntity> {
     constructor(id: number, params: EntityParameters) {

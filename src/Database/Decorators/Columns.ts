@@ -29,6 +29,20 @@ export function getColumns(target: any): ColumnProp[] {
 
 export function Column(settings: ColumnSettings): Function {
     return function (target: any, property: string): void {
+        if (!settings.name) settings.name = property;
         addMetadata<ColumnProp>(COLUMNS_KEY, target.constructor, { property, settings });
     };
+}
+
+export function Id(target: any) {
+    addMetadata<ColumnProp>(COLUMNS_KEY, target, {
+        property: "id",
+        settings: {
+            name: "id",
+            datatype: DataTypes.INTEGER,
+            increment: true,
+            primary: true,
+            unique: true
+        }
+    });
 }

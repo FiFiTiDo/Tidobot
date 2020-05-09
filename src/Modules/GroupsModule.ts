@@ -10,7 +10,7 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
-import {NewChannelEvent} from "../Chat/NewChannelEvent";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {inject} from "inversify";
 import symbols from "../symbols";
@@ -40,7 +40,7 @@ export default class GroupsModule extends AbstractModule {
     public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity|null> => GroupsEntity.findByName(raw, msg.getChannel());
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEvent.Arguments): Promise<void> {
+    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await GroupsEntity.createTable({ channel });
         await GroupMembersEntity.createTable({ channel });
         await GroupPermissionsEntity.createTable({ channel });

@@ -9,6 +9,8 @@ import EventSystem from "../Event/EventSystem";
 import {objectHasProperties} from "../../Utilities/ObjectUtils";
 import Command from "./Command";
 import {CommandEvent, CommandEventArgs} from "./CommandEvent";
+import SettingsSystem from "../Settings/SettingsSystem";
+import Setting, {SettingType} from "../Settings/Setting";
 
 export interface CommandListener {
     (event: CommandEventArgs): void;
@@ -34,6 +36,7 @@ export default class CommandSystem {
 
     constructor() {
         this.commandListeners = {};
+        SettingsSystem.getInstance().registerSetting(new Setting("command.prefix", "!", SettingType.STRING));
     }
 
     static async getPrefix(channel: ChannelEntity): Promise<string> {

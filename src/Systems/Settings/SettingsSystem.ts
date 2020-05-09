@@ -25,6 +25,9 @@ export default class SettingsSystem {
     }
 
     getAll(): Setting[] {
-        return Array.from(this.settings.values());
+        const settings = [];
+        for (const [, setting] of this.settings)
+            settings.push(setting);
+        return settings;
     }
 }

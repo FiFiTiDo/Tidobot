@@ -69,9 +69,9 @@ export function ImportModel<T extends Entity<T>>(entityConstructor: EntityConstr
         if (!(obj instanceof Entity)) throw new Error("Model needs the service to retrieve the data.");
         descriptor.value = async function(): Promise<T[]> {
             if (!objectHasProperty(this, "getChannel")) {
-                return entityConstructor.retrieveAll({channel: this});
+                return entityConstructor.retrieveAll({ channel: this });
             } else {
-                return entityConstructor.retrieveAll({channel: this.getChannel()});
+                return entityConstructor.retrieveAll({ channel: this.getChannel() });
             }
         };
         return descriptor;

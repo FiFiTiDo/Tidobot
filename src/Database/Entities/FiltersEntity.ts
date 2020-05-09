@@ -5,7 +5,7 @@ import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 
 @Id
-@Table(service => `${service}_filters`)
+@Table(({service}) => `${service}_filters`)
 export default class FiltersEntity extends Entity<FiltersEntity> {
     constructor(id: number, params: EntityParameters) {
         super(FiltersEntity, id, params);

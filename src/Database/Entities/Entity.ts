@@ -259,8 +259,8 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
                 db.run("BEGIN TRANSACTION", err => err ? reject(err) : null);
                 for (const row of data) {
                     ops.push(new Promise((resolve, reject) => {
-                        const { columns, keys, prepared } = prepareData(data[0]);
-                        Database.get().run(`INSERT OR IGNORE INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
+                        const { columns, keys, prepared } = prepareData(row);
+                        db.run(`INSERT OR IGNORE INTO ${tableName} (${columns.join(", ")}) VALUES (${keys.join(", ")});`, prepared, function (err) {
                             if (err) {
                                 reject(err);
                             } else {

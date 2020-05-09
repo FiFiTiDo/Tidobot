@@ -54,7 +54,6 @@ export default class CommandSystem {
     async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
         const message: Message = event.getMessage();
         const commandPrefix = await CommandSystem.getPrefix(message.getChannel());
-        console.debug(message.getRaw());
 
         if (message.getParts().length < 1) return;
         if (message.getPart(0).startsWith(commandPrefix)) {

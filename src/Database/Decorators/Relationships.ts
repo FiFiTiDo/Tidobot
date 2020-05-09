@@ -2,6 +2,7 @@ import {where} from "../Where";
 import Entity, {EntityConstructor} from "../Entities/Entity";
 import {getOrSetProp} from "../../Utilities/functions";
 import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";
+import {objectHasProperty} from "../../Utilities/ObjectUtils";
 
 const RELATIONSHIP_KEY = "entity:relationship";
 
@@ -66,7 +67,13 @@ export function ManyToMany<foreignT extends Entity<foreignT>, joiningT extends E
 export function ImportModel<T extends Entity<T>>(entityConstructor: EntityConstructor<T>): Function {
     return function <T2> (obj: T2, key: string, descriptor: DescriptorMany<T>): DescriptorMany<T> {
         if (!(obj instanceof Entity)) throw new Error("Model needs the service to retrieve the data.");
-        descriptor.value = async (): Promise<T[]> => entityConstructor.retrieveAll({channel: this.getChannel()});
+        descriptor.value = async function(): Promise<T[]> {
+            if (!objectHasProperty(this, "getChannel")) {
+                return entityConstructor.retrieveAll({channel: this});
+            } else {
+                return entityConstructor.retrieveAll({channel: this.getChannel()});
+            }
+        };
         return descriptor;
     };
 }

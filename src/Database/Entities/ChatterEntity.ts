@@ -80,8 +80,8 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
         return ChatterEntity.retrieve({ channel }, where().eq("name", name));
     }
 
-    public static async from(user_id: string, name: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
-        return this.make({ channel }, { user_id, name, balance: 0.0, banned: 0, regular: 0 });
+    public static async from(userId: string, name: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
+        return this.retrieveOrMake({ channel }, where().eq("user_id", userId), { user_id: userId, name, balance: 0.0, banned: 0, regular: 0 });
     }
 }
 export type ChatterStateListItem<T> = [ChatterEntity, T];

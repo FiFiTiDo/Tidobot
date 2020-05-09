@@ -285,10 +285,9 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
         });
     }
 
-    static deserialize<T extends Entity<T>>(input: string): T {
+    static deserialize<T extends Entity<T>>(this: EntityConstructor<T>, input: string): T {
         const json = JSON.parse(input);
-        const constructor = this as unknown as EntityConstructor<any>;
-        const model: T = new constructor(json.rowData.id, json.params);
+        const model: T = new this(json.rowData.id, json.params);
         model.getSchema().importRow(json.rowData);
         return model;
     }

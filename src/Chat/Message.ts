@@ -154,7 +154,7 @@ export class Response {
     }
 
     translate(key: TranslationKey, ...args: any[]): string {
-        return this.translator.translate(key, args);
+        return this.translator.translate(key, ...args);
     }
 
     getTranslation(key: TranslationKey): any {

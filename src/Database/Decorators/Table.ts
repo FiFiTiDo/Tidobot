@@ -15,6 +15,7 @@ export function Table(tableNameFormatter: TableNameFormatter): Function {
 export function getTableName<T extends Entity<T>>(entityConstructor: EntityConstructor<T>, params: EntityParameters): string|null {
     const formatter = getMetadata<TableNameFormatter>(TABLE_NAME_KEY, entityConstructor);
     if (formatter === null) return null;
+    params = entityConstructor.normalizeParameters(params);
     return formatter(params);
 }
 

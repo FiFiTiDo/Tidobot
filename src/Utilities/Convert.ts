@@ -1,5 +1,7 @@
 import Message from "../Chat/Message";
 import {parseBool} from "./functions";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
+import {Key} from "./Translator";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -62,7 +64,13 @@ export default async (value: string, settings: ValueSettingsTypes, msg: Message)
         }
         case "string":
             return isAccepted(value, settings) ? value : null;
-        case "chatter":
-            return msg.getChannel().findChatterByName(value);
+        case "chatter": {
+            let chatter = msg.getChannel().findChatterByName(value);
+            if (chatter === null) chatter = await ChatterEntity.findByName(value, msg.getChannel());
+            if (chatter === null)
+                msg.getResponse().message(Key("users.unknown"), value);
+
+            return chatter;
+        }
     }
 }

@@ -1,3 +1,4 @@
+unknown: "Hmm... I don't seem to know the user: %s"
 permission:
   granted:
     successful: "Granted permission %s to the user %s"

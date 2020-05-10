@@ -37,7 +37,11 @@ export default class GroupsModule extends AbstractModule {
         perm.registerPermission(new Permission("permission.group.delete", Role.BROADCASTER));
     }
 
-    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity|null> => GroupsEntity.findByName(raw, msg.getChannel());
+    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity|null> => {
+        const group = await GroupsEntity.findByName(raw, msg.getChannel());
+        if (group === null) msg.getResponse().message(Key("groups.unknown"), raw);
+        return group
+    };
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {

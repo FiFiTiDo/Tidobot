@@ -1,17 +1,18 @@
 unknown: "Could not find the counter: %s"
 increment:
-  succssful: "Incremented counter %s by %d"
+  successful: "Incremented counter %s by %d"
   failed: "Failed to update counter's value"
 decrement:
-  succssful: "Decremented counter %s by %d"
+  successful: "Decremented counter %s by %d"
   failed: "Failed to update counter's value"
 set:
-  succssful: "Set counter %s to %d"
+  successful: "Set counter %s to %d"
   failed: "Failed to update counter's value"
 create:
   already_exists: "There already exists a counter by the name %s"
   successful: "Created counter %s"
   failed: "Failed to create counter"
 delete:
-  succssful: "Deleted counter %s"
+  successful: "Deleted counter %s"
   failed: "Failed to delete counter"
+value: "The counter %s is currently at the value %s"

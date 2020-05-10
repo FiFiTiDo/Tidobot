@@ -11,6 +11,7 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import Message from "../Chat/Message";
 
 class CounterCommand extends Command {
     constructor() {
@@ -29,13 +30,46 @@ class CounterCommand extends Command {
         this.addSubcommand("del", this.delete);
     }
 
-    async increment({event, message: msg, response}: CommandEventArgs): Promise<void> {
+    static async counterConverter(input: string, msg: Message): Promise<CountersEntity|null> {
+        const counter = CountersEntity.findByName(input, msg.getChannel());
+        if (counter === null) {
+            await msg.getResponse().message(Key("counter.unknown"), input);
+            return null;
+        }
+        return counter;
+    }
+
+    async execute(eventArgs: CommandEventArgs): Promise<void> {
+        if (await super.executeSubcommands(eventArgs)) return;
+
+        const {event, response} = eventArgs;
+        const args = await event.validate({
+            usage: "list <list name> [item number]",
+            arguments: [
+                {
+                    value: {
+                        type: "custom",
+                        converter: CounterCommand.counterConverter
+                    },
+                    required: true
+                }
+            ],
+            permission: "counter.check"
+        });
+        if (args === null) return;
+        const [counter] = args as [CountersEntity];
+
+        await response.message(Key("counter.value"), counter.name, counter.value);
+    }
+
+    async increment({event, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "counter increment <counter> [amount]",
             arguments: [
                 {
                     value: {
-                        type: "string",
+                        type: "custom",
+                        converter: CounterCommand.counterConverter
                     },
                     required: true
                 },
@@ -50,13 +84,7 @@ class CounterCommand extends Command {
             permission: "counter.change"
         });
         if (args === null) return;
-
-        const [, name, amt] = args;
-        const counter = await CountersEntity.findByName(name, msg.getChannel());
-        if (counter === null) {
-            await response.message(Key("counter.unknown"), event.getArgument(1));
-            return;
-        }
+        const [counter, amt] = args as [CountersEntity, number];
 
         try {
             counter.value += amt;
@@ -68,13 +96,14 @@ class CounterCommand extends Command {
         }
     }
 
-    async decrement({event, message: msg, response}: CommandEventArgs): Promise<void> {
+    async decrement({event, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "counter decrement <counter> [amount]",
             arguments: [
                 {
                     value: {
-                        type: "string",
+                        type: "custom",
+                        converter: CounterCommand.counterConverter
                     },
                     required: true
                 },
@@ -89,13 +118,7 @@ class CounterCommand extends Command {
             permission: "counter.change"
         });
         if (args === null) return;
-
-        const [, name, amt] = args;
-        const counter = await CountersEntity.findByName(name, msg.getChannel());
-        if (counter === null) {
-            await response.message(Key("counter.unknown"), event.getArgument(1));
-            return;
-        }
+        const [counter, amt] = args as [CountersEntity, number];
 
         try {
             counter.value -= amt;
@@ -107,13 +130,14 @@ class CounterCommand extends Command {
         }
     }
 
-    async set({event, message: msg, response}: CommandEventArgs): Promise<void> {
+    async set({event, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "counter set <counter> <amount>",
             arguments: [
                 {
                     value: {
-                        type: "string",
+                        type: "custom",
+                        converter: CounterCommand.counterConverter
                     },
                     required: true
                 },
@@ -127,14 +151,8 @@ class CounterCommand extends Command {
             permission: "counter.change"
         });
         if (args === null) return;
+        const [counter, amt] = args as [CountersEntity, number];
 
-        const counter = await CountersEntity.findByName(args[1], msg.getChannel());
-        if (counter === null) {
-            await response.message(Key("counter.unknown"), event.getArgument(1));
-            return;
-        }
-
-        const amt = args[2];
         try {
             counter.value = amt;
             await counter.save();
@@ -162,7 +180,7 @@ class CounterCommand extends Command {
         const [name] = args;
 
         try {
-            const counter = await CountersEntity.make<CountersEntity>({channel: msg.getChannel()}, {name, value: 0});
+            const counter = await CountersEntity.make({channel: msg.getChannel()}, {name, value: 0});
             if (counter === null) {
                 await response.message(Key("counter.create.already_exists"), name);
                 return;
@@ -174,13 +192,14 @@ class CounterCommand extends Command {
         }
     }
 
-    async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
+    async delete({event, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "counter delete <counter>",
             arguments: [
                 {
                     value: {
-                        type: "string",
+                        type: "custom",
+                        converter: CounterCommand.counterConverter
                     },
                     required: true
                 }
@@ -188,13 +207,7 @@ class CounterCommand extends Command {
             permission: "counter.create"
         });
         if (args === null) return;
-        const [name] = args;
-
-        const counter = await CountersEntity.findByName(name, msg.getChannel());
-        if (counter === null) {
-            await response.message(Key("counter.unknown"), event.getArgument(1));
-            return;
-        }
+        const [counter] = args as [CountersEntity];
 
         try {
             await counter.delete();
@@ -217,6 +230,7 @@ export default class CounterModule extends AbstractModule {
         cmd.registerCommand(new CounterCommand(), this);
 
         const perm = PermissionSystem.getInstance();
+        perm.registerPermission(new Permission("counter.check", Role.NORMAL));
         perm.registerPermission(new Permission("counter.change", Role.MODERATOR));
         perm.registerPermission(new Permission("counter.create", Role.MODERATOR));
         perm.registerPermission(new Permission("counter.delete", Role.MODERATOR));

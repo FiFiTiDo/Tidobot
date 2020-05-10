@@ -2,7 +2,7 @@ import {RawRowData} from "./RowData";
 import {DatabaseError} from "./DatabaseErrors";
 import moment, {Moment} from "moment";
 import Entity from "./Entities/Entity";
-import {ColumnProp, ColumnSettings, DataTypes, getColumns} from "./Decorators/Columns";
+import {ColumnProp, ColumnSettings, DataTypes, EnumColumnSettings, getColumns} from "./Decorators/Columns";
 import {getRelationships} from "./Decorators/Relationships";
 
 export class TableSchema {
@@ -38,6 +38,11 @@ export class TableSchema {
                 case DataTypes.DATE:
                     this.entity[property] = moment(value as string);
                     break;
+                case DataTypes.ENUM: {
+                    const enumSettings = settings as EnumColumnSettings;
+                    this.entity[property] = enumSettings.enum[value];
+                    break;
+                }
                 default:
                     this.entity[property] = value;
             }
@@ -60,11 +65,11 @@ export class TableSchema {
                 case DataTypes.DATE:
                     data[settings.name] = (value as Moment).toISOString();
                     break;
-                case DataTypes.ENUM:
-                    if (!settings.enum || settings.enum.indexOf(value) < 0)
-                        throw new DatabaseError("Invalid enum type, either wrong value was specified or no enum values were found.");
-                    data[settings.name] = value;
+                case DataTypes.ENUM: {
+                    const enumSettings = settings as EnumColumnSettings;
+                    data[settings.name] = enumSettings.enum[value];
                     break;
+                }
                 default:
                     data[settings.name] = value;
             }

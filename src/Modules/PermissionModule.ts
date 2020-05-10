@@ -59,18 +59,99 @@ export default class PermissionModule extends AbstractModule {
     @EventHandler(NewChannelEvent)
     async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await PermissionEntity.createTable({ channel });
+        await PermissionSystem.getInstance().resetChannelPermissions(channel);
     }
 }
 
 class PermissionCommand extends Command {
-    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity|null> =>
-        PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
+    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity|null> => {
+        const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
+        if (perm === null) msg.getResponse().message(Key("permissions.unknown"), raw);
+        return perm;
+    };
 
     constructor() {
-        super("permission", "<set|reset>", ["perm"]);
+        super("permission", "<create|delete|set|reset>", ["perm"]);
 
+        this.addSubcommand("create", this.create);
+        this.addSubcommand("delete", this.delete);
+        this.addSubcommand("del", this.delete);
         this.addSubcommand("set", this.set);
         this.addSubcommand("reset", this.reset);
+    }
+
+    async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "permission create <permission> <default-level>",
+            arguments: [
+                {
+                    value: {
+                        type: "string"
+                    },
+                    required: true
+                },
+                {
+                    value: {
+                        type: "custom",
+                        converter: parseRole
+                    },
+                    required: true
+                }
+            ],
+            permission: "permission.create"
+        });
+        if (args === null) return;
+        const [perm_str, role] = args as [string, Role];
+
+        if (!await msg.checkPermission(perm_str)) {
+            await response.message(Key("permissions.set.now_allowed"));
+            return;
+        }
+
+        try {
+            const permission = await PermissionEntity.make({ channel: msg.getChannel() }, {
+                permission: perm_str,
+                role: Role[role],
+                default_role: Role[role],
+                module_defined: "false"
+            });
+
+            if (permission === null)
+                await response.message(Key("permissions.create.already_exists"));
+            else
+                await response.message(Key("permissions.create.successful"), perm_str, Role[role]);
+        } catch (err) {
+            Logger.get().error("Unable to create new permission", { cause: err });
+            await response.message(Key("permissions.create.failed"), perm_str);
+        }
+    }
+
+    async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
+        const args = await event.validate({
+            usage: "permission reset [permission]",
+            arguments: [
+                {
+                    value: {
+                        type: "custom",
+                        converter: PermissionCommand.permissionArgConverter
+                    },
+                    required: true
+                }
+            ],
+            permission: "permission.delete"
+        });
+        if (args === null) return;
+        const [permission] = args as [PermissionEntity];
+
+        if (permission.moduleDefined)
+            return response.message(Key("permissions.delete.module_defined"), permission.permission);
+
+        permission.delete()
+            .then(() => response.message(Key("permissions.delete.successful"), permission.permission))
+            .catch(e => {
+                response.message(Key("permissions.delete.failed"), permission.permission);
+                Logger.get().error("Unable to delete custom permission", {cause: e});
+            });
     }
 
     async set({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -95,18 +176,18 @@ class PermissionCommand extends Command {
             permission: "permission.set"
         });
         if (args === null) return;
-        const [permission, level] = args as [PermissionEntity, Role];
+        const [permission, role] = args as [PermissionEntity, Role];
 
         if (!await msg.checkPermission(permission.permission)) {
-            await response.message(Key("permissions.permission.set.now_allowed"));
+            await response.message(Key("permissions.set.now_allowed"));
             return;
         }
 
-        permission.role = Role[level];
+        permission.role = role;
         permission.save()
-            .then(() => response.message(Key("permissions.permission.set.successful"), permission, Role[level]))
+            .then(() => response.message(Key("permissions.set.successful"), permission.permission, Role[role]))
             .catch(e => {
-                response.message(Key("permissions.permission.set.failed"), permission);
+                response.message(Key("permissions.set.failed"), permission.permission);
                 Logger.get().error("Unable to set permission level", {cause: e});
             });
     }
@@ -129,32 +210,24 @@ class PermissionCommand extends Command {
         const [permission] = args as [PermissionEntity|undefined];
 
         if (permission) {
-            if (!(await msg.checkPermission(permission.permission))) return response.message(Key("permissions.permission.reset.not_allowed"));
+            if (!(await msg.checkPermission(permission.permission)))
+                return response.message(Key("permissions.reset.not_allowed"));
 
-            const perm = PermissionSystem.getInstance().findPermission(permission.permission);
-            if (perm !== null) {
-                permission.role = Role[perm.getDefaultRole()];
-                await permission.save()
-                    .then(() => response.message(Key("permissions.permission.reset.successful"), permission.permission))
-                    .catch(e => {
-                        response.message(Key("permissions.permission.reset.failed"), permission.permission);
-                        Logger.get().error("Unable to reset permission", {cause: e});
-                    });
-            } else {
-                await permission.delete()
-                    .then(() => response.message(Key("permissions.permission.delete.successful"), permission.permission))
-                    .catch(e => {
-                        response.message(Key("permissions.permission.delete.failed"), permission.permission);
-                        Logger.get().error("Unable to delete permission", {cause: e});
-                    });
-            }
+            permission.role = permission.defaultRole;
+            await permission.save()
+                .then(() => response.message(Key("permissions.reset.successful"), permission.permission))
+                .catch(e => {
+                    response.message(Key("permissions.reset.failed"), permission.permission);
+                    Logger.get().error("Unable to reset permission", {cause: e});
+                });
         } else {
-            if (!(await msg.checkPermission("permission.reset.all"))) return;
+            if (!(await msg.checkPermission("permission.reset.all")))
+                return response.message(Key("permissions.reset-all.not_allowed"));
 
             PermissionSystem.getInstance().resetChannelPermissions(msg.getChannel())
-                .then(() => response.message(Key("permissions.permission.reset-all.successful")))
+                .then(() => response.message(Key("permissions.reset-all.successful")))
                 .catch(e => {
-                    response.message(Key("permissions.permission.reset-all.failed"));
+                    response.message(Key("permissions.reset-all.failed"));
                     Logger.get().error("Unable to reset all permissions", {cause: e});
                 });
         }

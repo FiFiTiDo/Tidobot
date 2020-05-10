@@ -23,8 +23,8 @@ export default class SettingsEntity extends ChannelSpecificEntity<SettingsEntity
     @Column({ datatype: DataTypes.STRING })
     public value: string;
 
-    @Column({ datatype: DataTypes.ENUM, enum: ["STRING", "INTEGER", "FLOAT", "BOOLEAN", "TIMEZONE"] })
-    public type: string;
+    @Column({ datatype: DataTypes.ENUM, enum: SettingType })
+    public type: SettingType;
 
     @Column({ name: "default_value", datatype: DataTypes.STRING, null: true })
     public defaultValue: string;

@@ -3,9 +3,11 @@ permission:
   granted:
     successful: "Granted permission %s to the user %s"
     failed: "Oops! I was unable to grant the permission %s to the user %s"
+    not_allowed: "Hmm... It seems like you're not permitted to grant that permission"
   denied:
     successful: "Denied the user %s access to the permission %s"
     failed: "Uh Oh! An error occurred preventing me from denying the permission %s for the user %s"
+    not_allowed: "Hmm... It seems like you're not permitted to deny that permission"
   deleted:
     specific:
       successful: "Successfully deleted the permission %s for the user %s"

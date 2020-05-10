@@ -28,7 +28,7 @@ export default class PermissionSystem {
         return null;
     }
 
-    public getAllPermissions(): Permission[] {
+    public getAll(): Permission[] {
         return this.permissions;
     }
 
@@ -37,7 +37,7 @@ export default class PermissionSystem {
             const permissions = await channel.permissions();
             for (const perm of permissions)
                 if (perm.permission === permission.getPermission())
-                    return Role[perm.role];
+                    return perm.role;
             return Role.OWNER;
         } catch (e) {
             Logger.get().error("Unable to find permission in database", {cause: e});
@@ -73,7 +73,10 @@ export default class PermissionSystem {
         await PermissionEntity.removeEntries({ channel });
         await PermissionEntity.make({ channel },
             this.permissions.map(permission => ({
-                permission: permission.getPermission(), role: permission.getDefaultRole()
+                permission: permission.getPermission(),
+                role: Role[permission.getDefaultRole()],
+                default_role: Role[permission.getDefaultRole()],
+                module_defined: "true"
             }))
         );
     }

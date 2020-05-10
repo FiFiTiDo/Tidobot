@@ -7,18 +7,24 @@ export enum DataTypes {
 
 export interface ColumnSettings {
     name?: string;
-    datatype: DataTypes;
+    datatype?: DataTypes;
     primary?: boolean;
     null?: boolean;
     unique?: boolean;
     increment?: boolean;
     references?: string;
-    enum?: string[];
 }
+
+export interface EnumColumnSettings extends ColumnSettings {
+    datatype: DataTypes.ENUM,
+    enum: object
+}
+
+type ColumnSettingsTypes = ColumnSettings | EnumColumnSettings;
 
 export interface ColumnProp {
     property: string;
-    settings: ColumnSettings;
+    settings: ColumnSettingsTypes;
 }
 
 const COLUMNS_KEY = "entity:columns";
@@ -27,9 +33,23 @@ export function getColumns(target: any): ColumnProp[] {
     return getMetadata<ColumnProp[]>(COLUMNS_KEY, target);
 }
 
-export function Column(settings: ColumnSettings): Function {
+export function Column(settings: ColumnSettingsTypes = {}): Function {
     return function (target: any, property: string): void {
         if (!settings.name) settings.name = property;
+        if (!settings.datatype) {
+            const type = Reflect.getMetadata("design:type", target, property);
+            switch (type) {
+                case "string":
+                    settings.datatype = DataTypes.STRING;
+                    break;
+                case "boolean":
+                    settings.datatype = DataTypes.BOOLEAN;
+                    break;
+                default:
+                    throw new Error("Unable to infer column type, please specify using the datatype setting.")
+            }
+        }
+
         addMetadata<ColumnProp>(COLUMNS_KEY, target.constructor, { property, settings });
     };
 }

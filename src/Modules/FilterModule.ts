@@ -376,6 +376,7 @@ export default class FilterModule extends AbstractModule {
             const badWords = lists.badWords;
             const lower = msg.getRaw().toLowerCase();
             for (const badWord of badWords) {
+                if (badWord.length < 1) continue;
                 if (lower.indexOf(badWord.toLowerCase()) >= 0) {
                     await this.nextStrike(Key("filter.reasons.bad_word"), msg);
                     return;

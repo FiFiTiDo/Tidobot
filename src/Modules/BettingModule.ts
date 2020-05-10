@@ -9,7 +9,6 @@ import {Role} from "../Systems/Permissions/Role";
 import Logger from "../Utilities/Logger";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
-import {objectHasProperties} from "../Utilities/ObjectUtils";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
@@ -37,7 +36,7 @@ class BettingGame {
     }
 
     async close(winningOption: string): Promise<number|null> {
-        if (!objectHasProperties(this.bets, winningOption.toLowerCase())) return null;
+        if (!this.bets.has(winningOption.toLowerCase())) return null;
         this.open = false;
 
         for (const [option, bets] of this.bets.entries()) {
@@ -105,11 +104,11 @@ class BetCommand extends Command {
 
     async place({ event, message: msg, response }: CommandEventArgs): Promise<void> {
         const args = await event.validate({
-            usage: "bet place <option #> <amount>",
+            usage: "bet place <option> <amount>",
             arguments: [
                 {
                     value: {
-                        type: "integer",
+                        type: "string",
                     },
                     required: true
                 },
@@ -123,7 +122,7 @@ class BetCommand extends Command {
             permission: "bet.place"
         });
         if (args === null) return;
-        const [, option, amount] = args;
+        const [option, amount] = args as [string, number];
 
         if (!this.betInstances.hasChannel(msg.getChannel())) return;
         const game = this.betInstances.getChannel(msg.getChannel());
@@ -176,7 +175,7 @@ class BetCommand extends Command {
             permission: "bet.open"
         });
         if (args === null) return;
-        const [, title, options] = args;
+        const [title, options] = args as [string, string[]];
 
         if (this.betInstances.hasChannel(msg.getChannel()) && this.betInstances.getChannel(msg.getChannel()).isOpen())
             return response.message(Key("betting.open.already_open"));
@@ -200,7 +199,7 @@ class BetCommand extends Command {
             permission: "bet.close"
         });
         if (args === null) return;
-        const [, option] = args;
+        const [option] = args;
 
         if (!this.betInstances.hasChannel(msg.getChannel()) || !this.betInstances.getChannel(msg.getChannel()).isOpen())
             return response.message(Key("betting.closed.not_open"));
@@ -211,7 +210,7 @@ class BetCommand extends Command {
         if (winnings === null)
             return response.message(Key("betting.closed.invalid_option"));
         else
-            return response.message(Key("betting.close.successful"), game.getTitle(), option, await CurrencyModule.formatAmount(winnings, msg.getChannel()));
+            return response.message(Key("betting.closed.successful"), game.getTitle(), option, await CurrencyModule.formatAmount(winnings, msg.getChannel()));
     }
 
     async check({ event, message: msg, response }: CommandEventArgs): Promise<void> {

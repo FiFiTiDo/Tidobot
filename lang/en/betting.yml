@@ -14,5 +14,5 @@ closed:
   invalid_option: "That isn't a valid option"
 check:
   no_recent: "There haven't been any recent bets"
-  part: "Option %s, %s (%f\\%)"
+  part: "Option %s, %s (%f%)"
   current_stats: "Current stats: %s"

@@ -54,11 +54,11 @@ class BankCommand extends Command {
             permission: "currency.bank.give"
         });
         if (args === null) return;
-        const [chatter, amount] = args;
+        const [chatter, amount] = args as [ChatterEntity, number];
 
         try {
             await chatter.deposit(amount);
-            await response.message(Key("currency.give.successful"), await CurrencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
+            await response.message(Key("currency.give.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
         } catch (e) {
             await response.message(Key("currency.give.failed"));
             Logger.get().error("Failed to give money to chatter's bank account", {cause: e});
@@ -79,7 +79,7 @@ class BankCommand extends Command {
             permission: "currency.bank.give-all"
         });
         if (args === null) return;
-        const [amount] = args;
+        const [amount] = args as [number];
 
         const onlyActive = msg.getChannel().getSettings().get("currency.only-active-all");
         const chatters: ChatterEntity[] = onlyActive ? msg.getChannel().getChatters() : await ChatterEntity.getAll({channel: msg.getChannel()});
@@ -117,11 +117,11 @@ class BankCommand extends Command {
             permission: "currency.bank.take"
         });
         if (args === null) return;
-        const [chatter, amount] = args;
+        const [chatter, amount] = args as [ChatterEntity, number];
 
         try {
             await chatter.withdraw(amount);
-            await response.message(Key("currency.take.successful"), await CurrencyModule.formatAmount(args[2], msg.getChannel()), chatter.getName());
+            await response.message(Key("currency.take.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
         } catch (e) {
             await response.message(Key("currency.take.failed"));
             Logger.get().error("Failed to take money from chatter's bank account", {cause: e});
@@ -174,9 +174,9 @@ class BankCommand extends Command {
             permission: "currency.bank.balance"
         });
         if (args === null) return;
-        const [chatter] = args;
+        const [chatter] = args as [ChatterEntity];
 
-        await response.message(Key("currency.balance-other"), chatter.getName(), await CurrencyModule.formatAmount(chatter.getBalance(), msg.getChannel()));
+        await response.message(Key("currency.balance-other"), chatter.name, await CurrencyModule.formatAmount(chatter.balance, msg.getChannel()));
     }
 
     async reset({event, response}: CommandEventArgs): Promise<void> {
@@ -193,11 +193,12 @@ class BankCommand extends Command {
             permission: "currency.bank.reset"
         });
         if (args === null) return;
-        const [chatter] = args;
+        const [chatter] = args as [ChatterEntity];
 
         try {
-            await chatter.setBalance(0);
-            await response.message(Key("currency.reset.successful"), chatter.getName());
+            chatter.balance = 0;
+            await chatter.save();
+            await response.message(Key("currency.reset.successful"), chatter.name);
         } catch (e) {
             await response.message(Key("currency.reset.failed"));
             Logger.get().error("Failed to reset chatter's bank account", {cause: e});

@@ -201,11 +201,8 @@ export default class CustomCommandModule extends AbstractModule {
         }
 
         if (doDefault) {
-            for (const command of defCommands) {
-                const res = await command.checkCondition(msg, true);
-                if (res === CommandConditionResponse.RUN_NOW)
-                    await msg.getResponse().message(await command.getResponse(msg));
-            }
+            for (const command of defCommands)
+                await msg.getResponse().message(await command.getResponse(msg));
         }
     }
 
@@ -221,7 +218,7 @@ export default class CustomCommandModule extends AbstractModule {
         perm.registerPermission(new Permission("command.ignore-cooldown", Role.MODERATOR));
 
         ExpressionSystem.getInstance().registerResolver(msg => ({
-            execute_cmd: async (command: unknown): Promise<string> => new Promise( resolve => {
+            alias: async (command: unknown): Promise<string> => new Promise( resolve => {
                 if (typeof command !== "string") return "Invalid argument, expected a string";
                 if (msg.checkLoopProtection(command)) return "Infinite loop detected";
                 const newMsg = msg.extend(`${command} ${msg.getParts().slice(1).join(" ")}`, resolve);

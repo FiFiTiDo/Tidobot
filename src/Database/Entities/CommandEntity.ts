@@ -40,9 +40,11 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
     @Column({ name: "updated_at", datatype: DataTypes.DATE })
     public updatedAt: Moment;
 
-    async checkCondition(msg: Message, def = false): Promise<CommandConditionResponse> {
-        if (this.condition.toLowerCase() === "@@default" && !def) return CommandConditionResponse.RUN_DEFAULT;
-        return await msg.evaluateExpression(this.condition) ? CommandConditionResponse.RUN_NOW : CommandConditionResponse.DONT_RUN;
+    async checkCondition(msg: Message): Promise<CommandConditionResponse> {
+        if (this.condition.toLowerCase() === "@@default") return CommandConditionResponse.RUN_DEFAULT;
+        const doRun = await msg.evaluateExpression(this.condition);
+        if (typeof doRun !== "boolean") return CommandConditionResponse.DONT_RUN;
+        return doRun ? CommandConditionResponse.RUN_NOW : CommandConditionResponse.DONT_RUN;
     }
 
     async getResponse(msg: Message): Promise<string> {

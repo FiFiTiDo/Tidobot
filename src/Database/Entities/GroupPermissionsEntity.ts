@@ -14,6 +14,7 @@ export default class GroupPermissionsEntity extends ChannelSpecificEntity<GroupP
         super(GroupPermissionsEntity, id, params);
     }
 
+    @Column({ datatype: DataTypes.STRING })
     public permission: string;
 
     @Column({ name: "group_id", datatype: DataTypes.INTEGER })

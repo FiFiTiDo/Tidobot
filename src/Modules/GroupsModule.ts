@@ -85,12 +85,12 @@ class GroupCommand extends Command {
 
         GroupMembersEntity.create(chatter.userId, group)
             .then(added => {
-                if (added) response.message(Key("permissions.group.user.added"), chatter.name, group.name);
-                else response.message(Key("permissions.group.user.already_a_member"), chatter.name, group.name);
+                if (added) response.message(Key("groups.user.added"), chatter.name, group.name);
+                else response.message(Key("groups.user.already_a_member"), chatter.name, group.name);
             })
             .catch((e) => {
                 Logger.get().error("Unable to add user to group", {cause: e});
-                response.message(Key("permissions.group.user.failed_to_add"), chatter.name, group.name);
+                response.message(Key("groups.user.failed_to_add"), chatter.name, group.name);
             });
     }
 
@@ -120,12 +120,12 @@ class GroupCommand extends Command {
         try {
             const member = await GroupMembersEntity.findByUser(chatter, group);
             if (member === null)
-                return response.message(Key("permissions.group.user.not_a_member"), chatter.name, group);
+                return response.message(Key("groups.user.not_a_member"), chatter.name, group.name);
             await member.delete();
-            return response.message(Key("permissions.group.user.removed"), chatter.name, group);
+            return response.message(Key("groups.user.removed"), chatter.name, group.name);
         } catch (e) {
             Logger.get().error("Unable to remove user from the group", {cause: e});
-            return response.message(Key("permissions.group.user.failed_to_remove"), chatter.name, group);
+            return response.message(Key("groups.user.failed_to_remove"), chatter.name, group.name);
         }
     }
 
@@ -148,11 +148,11 @@ class GroupCommand extends Command {
         try {
             const group = await GroupsEntity.create(name, msg.getChannel());
             if (group === null)
-                return response.message(Key("permissions.group.create.already_exists"), name);
-            return response.message(Key("permissions.group.create.successful"), name);
+                return response.message(Key("groups.create.already_exists"), name);
+            return response.message(Key("groups.create.successful"), name);
         } catch (e) {
             Logger.get().error("Unable to create the group", {cause: e});
-            return response.message(Key("permissions.group.create.failed"), name);
+            return response.message(Key("groups.create.failed"), name);
         }
     }
 
@@ -173,14 +173,14 @@ class GroupCommand extends Command {
         if (args === null) return;
         const [group] = args as [GroupsEntity];
 
-        const confirmation = await this.confirmationFactory(msg, response.translate(Key("permissions.group.delete.confirmation"), group), 30);
+        const confirmation = await this.confirmationFactory(msg, response.translate(Key("groups.delete.confirmation"), group.name), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
                 await group.delete();
-                return response.message(Key("permissions.group.delete.successful"), group);
+                return response.message(Key("groups.delete.successful"), group.name);
             } catch (e) {
                 Logger.get().error("Unable to delete the group", {cause: e});
-                return response.message(Key("permissions.group.delete.failed"), group);
+                return response.message(Key("groups.delete.failed"), group.name);
             }
         });
         confirmation.run();

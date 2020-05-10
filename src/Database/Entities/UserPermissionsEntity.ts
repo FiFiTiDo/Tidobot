@@ -15,6 +15,7 @@ export default class UserPermissionsEntity extends ChannelSpecificEntity<UserPer
         super(UserPermissionsEntity, id, params);
     }
 
+    @Column({ datatype: DataTypes.STRING })
     public permission: string;
 
     @Column({ name: "user_id", datatype: DataTypes.INTEGER })

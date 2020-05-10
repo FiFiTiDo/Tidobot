@@ -8,6 +8,7 @@ import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/Expres
 import Translator, {TranslationKey} from "../Utilities/Translator";
 import ChannelManager from "./ChannelManager";
 import * as util from "util";
+import {type} from "os";
 
 export default class Message {
 
@@ -47,14 +48,18 @@ export default class Message {
             },
             raw_arguments: this.parts.slice(1).join(" "),
             arguments: this.parts.slice(1),
-            to_user: (append: unknown): string => {
+            to_user: (prepend: unknown, append: unknown): string => {
                 if (this.parts.length < 1) return "";
 
-                let user = this.parts[0];
-                if (typeof append === "string") user += append;
+                let resp = "";
+                if (typeof prepend === "string") resp += prepend;
+                let user = this.parts[1];
+                user = user.startsWith("@") ? user.substring(1) : user;
+                resp += user;
+                if (typeof append === "string") resp += append;
 
-                return user.startsWith("@") ? user.substring(1) : user;
-            }
+                return resp;
+            },
         };
     }
 

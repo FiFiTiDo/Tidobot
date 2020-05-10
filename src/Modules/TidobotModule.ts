@@ -5,7 +5,7 @@ import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Logger from "../Utilities/Logger";
-import UserEntity from "../Database/Entities/UserEntity";
+import IgnoredEntity from "../Database/Entities/IgnoredEntity";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
@@ -43,13 +43,13 @@ class TidobotCommand extends Command {
         await response.message("Hi, " + msg.getChatter().name + "! My name is tidobot, I'm your friendly neighborhood robot here to enhance your chatting experience! To learn more visit https://www.fifitido.net/tidobot/");
     }
 
-    async ignore({event, response}: CommandEventArgs): Promise<void> {
+    async ignore({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "tidobot ignore <user>",
             arguments: [
                 {
                     value: {
-                        type: "user",
+                        type: "chatter",
                     },
                     required: true
                 }
@@ -57,24 +57,27 @@ class TidobotCommand extends Command {
             permission: "bot.ignore.add"
         });
         if (args === null) return;
-        const user = args[0] as UserEntity;
-        if (user.ignore) return response.message(Key("general.ignore.add.already_ignored"), user.name);
-        user.ignore = true;
-        user.save()
-            .then(() => response.message(Key("general.ignore.add.successful"), user.name))
+        const chatter = args[0] as ChatterEntity;
+        IgnoredEntity.add(chatter.getService(), chatter.userId)
+            .then(ignored => {
+                if (ignored)
+                    response.message(Key("general.ignore.add.successful"), chatter.name);
+                else
+                    response.message(Key("general.ignore.add.already_ignored"), chatter.name);
+            })
             .catch(e => {
                 Logger.get().error("Failed to set a user as ignored", {cause: e});
-                return response.message(Key("general.ignore.add.failed"), user.name);
+                return response.message(Key("general.ignore.add.failed"), chatter.name);
             });
     }
 
-    async unignore({event, response}: CommandEventArgs): Promise<void> {
+    async unignore({event, message: msg,  response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "tidobot unignore <user>",
             arguments: [
                 {
                     value: {
-                        type: "user",
+                        type: "chatter",
                     },
                     required: true
                 }
@@ -82,14 +85,17 @@ class TidobotCommand extends Command {
             permission: "bot.ignore.remove"
         });
         if (args === null) return;
-        const user = args[0] as UserEntity;
-        if (!user.ignore) return response.message(Key("general.ignore.remove.not_ignored"), user.name);
-        user.ignore = false;
-        user.save()
-            .then(() => response.message(Key("general.ignore.remove.successful"), user.name))
+        const chatter = args[0] as ChatterEntity;
+        IgnoredEntity.remove(chatter.getService(), chatter.userId)
+            .then(ignored => {
+                if (ignored)
+                    response.message(Key("general.ignore.remove.successful"), chatter.name);
+                else
+                    response.message(Key("general.ignore.remove.not_ignored"), chatter.name);
+            })
             .catch(e => {
                 Logger.get().error("Failed to set a user as not ignored", {cause: e});
-                return response.message(Key("general.ignore.remove.failed"), user.name);
+                return response.message(Key("general.ignore.remove.failed"), chatter.name);
             });
     }
 

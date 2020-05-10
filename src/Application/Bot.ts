@@ -14,6 +14,7 @@ import EventSystem from "../Systems/Event/EventSystem";
 import {provide} from "inversify-binding-decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {NewChatterEvent, NewChatterEventArgs} from "../Chat/Events/NewChatterEvent";
+import IgnoredEntity from "../Database/Entities/IgnoredEntity";
 
 @provide(Bot)
 export default class Bot {
@@ -23,10 +24,11 @@ export default class Bot {
     start(options: AdapterOptions): void {
         Logger.get().info("Starting the service " + this.adapter.getName() + "...");
         const dispatcher = EventSystem.getInstance();
-        dispatcher.addListener(MessageEvent, ({event}) => {
+        dispatcher.addListener(MessageEvent, async ({event}) => {
             const msg = event.getMessage();
             Logger.get().info(util.format("[%s] %s: %s", msg.getChannel().name, msg.getChatter().name, msg.getRaw()));
-            if (msg.getChatter().banned) event.stopPropagation(); // TODO: Add ignored
+            if (await msg.getChatter().isIgnored()) event.stopPropagation();
+            if (msg.getChatter().banned) event.stopPropagation();
         }, EventPriority.HIGHEST);
         dispatcher.addListener(JoinEvent, ({event}) => {
             Logger.get().info(util.format("%s has joined %s", event.getChatter().name, event.getChannel().name));

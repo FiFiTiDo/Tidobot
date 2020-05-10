@@ -4,7 +4,6 @@ import {Column, DataTypes, Id} from "../Decorators/Columns";
 import {where} from "../Where";
 import GroupsEntity from "./GroupsEntity";
 import ChatterEntity from "./ChatterEntity";
-import UserEntity from "./UserEntity";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Id
@@ -26,9 +25,9 @@ export default class GroupMembersEntity extends ChannelSpecificEntity<GroupMembe
         return true;
     }
 
-    public static async findByUser(user: UserEntity|ChatterEntity|string, group: GroupsEntity): Promise<GroupMembersEntity|null> {
+    public static async findByUser(user: ChatterEntity|string, group: GroupsEntity): Promise<GroupMembersEntity|null> {
         let userId;
-        if (user instanceof ChatterEntity || user instanceof UserEntity) {
+        if (user instanceof ChatterEntity) {
             userId = user.userId;
         } else {
             userId = user;

@@ -25,14 +25,16 @@ export default class Dispatcher {
         subscriber.registerListeners(this);
     }
 
-    public dispatch<T extends Event<T>>(event: Event<T>): void {
+    public async dispatch<T extends Event<T>>(event: Event<T>): Promise<void> {
         if (!this.listeners.has(event.getName())) return;
 
         for (const listener of this.listeners.get(event.getName())) {
+            let value;
             if (typeof listener === "function")
-                listener.call(null, event.getEventArgs());
+                value = listener.call(null, event.getEventArgs());
             else
-                listener.func.call(listener.thisArg, event.getEventArgs());
+                value = listener.func.call(listener.thisArg, event.getEventArgs());
+            if (value instanceof Promise) value = await value;
             if (event.isPropagationStopped()) break;
         }
     }

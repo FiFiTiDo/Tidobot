@@ -35,7 +35,7 @@ export default class FiltersEntity extends Entity<FiltersEntity> {
         return this.make({ service: channel.getService() }, {
             channel_id: channel.channelId,
             domains: "",
-            bad_word: "",
+            bad_words: "",
             emotes: ""
         });
     }

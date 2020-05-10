@@ -1,7 +1,7 @@
 import sqlite3 from "sqlite3";
 import * as path from "path";
 import ChannelEntity from "./Entities/ChannelEntity";
-import UserEntity from "./Entities/UserEntity";
+import IgnoredEntity from "./Entities/IgnoredEntity";
 import FiltersEntity from "./Entities/FiltersEntity";
 
 export default class Database {
@@ -12,7 +12,7 @@ export default class Database {
         this.instance = new sqlite3.Database(path.join(process.cwd(), "data", "database.db"), sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
         try {
             await ChannelEntity.createTable({ service });
-            await UserEntity.createTable({ service });
+            await IgnoredEntity.createTable({ service });
             await FiltersEntity.createTable({ service });
         } catch(e) {
             console.error("Unable to create databases for channels and users");

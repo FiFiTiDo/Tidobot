@@ -2,14 +2,14 @@ import {EntityParameters} from "./Entity";
 import {Table} from "../Decorators/Table";
 import {Column, DataTypes, Id} from "../Decorators/Columns";
 import GroupsEntity from "./GroupsEntity";
-import {ManyToMany, ManyToOne, OneToMany} from "../Decorators/Relationships";
+import {ManyToMany, OneToMany} from "../Decorators/Relationships";
 import GroupMembersEntity from "./GroupMembersEntity";
 import UserPermissionsEntity from "./UserPermissionsEntity";
 import {where} from "../Where";
-import UserEntity from "./UserEntity";
 import ChannelEntity, {ChannelStateList} from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
+import IgnoredEntity from "./IgnoredEntity";
 
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_chatters`)
@@ -32,9 +32,6 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
 
     @Column({ datatype: DataTypes.BOOLEAN })
     public regular: boolean;
-
-    @ManyToOne(UserEntity, "user_id", "user_id")
-    public async user(): Promise<UserEntity> { return null; }
 
     @ManyToMany(GroupsEntity, GroupMembersEntity, "user_id", "user_id", "id", "group_id")
     public async groups(): Promise<GroupsEntity[]> { return []; }
@@ -71,6 +68,10 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
         this.balance -= amount;
         await this.save();
         return true;
+    }
+
+    public isIgnored(): Promise<boolean> {
+        return IgnoredEntity.isIgnored(this.getService(), this.userId);
     }
 
     public static async findById(id: string, channel: ChannelEntity): Promise<ChatterEntity|null> {

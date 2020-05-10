@@ -354,7 +354,7 @@ export default class FilterModule extends AbstractModule {
                 }
             }
 
-            if (msg instanceof TwitchMessage) {
+            if (msg instanceof TwitchMessage && msg.getUserState() && msg.getUserState().emotes) {
                 const amount = Object.values(msg.getUserState().emotes).reduce<number>((previous, next) => {
                     return previous + next.length;
                 }, 0);

@@ -1,6 +1,5 @@
 import Message from "../Chat/Message";
 import {parseBool} from "./functions";
-import UserEntity from "../Database/Entities/UserEntity";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -35,11 +34,7 @@ interface ChatterValueSettings extends ValueSettings {
     type: "chatter";
 }
 
-interface UserValueSettings extends ValueSettings {
-    type: "user";
-}
-
-export type ValueSettingsTypes = CustomValueSettings<any> | NumberValueSettings | StringValueSettings | BooleanValueSettings | ChatterValueSettings | UserValueSettings;
+export type ValueSettingsTypes = CustomValueSettings<any> | NumberValueSettings | StringValueSettings | BooleanValueSettings | ChatterValueSettings;
 
 function checkRange(val: number, arg: NumberValueSettings): boolean {
     if (!arg.range) return true;
@@ -69,7 +64,5 @@ export default async (value: string, settings: ValueSettingsTypes, msg: Message)
             return isAccepted(value, settings) ? value : null;
         case "chatter":
             return msg.getChannel().findChatterByName(value);
-        case "user":
-            return await UserEntity.findByName({ service: msg.getChannel().getService() }, value);
     }
 }

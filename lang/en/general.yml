@@ -22,20 +22,20 @@ user:
   unknown: "Hmm... I don't seem to know the user: %s"
 regular:
   add:
-    already_banned: "%s is already a regular"
+    already_a_regular: "%s is already a regular"
     successful: "%s is now a regular"
     failed: "Failed to make %s a regular"
   remove:
-    not_banned: "%s is not a regular"
+    not_a_regular: "%s is not a regular"
     successful: "%s is no longer a regular"
     failed: "Failed to remove %s as a regular"
 ban:
   add:
-    already_a_regular: "%s is already banned"
+    already_banned: "%s is already banned"
     successful: "%s is now banned from using the bot"
     failed: "Failed to ban %s"
   remove:
-    not_a_regular: "%s is not banned"
+    not_banned: "%s is not banned"
     successful: "%s is no longer banned from using the bot"
     failed: "Failed to unban %s"
 ignore:

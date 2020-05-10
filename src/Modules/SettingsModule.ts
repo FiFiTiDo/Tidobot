@@ -7,7 +7,7 @@ import Permission from "../Systems/Permissions/Permission";
 import Logger from "../Utilities/Logger";
 import SettingsEntity from "../Database/Entities/SettingsEntity";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
-import {ConvertedSetting} from "../Systems/Settings/Setting";
+import {ConvertedSetting, SettingType} from "../Systems/Settings/Setting";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
@@ -143,12 +143,14 @@ export default class SettingsModule extends AbstractModule {
     async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
         await SettingsEntity.createTable({ channel });
         await SettingsEntity.make({ channel },
-            SettingsSystem.getInstance().getAll().map(setting => ({
-                key: setting.getKey(),
-                value: setting.getDefaultValue(),
-                type: setting.getType(),
-                default_value: setting.getDefaultValue()
-            }))
+            SettingsSystem.getInstance().getAll().map(setting => {
+                return {
+                    key: setting.getKey(),
+                    value: setting.getDefaultValue(),
+                    type: SettingType[setting.getType()],
+                    default_value: setting.getDefaultValue()
+                }
+            })
         );
     }
 }

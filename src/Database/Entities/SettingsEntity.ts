@@ -7,7 +7,7 @@ import StringLike from "../../Utilities/Interfaces/StringLike";
 import Logger from "../../Utilities/Logger";
 import SettingsSystem from "../../Systems/Settings/SettingsSystem";
 import Cache from "../../Systems/Cache/Cache";
-import {ConvertedSetting} from "../../Systems/Settings/Setting";
+import {ConvertedSetting, SettingType} from "../../Systems/Settings/Setting";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Id
@@ -23,7 +23,7 @@ export default class SettingsEntity extends ChannelSpecificEntity<SettingsEntity
     @Column({ datatype: DataTypes.STRING })
     public value: string;
 
-    @Column({ datatype: DataTypes.ENUM, enum: ["string", "integer", "float", "boolean"] })
+    @Column({ datatype: DataTypes.ENUM, enum: ["STRING", "INTEGER", "FLOAT", "BOOLEAN", "TIMEZONE"] })
     public type: string;
 
     @Column({ name: "default_value", datatype: DataTypes.STRING, null: true })
@@ -85,7 +85,7 @@ export class ChannelSettings {
             settings.getAll().map(setting => ({
                 key: setting.getKey(),
                 value: setting.getDefaultValue(),
-                type: setting.getType(),
+                type: SettingType[setting.getType()],
                 default_value: setting.getDefaultValue()
             }))
         );

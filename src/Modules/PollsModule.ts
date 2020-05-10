@@ -157,7 +157,7 @@ class Poll {
     }
 
     validateVote(option: string, chatter: ChatterEntity): boolean {
-        return this.options.indexOf(option) >= 0 && this.userVotes.hasChatter(chatter);
+        return this.options.indexOf(option) >= 0 && !this.userVotes.hasChatter(chatter);
     }
 
     addVote(option: string, chatter: ChatterEntity): boolean {
@@ -183,6 +183,7 @@ class Poll {
     }
 
     getOption(index: number): string|null {
+        index--;
         return index < 0 || index >= this.options.length ? null : this.options[index];
     }
 
@@ -192,6 +193,17 @@ class Poll {
 
     getResults(): { [key: string]: ChatterEntity[] } {
         return this.votes;
+    }
+
+    formatResults(): string {
+        const votes = this.getResults();
+        const total = this.getTotalVotes();
+        return  Object.keys(votes).map(option => {
+            const optionVotes = votes[option].length;
+            const percentage = total < 1 ? 0 : (optionVotes / total) * 100;
+
+            return `${option}: ${percentage}% (${optionVotes} votes)`;
+        }).join(", ");
     }
 }
 
@@ -219,18 +231,18 @@ class VoteCommand extends Command {
 
         if (!this.runningPolls.hasChannel(msg.getChannel())) return;
         const poll = this.runningPolls.getChannel(msg.getChannel());
-        const optionNum = args[0] as number;
+        const [optionNum] = args as [number];
 
         const option = poll.getOption(optionNum);
         if (option === null) {
             if (announce)
-                await CommandSystem.showInvalidArgument("option #", event.getArgument(1), "vote <option #>", msg);
+                await CommandSystem.showInvalidArgument("option #", optionNum, "vote <option #>", msg);
             return;
         }
 
         const successful = poll.addVote(option, msg.getChatter());
         if (announce)
-            return successful ? response.message(Key("polls.vote_accepted")) : response.message(Key("polls.already_voted"));
+            return successful ? response.message(Key("polls.vote_accepted"), option) : response.message(Key("polls.already_voted"));
     }
 }
 
@@ -268,7 +280,7 @@ class PollCommand extends Command {
             permission: "polls.run"
         });
         if (args === null) return;
-        const options = args[0] as string[];
+        const [options] = args as [string[]];
         const prefix = await CommandSystem.getPrefix(msg.getChannel());
 
         if (this.runningPolls.hasChannel(msg.getChannel())) {
@@ -280,7 +292,7 @@ class PollCommand extends Command {
         this.runningPolls.setChannel(msg.getChannel(), poll);
 
         await response.message(Key("polls.open"), prefix);
-        await response.message(Key("polls.options"), options.map(((value, index) => "#" + (index + 1) + ": " + value)));
+        await response.message(Key("polls.options"), options.map(((value, index) => "#" + (index + 1) + ": " + value)).join(", "));
     }
 
     async stop({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -296,9 +308,7 @@ class PollCommand extends Command {
         await response.message(Key("polls.drumroll_please"));
 
         setTimeout(() => {
-            const votes = poll.getResults();
-            const resp = Object.keys(votes).map(option => option + ": " + ((votes[option].length / poll.getTotalVotes()) * 100) + "%").join(", ");
-            response.message(Key("polls.results"), resp);
+            response.message(Key("polls.results"), poll.formatResults());
         }, 5000);
     }
 
@@ -311,9 +321,7 @@ class PollCommand extends Command {
 
         if (!(await msg.checkPermission("polls.results"))) return;
         const poll = await this.getPoll(msg);
-        const votes = poll.getResults();
-        const resp = Object.keys(votes).map(option => option + ": " + ((votes[option].length / poll.getTotalVotes()) * 100) + "%").join(", ");
-        await response.message(Key("polls.results"), resp);
+        await response.message(Key("polls.results"), poll.formatResults());
     }
 }
 

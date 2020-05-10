@@ -50,6 +50,11 @@ export class CommandEvent extends Event<CommandEvent> {
     shiftArgument(): string {
         return this.args.shift();
     }
+    
+    unshiftArgument(arg: string) {
+        this.args.unshift(arg);
+    }
+
 
     getMessage(): Message {
         return this.msg;

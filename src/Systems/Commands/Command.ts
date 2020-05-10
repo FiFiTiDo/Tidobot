@@ -38,10 +38,10 @@ export default class Command {
     }
 
     protected async executeSubcommands(args: CommandEventArgs): Promise<boolean> {
-        const { event} = args;
-        const subcommandLabel = event.getArgument(0);
+        const newEvent = args.event.clone();
+        const subcommandLabel = newEvent.shiftArgument();
         if (!this.subcommands.has(subcommandLabel)) return false;
-        this.subcommands.get(subcommandLabel).call(this, args);
+        this.subcommands.get(subcommandLabel).call(this, Object.assign({}, args, { event: newEvent}));
         return true;
     }
 }

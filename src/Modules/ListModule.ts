@@ -40,12 +40,13 @@ export default class ListModule extends AbstractModule {
                 command: async (listName: unknown): Promise<string> => {
                     if (typeof listName !== "string") return "Invalid parameter, expected a string";
                     const prefix = await CommandSystem.getPrefix(msg.getChannel());
+                    const origArgs = msg.getParts().slice(1);
                     return new Promise((resolve) => {
                         let args = [];
-                        if (msg.getParts().length < 1) {
+                        if (origArgs.length < 1) {
                             args.push(listName);
                         } else {
-                            const subcmd = msg.getPart(0);
+                            const subcmd = origArgs[0];
                             switch (subcmd.toLowerCase()) {
                                 case "create":
                                 case "delete":
@@ -56,15 +57,16 @@ export default class ListModule extends AbstractModule {
                                 case "remove":
                                     args.push(subcmd);
                                     args.push(listName);
-                                    args = args.concat(msg.getParts().slice(1));
+                                    args = args.concat(origArgs.slice(1));
                                     break;
                                 default:
                                     args.push(listName);
-                                    args = args.concat(msg.getParts());
+                                    args = args.concat(origArgs);
                             }
                         }
                         const command = `${prefix}list`;
-                        const event = new CommandEvent(command, args, msg.extend(`${command} ${args.join(" ")}`, resolve));
+                        const raw = `${command} ${args.join(" ")}`;
+                        const event = new CommandEvent(command, args, msg.extend(raw, resolve));
                         listCommand.execute(event.getEventArgs());
                     });
                 }
@@ -98,7 +100,7 @@ class ListCommand extends Command {
     }
 
     async execute(eventArgs: CommandEventArgs): Promise<void> {
-        if (super.executeSubcommands(eventArgs)) return;
+        if (await super.executeSubcommands(eventArgs)) return;
 
         const {event, message: msg, response} = eventArgs;
         const args = await event.validate({

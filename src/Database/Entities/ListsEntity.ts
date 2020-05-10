@@ -21,7 +21,7 @@ export default class ListsEntity extends ChannelSpecificEntity<ListsEntity> {
     }
 
     public async getItem(id: number): Promise<ListEntity|null> {
-        return ListEntity.retrieve({ channel: this.getChannel() }, where().eq("id", id));
+        return ListEntity.retrieve({ channel: this.getChannel(), optionalParam: this.name }, where().eq("id", id));
     }
 
     public async getAllItems(): Promise<ListEntity[]> {

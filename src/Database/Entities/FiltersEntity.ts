@@ -30,4 +30,13 @@ export default class FiltersEntity extends Entity<FiltersEntity> {
     static getByChannel(channel: ChannelEntity): Promise<FiltersEntity|null> {
         return this.getByChannelId(channel.channelId, channel.getService());
     }
+
+    static createForChannel(channel: ChannelEntity): Promise<FiltersEntity|null> {
+        return this.make({ service: channel.getService() }, {
+            channel_id: channel.channelId,
+            domains: "",
+            bad_word: "",
+            emotes: ""
+        });
+    }
 }

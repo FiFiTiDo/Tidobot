@@ -9,7 +9,7 @@ import FiltersEntity from "../Database/Entities/FiltersEntity";
 import {array_add, array_contains, array_remove} from "../Utilities/ArrayUtils";
 import {Key, TranslationKey} from "../Utilities/Translator";
 import Bot from "../Application/Bot";
-import {Role} from "../Systems/Permissions/Role";
+import {getMaxRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
@@ -17,7 +17,7 @@ import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {inject, injectable} from "inversify";
+import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
@@ -280,7 +280,7 @@ export default class FilterModule extends AbstractModule {
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await FiltersEntity.createTable({ channel });
+        await FiltersEntity.createForChannel(channel);
     }
 
     @EventHandler(MessageEvent)
@@ -306,6 +306,7 @@ export default class FilterModule extends AbstractModule {
             await msg.getChannel().getSettings().get("filter.ignore-vips")) return;
         if (roles.indexOf(Role.PREMIUM) >= 0 &&
             await msg.getChannel().getSettings().get("filter.ignore-premium")) return;
+        if (getMaxRole(roles) >= Role.MODERATOR) return;
 
         const lists = await FiltersEntity.getByChannel(channel);
 

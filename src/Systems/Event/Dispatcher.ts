@@ -4,7 +4,7 @@ import {EventPriority} from "./EventPriority";
 import PriorityList from "../../Utilities/Structures/PriorityList";
 import {injectable} from "inversify";
 
-type ListenerType<T extends Event<T>> = Listener<T>|ListenerWrapper<T>;
+type ListenerType<T extends Event<T>> = Listener<T> | ListenerWrapper<T>;
 
 @injectable()
 export default class Dispatcher {

@@ -7,6 +7,7 @@ import PermissionEntity from "../../Database/Entities/PermissionEntity";
 
 export default class PermissionSystem {
     private static instance: PermissionSystem = null;
+    private permissions: Permission[] = [];
 
     public static getInstance(): PermissionSystem {
         if (this.instance === null)
@@ -15,13 +16,11 @@ export default class PermissionSystem {
         return this.instance;
     }
 
-    private permissions: Permission[] = [];
-
     public registerPermission(permission: Permission): void {
         this.permissions.push(permission);
     }
 
-    public findPermission(permStr: string): Permission|null {
+    public findPermission(permStr: string): Permission | null {
         for (const permission of this.permissions)
             if (permission.getPermission() === permStr)
                 return permission;
@@ -45,7 +44,7 @@ export default class PermissionSystem {
         }
     }
 
-    public async check(permission: Permission|string, chatter: ChatterEntity, roles: Role[] = []): Promise<boolean> {
+    public async check(permission: Permission | string, chatter: ChatterEntity, roles: Role[] = []): Promise<boolean> {
         if (typeof permission === "string") {
             const permStr = permission;
             permission = this.findPermission(permission);
@@ -70,8 +69,8 @@ export default class PermissionSystem {
     }
 
     public async resetChannelPermissions(channel: ChannelEntity): Promise<void> {
-        await PermissionEntity.removeEntries({ channel });
-        await PermissionEntity.make({ channel },
+        await PermissionEntity.removeEntries({channel});
+        await PermissionEntity.make({channel},
             this.permissions.map(permission => ({
                 permission: permission.getPermission(),
                 role: Role[permission.getDefaultRole()],

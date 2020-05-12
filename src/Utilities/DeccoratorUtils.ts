@@ -18,7 +18,7 @@ function isKeyValuePair<T>(obj: unknown): obj is KeyValuePair<T> {
     return objectHasProperties(obj, "key", "value");
 }
 
-export function addMetadata<T>(metaKey: string, target: any, value: T|KeyValuePair<T>): void {
+export function addMetadata<T>(metaKey: string, target: any, value: T | KeyValuePair<T>): void {
     let data: any;
     if (isKeyValuePair(value)) {
         data = getMetadata<T>(metaKey, target) || {};

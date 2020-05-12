@@ -1,7 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import moment from "moment-timezone";
 import {array_rand} from "../Utilities/ArrayUtils";
-import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -25,7 +24,7 @@ class PingCommand extends Command {
         });
         if (args === null) return;
 
-        await response.message("pong", { username: msg.getChatter().name });
+        await response.message("pong", {username: msg.getChatter().name});
     }
 }
 
@@ -103,7 +102,7 @@ class EvalCommand extends Command {
         if (args === null) return;
         const [rawExpr] = args;
 
-        await response.rawMessage(">> " +  await msg.evaluateExpression(rawExpr));
+        await response.rawMessage(">> " + await msg.evaluateExpression(rawExpr));
     }
 }
 

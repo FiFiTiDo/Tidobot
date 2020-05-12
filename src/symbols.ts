@@ -1,4 +1,3 @@
-import {Database} from "sqlite3";
 import {TFunction} from "i18next";
 
 export default {

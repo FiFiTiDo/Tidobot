@@ -16,7 +16,7 @@ export class TableSchema {
     }
 
     addColumn(property: string, settings: ColumnSettings): void {
-        this.columns.set(settings.name, { property, settings });
+        this.columns.set(settings.name, {property, settings});
     }
 
     importRow(row: RawRowData): RawRowData {
@@ -26,7 +26,7 @@ export class TableSchema {
                 console.table(this.columns);
                 throw new DatabaseError("Could not parse database rows, column names don't match the schema.");
             }
-            const { property, settings } = this.columns.get(columnName);
+            const {property, settings} = this.columns.get(columnName);
             const value = row[settings.name];
             switch (settings.datatype) {
                 case DataTypes.BOOLEAN:
@@ -53,7 +53,7 @@ export class TableSchema {
     exportRow(): RawRowData {
         const data = {};
         for (const column of Array.from(this.columns.values())) {
-            const { property, settings } = column;
+            const {property, settings} = column;
             const value = this.entity[property];
             switch (settings.datatype) {
                 case DataTypes.BOOLEAN:

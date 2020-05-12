@@ -14,7 +14,6 @@ import EventSystem from "../Systems/Event/EventSystem";
 import {provide} from "inversify-binding-decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {NewChatterEvent, NewChatterEventArgs} from "../Chat/Events/NewChatterEvent";
-import IgnoredEntity from "../Database/Entities/IgnoredEntity";
 
 @provide(Bot)
 export default class Bot {
@@ -42,9 +41,9 @@ export default class Bot {
         dispatcher.addListener(DisconnectedEvent, ({event}) => {
             Logger.get().info("Disconnected from the service.", {reason: event.getMetadata("reason", "Unknown reason")});
         }, EventPriority.MONITOR);
-        dispatcher.addListener(NewChannelEvent, async ({ channel }: NewChannelEventArgs) => {
+        dispatcher.addListener(NewChannelEvent, async ({channel}: NewChannelEventArgs) => {
         });
-        dispatcher.addListener(NewChatterEvent, async ({ chatter }: NewChatterEventArgs) => {
+        dispatcher.addListener(NewChatterEvent, async ({chatter}: NewChatterEventArgs) => {
         });
         this.adapter.run(options);
     }

@@ -11,20 +11,32 @@ import Permission from "../../Systems/Permissions/Permission";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Id
-@Table(({ service, channel }) => `${service}_${channel.name}_groups`)
+@Table(({service, channel}) => `${service}_${channel.name}_groups`)
 export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
+    @Column({datatype: DataTypes.STRING, unique: true})
+    public name: string;
+
     constructor(id: number, params: EntityParameters) {
         super(GroupsEntity, id, params);
     }
 
-    @Column({ datatype: DataTypes.STRING, unique: true })
-    public name: string;
+    static async findByName(name: string, channel: ChannelEntity): Promise<GroupsEntity | null> {
+        return GroupsEntity.retrieve({channel}, where().eq("name", name));
+    }
+
+    static async create(name: string, channel: ChannelEntity): Promise<GroupsEntity | null> {
+        return GroupsEntity.make<GroupsEntity>({channel}, {name});
+    }
 
     @ManyToMany(ChatterEntity, GroupMembersEntity, "id", "group_id", "user_id", "user_id")
-    async members(): Promise<ChatterEntity[]> { return []; }
+    async members(): Promise<ChatterEntity[]> {
+        return [];
+    }
 
     @OneToMany(GroupPermissionsEntity, "id", "group_id")
-    async permissions(): Promise<GroupPermissionsEntity[]> { return []; }
+    async permissions(): Promise<GroupPermissionsEntity[]> {
+        return [];
+    }
 
     async hasPermission(perm: Permission): Promise<boolean> {
         for (const permission of await this.permissions())
@@ -33,7 +45,7 @@ export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
         return false;
     }
 
-    async isMember(chatter: string|ChatterEntity): Promise<boolean> {
+    async isMember(chatter: string | ChatterEntity): Promise<boolean> {
         if (chatter instanceof ChatterEntity) chatter = chatter.userId;
         const members = await this.members();
         for (const member of members)
@@ -47,15 +59,7 @@ export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
     }
 
     async reset(): Promise<void> {
-        await GroupMembersEntity.removeEntries({ channel: this.getChannel() }, where().eq("group_id", this.id));
-        await GroupPermissionsEntity.removeEntries({ channel: this.getChannel() }, where().eq("group_id", this.id));
-    }
-
-    static async findByName(name: string, channel: ChannelEntity): Promise<GroupsEntity|null> {
-        return GroupsEntity.retrieve({ channel }, where().eq("name", name));
-    }
-
-    static async create(name: string, channel: ChannelEntity): Promise<GroupsEntity|null> {
-        return GroupsEntity.make<GroupsEntity>({ channel }, { name });
+        await GroupMembersEntity.removeEntries({channel: this.getChannel()}, where().eq("group_id", this.id));
+        await GroupPermissionsEntity.removeEntries({channel: this.getChannel()}, where().eq("group_id", this.id));
     }
 }

@@ -132,18 +132,18 @@ export default class TwitchAdapter extends Adapter {
         return chatter;
     }
 
-    async getChannelByName(channelName: string): Promise<ChannelEntity|null> {
+    async getChannelByName(channelName: string): Promise<ChannelEntity | null> {
         let channel = this.channelManager.findByName(channelName);
 
         if (channel === null) {
             let resp: helix.Response<helix.User>;
             try {
-                resp = await this.api.getUsers({ login: channelName });
+                resp = await this.api.getUsers({login: channelName});
             } catch (e) {
                 Logger.get().emerg("Unable to retrieve user from the API", {cause: e});
                 process.exit(1);
             }
-            const { id, login: name } = resp.data[0];
+            const {id, login: name} = resp.data[0];
 
             channel = await ChannelEntity.findById(id, this.getName());
 

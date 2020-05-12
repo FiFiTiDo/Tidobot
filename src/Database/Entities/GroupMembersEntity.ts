@@ -7,25 +7,24 @@ import ChatterEntity from "./ChatterEntity";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Id
-@Table(({ service, channel }) => `${service}_${channel.name}_groupMembers`)
+@Table(({service, channel}) => `${service}_${channel.name}_groupMembers`)
 export default class GroupMembersEntity extends ChannelSpecificEntity<GroupMembersEntity> {
+    @Column({name: "user_id", datatype: DataTypes.INTEGER})
+    public userId: number;
+    @Column({name: "group_id", datatype: DataTypes.INTEGER})
+    public groupId: number;
+
     constructor(id: number, params: EntityParameters) {
         super(GroupMembersEntity, id, params);
     }
 
-    @Column({ name: "user_id", datatype: DataTypes.INTEGER })
-    public userId: number;
-
-    @Column({ name: "group_id", datatype: DataTypes.INTEGER })
-    public groupId: number;
-
     public static async create(userId: string, group: GroupsEntity): Promise<boolean> {
         if (await group.isMember(userId)) return false;
-        await GroupMembersEntity.make({ channel: group.getChannel() }, { user_id: userId, group_id: group.id });
+        await GroupMembersEntity.make({channel: group.getChannel()}, {user_id: userId, group_id: group.id});
         return true;
     }
 
-    public static async findByUser(user: ChatterEntity|string, group: GroupsEntity): Promise<GroupMembersEntity|null> {
+    public static async findByUser(user: ChatterEntity | string, group: GroupsEntity): Promise<GroupMembersEntity | null> {
         let userId;
         if (user instanceof ChatterEntity) {
             userId = user.userId;
@@ -33,6 +32,6 @@ export default class GroupMembersEntity extends ChannelSpecificEntity<GroupMembe
             userId = user;
         }
 
-        return GroupMembersEntity.retrieve({ channel: group.getChannel() }, where().eq("user_id", userId).eq("group_id", group.id));
+        return GroupMembersEntity.retrieve({channel: group.getChannel()}, where().eq("user_id", userId).eq("group_id", group.id));
     }
 }

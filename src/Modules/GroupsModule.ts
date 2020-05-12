@@ -8,7 +8,6 @@ import ChatterEntity from "../Database/Entities/ChatterEntity";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
@@ -26,6 +25,12 @@ export default class GroupsModule extends AbstractModule {
         this.coreModule = true;
     }
 
+    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity | null> => {
+        const group = await GroupsEntity.findByName(raw, msg.getChannel());
+        if (group === null) msg.getResponse().message("groups:error.unknown", {group: raw});
+        return group
+    };
+
     initialize(): void {
         const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new GroupCommand(this.makeConfirmation), this);
@@ -37,17 +42,11 @@ export default class GroupsModule extends AbstractModule {
         perm.registerPermission(new Permission("permission.group.delete", Role.BROADCASTER));
     }
 
-    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity|null> => {
-        const group = await GroupsEntity.findByName(raw, msg.getChannel());
-        if (group === null) msg.getResponse().message("groups:error.unknown", { group: raw });
-        return group
-    };
-
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await GroupsEntity.createTable({ channel });
-        await GroupMembersEntity.createTable({ channel });
-        await GroupPermissionsEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await GroupsEntity.createTable({channel});
+        await GroupMembersEntity.createTable({channel});
+        await GroupPermissionsEntity.createTable({channel});
     }
 }
 
@@ -92,9 +91,9 @@ class GroupCommand extends Command {
                 username: chatter.name,
                 group: group.name
             })).catch((e) => {
-                Logger.get().error("Unable to add user to group", {cause: e});
-                return response.genericError();
-            });
+            Logger.get().error("Unable to add user to group", {cause: e});
+            return response.genericError();
+        });
     }
 
     async removeMember({event, response}: CommandEventArgs): Promise<void> {
@@ -123,9 +122,9 @@ class GroupCommand extends Command {
         try {
             const member = await GroupMembersEntity.findByUser(chatter, group);
             if (member === null)
-                return response.message("groups:user.not", { username: chatter.name, group: group.name });
+                return response.message("groups:user.not", {username: chatter.name, group: group.name});
             await member.delete();
-            return response.message("groups:user.removed", { username: chatter.name, group: group.name });
+            return response.message("groups:user.removed", {username: chatter.name, group: group.name});
         } catch (e) {
             Logger.get().error("Unable to remove user from the group", {cause: e});
             return response.genericError();
@@ -150,7 +149,7 @@ class GroupCommand extends Command {
 
         try {
             const group = await GroupsEntity.create(name, msg.getChannel());
-            return response.message(group === null ? "groups:error.exists" : "groups:created", { group: name });
+            return response.message(group === null ? "groups:error.exists" : "groups:created", {group: name});
         } catch (e) {
             Logger.get().error("Unable to create the group", {cause: e});
             return response.genericError();
@@ -180,7 +179,7 @@ class GroupCommand extends Command {
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
                 await group.delete();
-                return response.message("groups:deleted", { group: group.name });
+                return response.message("groups:deleted", {group: group.name});
             } catch (e) {
                 Logger.get().error("Unable to delete the group", {cause: e});
                 return response.genericError();
@@ -213,9 +212,9 @@ class GroupCommand extends Command {
         const [group, permission] = args as [GroupsEntity, string];
 
         await GroupPermissionsEntity.update(group, permission, true)
-            .then(() => response.message("groups.permission.granted", { permission, group: group.name }))
+            .then(() => response.message("groups.permission.granted", {permission, group: group.name}))
             .catch(e => {
-                Logger.get().error("Unable to grant permission to group", { cause: e });
+                Logger.get().error("Unable to grant permission to group", {cause: e});
                 return response.genericError();
             });
     }
@@ -244,9 +243,9 @@ class GroupCommand extends Command {
         const [group, permission] = args as [GroupsEntity, string];
 
         await GroupPermissionsEntity.update(group, permission, false)
-            .then(() => response.message("groups.permission.denied", { group: group.name, permission }))
+            .then(() => response.message("groups.permission.denied", {group: group.name, permission}))
             .catch(e => {
-                Logger.get().error("Unable to deny permission for group", { cause: e });
+                Logger.get().error("Unable to deny permission for group", {cause: e});
                 return response.genericError();
             });
     }
@@ -272,22 +271,22 @@ class GroupCommand extends Command {
             permission: "permission.reset"
         });
         if (args === null) return;
-        const [group, permission] = args as [GroupsEntity, string|undefined];
+        const [group, permission] = args as [GroupsEntity, string | undefined];
 
         if (permission) {
             await GroupPermissionsEntity.delete(group, permission)
-                .then(() => response.message("groups:permission.delete.specific", { group: group.name, permission }))
+                .then(() => response.message("groups:permission.delete.specific", {group: group.name, permission}))
                 .catch(e => {
-                    Logger.get().error("Unable to deny permission for group", { cause: e });
+                    Logger.get().error("Unable to deny permission for group", {cause: e});
                     return response.genericError();
                 });
         } else {
             const confirmation = await this.confirmationFactory(msg, await response.translate("groups:permission.delete.confirm"), 30);
             confirmation.addListener(ConfirmedEvent, () => {
                 return GroupPermissionsEntity.clear(group)
-                    .then(() => response.message("groups:permission.delete.all", { group: group.name }))
+                    .then(() => response.message("groups:permission.delete.all", {group: group.name}))
                     .catch(e => {
-                        Logger.get().error("Unable to deny permission for group", { cause: e });
+                        Logger.get().error("Unable to deny permission for group", {cause: e});
                         return response.genericError();
                     });
             });

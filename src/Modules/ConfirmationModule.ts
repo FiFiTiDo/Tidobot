@@ -3,7 +3,6 @@ import Dispatcher from "../Systems/Event/Dispatcher";
 import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
 import {generate_random_code} from "../Utilities/functions";
-import * as util from "util";
 import {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
@@ -73,7 +72,7 @@ class ConfirmCommand extends Command {
         super("confirm", "<code>");
     }
 
-    execute({ event, message, response }: CommandEventArgs): Promise<any> {
+    execute({event, message, response}: CommandEventArgs): Promise<any> {
         if (!this.confirmations.hasChatter(message.getChatter())) return response.message("confirmation:error.expired");
         if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");
 

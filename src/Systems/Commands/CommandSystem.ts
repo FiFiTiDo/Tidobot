@@ -2,7 +2,6 @@ import AbstractModule from "../../Modules/AbstractModule";
 import {EventHandler, HandlesEvents} from "../Event/decorators";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Message from "../../Chat/Message";
-import {Key} from "../../Utilities/Translator";
 import MessageEvent from "../../Chat/Events/MessageEvent";
 import {EventArguments} from "../Event/Event";
 import EventSystem from "../Event/EventSystem";
@@ -24,19 +23,18 @@ export interface CommandGroup {
 @HandlesEvents()
 export default class CommandSystem {
     private static instance: CommandSystem = null;
+    private readonly commandListeners: { [key: string]: CommandGroup[] };
+
+    constructor() {
+        this.commandListeners = {};
+        SettingsSystem.getInstance().registerSetting(new Setting("command.prefix", "!", SettingType.STRING));
+    }
 
     public static getInstance(): CommandSystem {
         if (this.instance === null)
             this.instance = new CommandSystem();
 
         return this.instance;
-    }
-
-    private readonly commandListeners: { [key: string]: CommandGroup[] };
-
-    constructor() {
-        this.commandListeners = {};
-        SettingsSystem.getInstance().registerSetting(new Setting("command.prefix", "!", SettingType.STRING));
     }
 
     static async getPrefix(channel: ChannelEntity): Promise<string> {
@@ -79,7 +77,7 @@ export default class CommandSystem {
     registerCommand(command: Command, module: AbstractModule): void {
         const register = (label: string): void => {
             if (!objectHasProperties(this.commandListeners, label)) this.commandListeners[label] = [];
-            this.commandListeners[label].push({ command, module });
+            this.commandListeners[label].push({command, module});
         };
 
         register(command.getLabel().toLowerCase());

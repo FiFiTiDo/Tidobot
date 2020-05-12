@@ -1,7 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
-import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -50,7 +49,7 @@ class CommandCommand extends Command {
 
         try {
             const command = await CommandEntity.create(trigger, resp, msg.getChannel());
-            await response.message("command:added", { id: command.id });
+            await response.message("command:added", {id: command.id});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Unable to add custom command", {cause: e});
@@ -85,9 +84,9 @@ class CommandCommand extends Command {
         });
         if (args === null) return;
         const [type, id, value] = args;
-        const command: CommandEntity = await CommandEntity.get(id, { channel: msg.getChannel() });
+        const command: CommandEntity = await CommandEntity.get(id, {channel: msg.getChannel()});
         if (command === null) {
-            await response.message("command:error.unknown", { id });
+            await response.message("command:error.unknown", {id});
             return;
         }
 
@@ -129,7 +128,7 @@ class CommandCommand extends Command {
         }
 
         command.save()
-            .then(() => response.message(`command:edit.${type}`, { id, value }))
+            .then(() => response.message(`command:edit.${type}`, {id, value}))
             .catch(async (e) => {
                 await response.genericError();
                 Logger.get().error("Failed to save changes to custom command", {cause: e});
@@ -151,11 +150,11 @@ class CommandCommand extends Command {
         if (args === null) return;
 
         const [id] = args;
-        const command = await CommandEntity.get(id, { channel: msg.getChannel() });
-        if (command === null) return response.message("command:error.unknown", { id });
+        const command = await CommandEntity.get(id, {channel: msg.getChannel()});
+        if (command === null) return response.message("command:error.unknown", {id});
 
         command.delete()
-            .then(() => response.message("command:deleted", { id }))
+            .then(() => response.message("command:deleted", {id}))
             .catch(async (e) => {
                 await response.genericError();
                 Logger.get().error("Failed to delete the custom command", {cause: e});
@@ -210,20 +209,20 @@ export default class CustomCommandModule extends AbstractModule {
         perm.registerPermission(new Permission("command.ignore-cooldown", Role.MODERATOR));
 
         ExpressionSystem.getInstance().registerResolver(msg => ({
-            alias: async (command: unknown): Promise<string> => new Promise( resolve => {
+            alias: async (command: unknown): Promise<string> => new Promise(resolve => {
                 if (typeof command !== "string") return msg.getResponse().translate("expression:error.argument", {
-                   expected: msg.getResponse().translate("expression:types.string")
+                    expected: msg.getResponse().translate("expression:types.string")
                 });
                 if (msg.checkLoopProtection(command)) return msg.getResponse().translate("expression:error.infinite-loop");
                 const newMsg = msg.extend(`${command} ${msg.getParts().slice(1).join(" ")}`, resolve);
                 newMsg.addToLoopProtection(command);
-                this.handleMessage({ event: new MessageEvent(newMsg) });
+                this.handleMessage({event: new MessageEvent(newMsg)});
             })
         }));
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await CommandEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await CommandEntity.createTable({channel});
     }
 }

@@ -4,7 +4,6 @@ import Message from "../../Chat/Message";
 import rp from "request-promise-native";
 import Logger from "../../Utilities/Logger";
 import cheerio from "cheerio";
-import {array_rand} from "../../Utilities/ArrayUtils";
 import moment from "moment";
 import {format_duration} from "../../Utilities/functions";
 import prettyMilliseconds from "pretty-ms";
@@ -25,14 +24,6 @@ export interface ExpressionContextResolver {
 
 export default class ExpressionSystem {
     private static instance: ExpressionSystem = null;
-
-    static getInstance(): ExpressionSystem {
-        if (this.instance == null) {
-            this.instance = new ExpressionSystem();
-        }
-
-        return this.instance;
-    }
     private readonly resolvers: ExpressionContextResolver[] = [];
     private parser: ExpressionParser;
     private interpreter: ExpressionInterpreter;
@@ -40,6 +31,14 @@ export default class ExpressionSystem {
     constructor() {
         this.parser = new ExpressionParser();
         this.interpreter = new ExpressionInterpreter();
+    }
+
+    static getInstance(): ExpressionSystem {
+        if (this.instance == null) {
+            this.instance = new ExpressionSystem();
+        }
+
+        return this.instance;
     }
 
     registerResolver(resolver: ExpressionContextResolver): void {
@@ -71,7 +70,7 @@ export default class ExpressionSystem {
             },
             getJson: async (url: unknown): Promise<string> => {
                 if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
-                    expected:await  msg.getResponse().translate("expression:types.url")
+                    expected: await msg.getResponse().translate("expression:types.url")
                 });
 
                 try {
@@ -103,7 +102,7 @@ export default class ExpressionSystem {
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },
-            random: async (min: number, max = NaN): Promise<number|string> => {
+            random: async (min: number, max = NaN): Promise<number | string> => {
                 if (typeof min !== "number") return await msg.getResponse().translate("expression:error.argument", {
                     expected: await msg.getResponse().translate("expression:types.number")
                 }) as string;

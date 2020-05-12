@@ -34,7 +34,7 @@ class BettingGame {
         return this.title;
     }
 
-    async close(winningOption: string): Promise<number|null> {
+    async close(winningOption: string): Promise<number | null> {
         if (!this.bets.has(winningOption.toLowerCase())) return null;
         this.open = false;
 
@@ -68,7 +68,7 @@ class BettingGame {
         return PlaceBetResponse.BET_PLACED;
     }
 
-    *getTotals(): Generator<[string, number]> {
+    * getTotals(): Generator<[string, number]> {
         for (const [option, bets] of this.bets.entries()) {
             let total = 0;
             for (const [, value] of bets.entries(this.channel)) total += value;
@@ -101,7 +101,7 @@ class BetCommand extends Command {
         this.addSubcommand("check", this.check);
     }
 
-    async place({ event, message: msg, response }: CommandEventArgs): Promise<void> {
+    async place({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bet place <option> <amount>",
             arguments: [
@@ -152,11 +152,11 @@ class BetCommand extends Command {
             }
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to place the bet", { cause: e });
+            Logger.get().error("Failed to place the bet", {cause: e});
         }
     }
 
-    async open({ event, message: msg, response }: CommandEventArgs): Promise<void> {
+    async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bet open \"<title>\" <option 1> <option 2> ... <option n>",
             arguments: [
@@ -191,7 +191,7 @@ class BetCommand extends Command {
         });
     }
 
-    async close({ event, message: msg, response }: CommandEventArgs): Promise<void> {
+    async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bet close <winning option>",
             arguments: [
@@ -214,7 +214,7 @@ class BetCommand extends Command {
         const winnings = await game.close(option);
 
         if (winnings === null)
-            return response.message("bet:error.invalid-option", { option });
+            return response.message("bet:error.invalid-option", {option});
         else
             return response.message("bet:closed", {
                 title: game.getTitle(),
@@ -223,7 +223,7 @@ class BetCommand extends Command {
             });
     }
 
-    async check({ event, message: msg, response }: CommandEventArgs): Promise<void> {
+    async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "bet check",
             permission: "bet.check"
@@ -242,7 +242,7 @@ class BetCommand extends Command {
                 amount: await CurrencyModule.formatAmount(total, msg.getChannel()),
                 percentage: (total / grandTotal) * 100
             }));
-        await response.message("bet:check.full", { options: parts.join("; ") });
+        await response.message("bet:check.full", {options: parts.join("; ")});
     }
 }
 

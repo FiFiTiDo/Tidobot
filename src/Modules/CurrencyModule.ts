@@ -4,15 +4,13 @@ import * as util from "util";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
-import {Key} from "../Utilities/Translator";
-import winston from "winston";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import Logger from "../Utilities/Logger";
-import {inject, injectable} from "inversify";
+import {inject} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
 import CommandSystem from "../Systems/Commands/CommandSystem";
@@ -317,6 +315,21 @@ export default class CurrencyModule extends AbstractModule {
         super(CurrencyModule.name);
     }
 
+    static async getSingularName(channel: ChannelEntity): Promise<string> {
+        return channel.getSetting<string>("currency.name.singular");
+    }
+
+    static async getPluralName(channel: ChannelEntity): Promise<string> {
+        return channel.getSetting<string>("currency.name.plural");
+    }
+
+    static async formatAmount(amount: number, channel: ChannelEntity): Promise<string> {
+        const singular = await this.getSingularName(channel);
+        const plural = await this.getPluralName(channel);
+
+        return util.format("%d %s", amount, pluralize(amount, singular, plural));
+    }
+
     initialize(): void {
         const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new BankCommand(this.makeConfirmation), this);
@@ -360,19 +373,4 @@ export default class CurrencyModule extends AbstractModule {
         }
         return Promise.all(ops);
     };
-
-    static async getSingularName(channel: ChannelEntity): Promise<string> {
-        return channel.getSetting<string>("currency.name.singular");
-    }
-
-    static async getPluralName(channel: ChannelEntity): Promise<string> {
-        return channel.getSetting<string>("currency.name.plural");
-    }
-
-    static async formatAmount(amount: number, channel: ChannelEntity): Promise<string> {
-        const singular = await this.getSingularName(channel);
-        const plural = await this.getPluralName(channel);
-
-        return util.format("%d %s", amount, pluralize(amount, singular, plural));
-    }
 }

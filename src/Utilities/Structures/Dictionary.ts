@@ -9,7 +9,7 @@ import * as util from "util";
 import GenericObject from "../Interfaces/GenericObject";
 
 /** @ignore */
-export function normalizeSegment(seg: string): string|number {
+export function normalizeSegment(seg: string): string | number {
     const num = Number(seg);
     return isNaN(num) ? seg : num;
 }

@@ -6,6 +6,7 @@ export type EventMetadata = Dictionary;
 
 export interface EventConstructor<T extends Event<T>> {
     NAME: string;
+
     new(...args: any[]): T;
 }
 
@@ -24,7 +25,7 @@ export default abstract class Event<T extends Event<T>> {
     }
 
     public getEventArgs(): EventArguments<T> {
-        return { event: forceCast(this) };
+        return {event: forceCast(this)};
     }
 
     public getName(): string {

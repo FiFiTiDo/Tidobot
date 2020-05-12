@@ -1,7 +1,6 @@
 import Message from "../Chat/Message";
 import {parseBool} from "./functions";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
-import {Key} from "./Translator";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -36,7 +35,12 @@ interface ChatterValueSettings extends ValueSettings {
     type: "chatter";
 }
 
-export type ValueSettingsTypes = CustomValueSettings<any> | NumberValueSettings | StringValueSettings | BooleanValueSettings | ChatterValueSettings;
+export type ValueSettingsTypes =
+    CustomValueSettings<any>
+    | NumberValueSettings
+    | StringValueSettings
+    | BooleanValueSettings
+    | ChatterValueSettings;
 
 function checkRange(val: number, arg: NumberValueSettings): boolean {
     if (!arg.range) return true;
@@ -68,7 +72,7 @@ export default async (value: string, settings: ValueSettingsTypes, msg: Message)
             let chatter = msg.getChannel().findChatterByName(value);
             if (chatter === null) chatter = await ChatterEntity.findByName(value, msg.getChannel());
             if (chatter === null)
-                msg.getResponse().message("user:unknown", { username: value });
+                msg.getResponse().message("user:unknown", {username: value});
 
             return chatter;
         }

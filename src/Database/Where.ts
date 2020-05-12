@@ -9,6 +9,7 @@ type BooleanCallback = (where: Where) => void;
 
 abstract class BooleanOperation {
     abstract toString(): string;
+
     abstract getPreparedData(): PreparedData;
 }
 
@@ -104,7 +105,7 @@ export class Where {
         this.preparedValues[key] = value;
         this.addReservedKey(key);
 
-        return { key, column, value };
+        return {key, column, value};
     }
 
     getPreparedValues(): { [key: string]: any } {

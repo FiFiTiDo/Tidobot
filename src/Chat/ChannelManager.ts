@@ -1,5 +1,4 @@
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {injectable} from "inversify";
 import {provide} from "inversify-binding-decorators";
 
 @provide(ChannelManager)
@@ -22,7 +21,7 @@ export default class ChannelManager {
         this.channels.push(channel);
     }
 
-    findByName(name: string): ChannelEntity|null {
+    findByName(name: string): ChannelEntity | null {
         for (const channel of this.channels)
             if (channel.name === name)
                 return channel;

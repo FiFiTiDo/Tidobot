@@ -2,6 +2,11 @@ import Setting from "./Setting";
 
 export default class SettingsSystem {
     private static instance: SettingsSystem = null;
+    private readonly settings: Map<string, Setting>;
+
+    constructor() {
+        this.settings = new Map();
+    }
 
     public static getInstance(): SettingsSystem {
         if (this.instance === null)
@@ -10,17 +15,11 @@ export default class SettingsSystem {
         return this.instance;
     }
 
-    private readonly settings: Map<string, Setting>;
-
-    constructor() {
-        this.settings = new Map();
-    }
-
     registerSetting(setting: Setting): void {
         this.settings.set(setting.getKey(), setting);
     }
 
-    getSetting(key: string): Setting|null {
+    getSetting(key: string): Setting | null {
         return this.settings.has(key) ? this.settings.get(key) : null;
     }
 

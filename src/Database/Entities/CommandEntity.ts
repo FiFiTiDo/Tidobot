@@ -15,30 +15,35 @@ export enum CommandConditionResponse {
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_commands`)
 export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> {
+    @Column()
+    public trigger: string;
+    @Column()
+    public response: string;
+    @Column()
+    public condition: string;
+    @Column({datatype: DataTypes.FLOAT})
+    public price: number;
+    @Column({datatype: DataTypes.INTEGER})
+    public cooldown: number;
+    @Column({name: "created_at", datatype: DataTypes.DATE})
+    public createdAt: Moment;
+    @Column({name: "updated_at", datatype: DataTypes.DATE})
+    public updatedAt: Moment;
+
     constructor(id: number, params: EntityParameters) {
         super(CommandEntity, id, params);
     }
 
-    @Column()
-    public trigger: string;
+    public static async create(trigger: string, response: string, channel: ChannelEntity): Promise<CommandEntity | null> {
+        const timestamp = moment().toISOString();
+        return CommandEntity.make<CommandEntity>({channel}, {
+            trigger, response, condition: "true", price: 0.0, cooldown: 0, created_at: timestamp, updated_at: timestamp
+        });
+    }
 
-    @Column()
-    public response: string;
-
-    @Column()
-    public condition: string;
-
-    @Column({ datatype: DataTypes.FLOAT })
-    public price: number;
-
-    @Column({ datatype: DataTypes.INTEGER })
-    public cooldown: number;
-
-    @Column({ name: "created_at", datatype: DataTypes.DATE })
-    public createdAt: Moment;
-
-    @Column({ name: "updated_at", datatype: DataTypes.DATE })
-    public updatedAt: Moment;
+    public static async findByTrigger(trigger: string, channel: ChannelEntity): Promise<CommandEntity[]> {
+        return CommandEntity.retrieveAll({channel}, where().eq("trigger", trigger));
+    }
 
     async checkCondition(msg: Message): Promise<CommandConditionResponse> {
         if (this.condition.toLowerCase() === "@@default") return CommandConditionResponse.RUN_DEFAULT;
@@ -61,16 +66,5 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
         let resp = parts.join(" ");
         if (resp.startsWith("/") || resp.startsWith(".")) resp = ">> " + resp;
         return resp;
-    }
-
-    public static async create(trigger: string, response: string, channel: ChannelEntity): Promise<CommandEntity|null> {
-        const timestamp = moment().toISOString();
-        return CommandEntity.make<CommandEntity>({ channel }, {
-            trigger, response, condition: "true", price: 0.0, cooldown: 0, created_at: timestamp, updated_at: timestamp
-        });
-    }
-
-    public static async findByTrigger(trigger: string, channel: ChannelEntity): Promise<CommandEntity[]> {
-        return CommandEntity.retrieveAll({ channel }, where().eq("trigger", trigger));
     }
 }

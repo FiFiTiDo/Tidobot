@@ -29,10 +29,10 @@ class CounterCommand extends Command {
         this.addSubcommand("del", this.delete);
     }
 
-    static async counterConverter(input: string, msg: Message): Promise<CountersEntity|null> {
+    static async counterConverter(input: string, msg: Message): Promise<CountersEntity | null> {
         const counter = CountersEntity.findByName(input, msg.getChannel());
         if (counter === null) {
-            await msg.getResponse().message("counter:unknown", { counter: input });
+            await msg.getResponse().message("counter:unknown", {counter: input});
             return null;
         }
         return counter;
@@ -58,7 +58,7 @@ class CounterCommand extends Command {
         if (args === null) return;
         const [counter] = args as [CountersEntity];
 
-        await response.message("counter:value", { counter: counter.name, value: counter.value });
+        await response.message("counter:value", {counter: counter.name, value: counter.value});
     }
 
     async increment({event, response}: CommandEventArgs): Promise<void> {
@@ -88,7 +88,7 @@ class CounterCommand extends Command {
         try {
             counter.value += amount;
             await counter.save();
-            await response.message("counter:incremented", { counter: counter.name, amount });
+            await response.message("counter:incremented", {counter: counter.name, amount});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Failed to increment counter", {cause: e});
@@ -122,7 +122,7 @@ class CounterCommand extends Command {
         try {
             counter.value -= amount;
             await counter.save();
-            await response.message("counter:decremented", { counter: counter.name, amount });
+            await response.message("counter:decremented", {counter: counter.name, amount});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Failed to decrement from counter", {cause: e});
@@ -155,7 +155,7 @@ class CounterCommand extends Command {
         try {
             counter.value = amount;
             await counter.save();
-            await response.message("counter:set", { counter: counter.name, amount });
+            await response.message("counter:set", {counter: counter.name, amount});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Failed to set counter", {cause: e});
@@ -181,10 +181,10 @@ class CounterCommand extends Command {
         try {
             const counter = await CountersEntity.make({channel: msg.getChannel()}, {name, value: 0});
             if (counter === null) {
-                await response.message("counter:error.exists", { counter: name });
+                await response.message("counter:error.exists", {counter: name});
                 return;
             }
-            await response.message("counter:created", { counter: counter.name });
+            await response.message("counter:created", {counter: counter.name});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Failed to create counter", {cause: e});
@@ -210,7 +210,7 @@ class CounterCommand extends Command {
 
         try {
             await counter.delete();
-            await response.message("counter.deleted", { counter: counter.name });
+            await response.message("counter.deleted", {counter: counter.name});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Failed to delete counter", {cause: e});
@@ -236,14 +236,14 @@ export default class CounterModule extends AbstractModule {
 
         ExpressionSystem.getInstance().registerResolver(msg => ({
             counters: {
-                get: async (name: unknown): Promise<object|string> => {
+                get: async (name: unknown): Promise<object | string> => {
                     if (typeof name !== "string") return "Expected a string for argument 1";
                     const counter = await CountersEntity.findByName(name, msg.getChannel());
                     const couldNotFindCounter = "Could not find counter";
 
                     return {
                         value: counter === null ? couldNotFindCounter : counter.value,
-                        add: async (amt: unknown): Promise<string|number> => {
+                        add: async (amt: unknown): Promise<string | number> => {
                             if (counter === null) return couldNotFindCounter;
                             if (typeof amt != "number") return "Expected a number for argument 1";
 
@@ -251,7 +251,7 @@ export default class CounterModule extends AbstractModule {
                             await counter.save();
                             return counter.value;
                         },
-                        sub: async (amt: unknown): Promise<string|number> => {
+                        sub: async (amt: unknown): Promise<string | number> => {
                             if (counter === null) return couldNotFindCounter;
                             if (typeof amt != "number") return "Expected a number for argument 1";
 
@@ -259,7 +259,7 @@ export default class CounterModule extends AbstractModule {
                             await counter.save();
                             return counter.value;
                         },
-                        set: async (amt: unknown): Promise<string|number> => {
+                        set: async (amt: unknown): Promise<string | number> => {
                             if (counter === null) return couldNotFindCounter;
                             if (typeof amt != "number") return "Expected a number for argument 1";
 
@@ -274,7 +274,7 @@ export default class CounterModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel}: NewChannelEventArgs) {
-        await CountersEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs) {
+        await CountersEntity.createTable({channel});
     }
 }

@@ -42,7 +42,7 @@ export default class ChatterList {
         return null;
     }
 
-    findByName(name: string): ChatterEntity|null {
+    findByName(name: string): ChatterEntity | null {
         for (const chatter of this.chatters)
             if (chatter.name.toLowerCase() === name.toLowerCase())
                 return chatter;

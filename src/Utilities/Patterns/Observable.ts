@@ -7,7 +7,8 @@ export interface ObservableFunction<T> {
 }
 
 class FunctionObserver<T> implements Observer<T> {
-    constructor(private func: ObservableFunction<T>) {}
+    constructor(private func: ObservableFunction<T>) {
+    }
 
     update(observable: Observable<T>, prevValue: T, nextValue: T): void {
         this.func(observable, prevValue, nextValue);
@@ -17,7 +18,8 @@ class FunctionObserver<T> implements Observer<T> {
 export class Observable<T> {
     private observers: Observer<T>[] = [];
 
-    constructor(protected value: T) {}
+    constructor(protected value: T) {
+    }
 
     public set(newValue: T): void {
         const oldValue = this.value;
@@ -29,7 +31,7 @@ export class Observable<T> {
         return this.value;
     }
 
-    public attach(observer: Observer<T>|ObservableFunction<T>): Observer<T> {
+    public attach(observer: Observer<T> | ObservableFunction<T>): Observer<T> {
         if (typeof observer === "function") observer = new FunctionObserver(observer);
         this.observers.push(observer);
         return observer;
@@ -48,7 +50,7 @@ export class ObservableArray<T> extends Observable<T[]> {
     }
 
     public add(value: T): void {
-        this.addAll([ value ]);
+        this.addAll([value]);
     }
 
     public addAll(values: T[]): void {

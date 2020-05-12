@@ -4,14 +4,6 @@ import {promisify} from "util";
 
 export default class Cache {
     private static instance: Cache = null;
-
-    public static getInstance(): Cache {
-        if (this.instance === null)
-            this.instance = new Cache();
-
-        return this.instance;
-    }
-
     private readonly client: RedisClient;
 
     constructor() {
@@ -19,6 +11,13 @@ export default class Cache {
             host: process.env.REDIS_HOST,
             port: parseInt(process.env.REDIS_PORT)
         });
+    }
+
+    public static getInstance(): Cache {
+        if (this.instance === null)
+            this.instance = new Cache();
+
+        return this.instance;
     }
 
     async exists(key: string): Promise<boolean> {

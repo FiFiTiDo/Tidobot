@@ -32,7 +32,7 @@ export default class Command {
     }
 
     async execute(args: CommandEventArgs): Promise<void> {
-        const {message, response } = args;
+        const {message, response} = args;
         if (!this.executeSubcommands(args))
             return response.rawMessage(await this.formatUsage(message.getChannel()));
     }
@@ -41,7 +41,7 @@ export default class Command {
         const newEvent = args.event.clone();
         const subcommandLabel = newEvent.shiftArgument();
         if (!this.subcommands.has(subcommandLabel)) return false;
-        this.subcommands.get(subcommandLabel).call(this, Object.assign({}, args, { event: newEvent}));
+        this.subcommands.get(subcommandLabel).call(this, Object.assign({}, args, {event: newEvent}));
         return true;
     }
 }

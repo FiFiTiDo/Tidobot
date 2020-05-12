@@ -12,8 +12,15 @@ import ChatterList from "../../Chat/ChatterList";
 import {ConvertedSetting} from "../../Systems/Settings/Setting";
 
 @Id
-@Table(({ service }) => `${service}_channels`)
+@Table(({service}) => `${service}_channels`)
 export default class ChannelEntity extends Entity<ChannelEntity> {
+    @Column({name: "channel_id", datatype: DataTypes.STRING, unique: true})
+    public channelId: string;
+    @Column({datatype: DataTypes.STRING})
+    public name: string;
+    @Column({name: "disabled_modules"})
+    public disabledModules: string[];
+    public online: Observable<boolean> = new Observable<boolean>(false);
     private readonly settingsManager: ChannelSettings;
     private chatterList: ChatterList;
 
@@ -24,28 +31,33 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
         this.settingsManager = new ChannelSettings(this);
     }
 
-    @Column({ name: "channel_id", datatype: DataTypes.STRING, unique: true })
-    public channelId: string;
+    static async findById(id: string, service: string): Promise<ChannelEntity | null> {
+        return ChannelEntity.retrieve({service}, where().eq("channel_id", id));
+    }
 
-    @Column({ datatype: DataTypes.STRING })
-    public name: string;
+    static async findByName(name: string, service: string): Promise<ChannelEntity | null> {
+        return ChannelEntity.retrieve({service}, where().eq("name", name));
+    }
 
-    @Column({ name: "disabled_modules" })
-    public disabledModules: string[];
-
-    public online: Observable<boolean> = new Observable<boolean>(false);
+    static async from(id: string, name: string, service: string): Promise<ChannelEntity | null> {
+        return this.make({service}, {channel_id: id, name, disabled_modules: ""});
+    }
 
     @ImportModel(ChatterEntity)
-    async chatters(): Promise<ChatterEntity[]> { return []; }
+    async chatters(): Promise<ChatterEntity[]> {
+        return [];
+    }
 
     @ImportModel(PermissionEntity)
-    async permissions(): Promise<PermissionEntity[]> { return []; }
+    async permissions(): Promise<PermissionEntity[]> {
+        return [];
+    }
 
     getSettings(): ChannelSettings {
         return this.settingsManager;
     }
 
-    getSetting<T extends ConvertedSetting>(key: string): Promise<T|null> {
+    getSetting<T extends ConvertedSetting>(key: string): Promise<T | null> {
         return this.getSettings().get<T>(key);
     }
 
@@ -53,23 +65,11 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
         return this.getSettings().set(key, value);
     }
 
-    static async findById(id: string, service: string): Promise<ChannelEntity|null> {
-        return ChannelEntity.retrieve({ service }, where().eq("channel_id", id));
-    }
-
-    static async findByName(name: string, service: string): Promise<ChannelEntity|null> {
-        return ChannelEntity.retrieve({ service }, where().eq("name", name));
-    }
-
-    static async from(id: string, name: string, service: string): Promise<ChannelEntity|null> {
-        return this.make({ service }, { channel_id: id, name, disabled_modules: "" });
-    }
-
     findChatterById(id: string) {
         return this.chatterList.findById(id);
     }
 
-    findChatterByName(name: string): ChatterEntity|null {
+    findChatterByName(name: string): ChatterEntity | null {
         return this.chatterList.findByName(name);
     }
 

@@ -4,9 +4,9 @@ import Logger from "../../Utilities/Logger";
 import {objectHasProperties} from "../../Utilities/ObjectUtils";
 import Convert from "../../Utilities/Convert";
 import CommandSystem from "./CommandSystem";
-import minimist = require("minimist-string");
 import {CliArgsEventValidationOptions, CommandEventValidationOptions} from "./Interfaces";
 import {Response} from "../../Chat/Response";
+import minimist = require("minimist-string");
 
 function isCliArgs(arg: any): arg is CliArgsEventValidationOptions {
     return arg.cli_args !== undefined;
@@ -50,7 +50,7 @@ export class CommandEvent extends Event<CommandEvent> {
     shiftArgument(): string {
         return this.args.shift();
     }
-    
+
     unshiftArgument(arg: string) {
         this.args.unshift(arg);
     }
@@ -64,9 +64,9 @@ export class CommandEvent extends Event<CommandEvent> {
         return new CommandEvent(this.command, this.args.slice(), this.msg);
     }
 
-    async validate(opts: CliArgsEventValidationOptions): Promise<{ [key: string]: any }|null>;
-    async validate(opts: CommandEventValidationOptions): Promise<any[]|null>;
-    async validate(opts: CommandEventValidationOptions | CliArgsEventValidationOptions): Promise<{ [key: string]: any }|any[]|null> {
+    async validate(opts: CliArgsEventValidationOptions): Promise<{ [key: string]: any } | null>;
+    async validate(opts: CommandEventValidationOptions): Promise<any[] | null>;
+    async validate(opts: CommandEventValidationOptions | CliArgsEventValidationOptions): Promise<{ [key: string]: any } | any[] | null> {
         const response = this.msg.getResponse();
         if (opts.permission && !(await this.msg.checkPermission(opts.permission))) return null;
         if (opts.arguments) {
@@ -89,7 +89,7 @@ export class CommandEvent extends Event<CommandEvent> {
                     } else {
                         if (arg.required) {
                             if (!arg.silentFail)
-                                await response.message("command:expected-cli", { arg: arg.key, usage });
+                                await response.message("command:expected-cli", {arg: arg.key, usage});
                             return null;
                         } else
                             value = arg.defaultValue || null;

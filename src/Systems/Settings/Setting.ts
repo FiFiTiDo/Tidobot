@@ -5,7 +5,7 @@ export enum SettingType {
     STRING, INTEGER, FLOAT, BOOLEAN, TIMEZONE
 }
 
-export type ConvertedSetting = string|number|boolean|moment.MomentZone;
+export type ConvertedSetting = string | number | boolean | moment.MomentZone;
 
 export default class Setting {
     constructor(private readonly key: string, private readonly defaultValue: string, private readonly type: SettingType) {
@@ -24,7 +24,7 @@ export default class Setting {
     }
 
     public convert(value: string): ConvertedSetting {
-        switch(this.type) {
+        switch (this.type) {
             case SettingType.INTEGER: {
                 const intVal = parseInt(value);
                 if (isNaN(intVal)) return null;

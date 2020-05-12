@@ -6,7 +6,6 @@ import {array_rand} from "../Utilities/ArrayUtils";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import {Key} from "../Utilities/Translator";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
@@ -18,6 +17,12 @@ import Command from "../Systems/Commands/Command";
 export default class ListModule extends AbstractModule {
     constructor() {
         super(ListModule.name);
+    }
+
+    public static async listNameArgConverter(raw: string, msg: Message): Promise<ListsEntity | null> {
+        const list = await ListsEntity.findByName(raw, msg.getChannel());
+        if (list === null) await msg.getResponse().message("lists:unknown", {list: raw});
+        return list;
     }
 
     initialize(): void {
@@ -74,15 +79,9 @@ export default class ListModule extends AbstractModule {
         }));
     }
 
-    public static async listNameArgConverter(raw: string, msg: Message): Promise<ListsEntity|null> {
-        const list = await ListsEntity.findByName(raw, msg.getChannel());
-        if (list === null) await msg.getResponse().message("lists:unknown", { list: raw });
-        return list;
-    }
-
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await ListsEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await ListsEntity.createTable({channel});
     }
 }
 
@@ -132,7 +131,7 @@ class ListCommand extends Command {
 
             item = await list.getItem(itemNum);
             if (item === null) {
-                await response.message("lists:item.unknown", { number: itemNum });
+                await response.message("lists:item.unknown", {number: itemNum});
                 return;
             }
         } else {
@@ -162,7 +161,7 @@ class ListCommand extends Command {
 
         try {
             const list = await ListsEntity.create(name, msg.getChannel());
-            await response.message(list === null ? "lists:exists" : "lists:created", { list: name });
+            await response.message(list === null ? "lists:exists" : "lists:created", {list: name});
         } catch (e) {
             await response.genericError();
         }
@@ -187,7 +186,7 @@ class ListCommand extends Command {
 
         try {
             await list.delete();
-            await response.message("lists:deleted", { list: name });
+            await response.message("lists:deleted", {list: name});
         } catch (e) {
             await response.genericError();
         }
@@ -220,7 +219,7 @@ class ListCommand extends Command {
         if (item === null) {
             await response.genericError();
         } else {
-            await response.message("lists:item.added", { number: item.id });
+            await response.message("lists:item.added", {number: item.id});
         }
     }
 
@@ -252,15 +251,15 @@ class ListCommand extends Command {
             permission: "list.edit"
         });
         if (args === null) return;
-        const [list, itemNum, value ] = args as [ListsEntity, number, string];
+        const [list, itemNum, value] = args as [ListsEntity, number, string];
         const item = await list.getItem(itemNum);
         if (item === null) {
-            await response.message("lists:item.unknown", { number: itemNum });
+            await response.message("lists:item.unknown", {number: itemNum});
         } else {
             try {
                 item.value = value;
                 await item.save();
-                await response.message("lists:item.edited", { number: item.id });
+                await response.message("lists:item.edited", {number: item.id});
             } catch (e) {
                 await response.genericError();
             }
@@ -291,11 +290,11 @@ class ListCommand extends Command {
         const [list, itemNum] = args as [ListsEntity, number];
         const item = await list.getItem(itemNum);
         if (item === null) {
-            await response.message("lists:item.unknown", { number: itemNum });
+            await response.message("lists:item.unknown", {number: itemNum});
         } else {
             try {
                 await item.delete();
-                await response.message("lists:item.deleted", { number: item.id });
+                await response.message("lists:item.deleted", {number: item.id});
             } catch (e) {
                 await response.genericError();
             }

@@ -2,11 +2,10 @@ import AbstractModule from "./AbstractModule";
 import UserPermissionsEntity from "../Database/Entities/UserPermissionsEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {inject, injectable} from "inversify";
+import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
@@ -44,10 +43,10 @@ class UserCommand extends Command {
         const [user, permission] = args as [ChatterEntity, string];
 
         await UserPermissionsEntity.update(user, permission, true, msg.getChannel())
-            .then(() => response.message("user:permission.granted", { permission, username: user.name }))
+            .then(() => response.message("user:permission.granted", {permission, username: user.name}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to grant permission to user", { cause: e });
+                Logger.get().error("Unable to grant permission to user", {cause: e});
             });
     }
 
@@ -74,10 +73,10 @@ class UserCommand extends Command {
         const [user, permission] = args as [ChatterEntity, string];
 
         await UserPermissionsEntity.update(user, permission, false, msg.getChannel())
-            .then(() => response.message("user:permission.denied", { username: user.name, permission }))
+            .then(() => response.message("user:permission.denied", {username: user.name, permission}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to deny permission for user", { cause: e });
+                Logger.get().error("Unable to deny permission for user", {cause: e});
             });
     }
 
@@ -101,23 +100,23 @@ class UserCommand extends Command {
             permission: "permission.reset"
         });
         if (args === null) return;
-        const [user, permission] = args as [ChatterEntity, string|undefined];
+        const [user, permission] = args as [ChatterEntity, string | undefined];
 
         if (permission) {
             await UserPermissionsEntity.delete(user, permission)
-                .then(() => response.message("user:permission.delete.specific", { username: user.name, permission }))
+                .then(() => response.message("user:permission.delete.specific", {username: user.name, permission}))
                 .catch(e => {
                     response.genericError();
-                    Logger.get().error("Unable to deny permission for user", { cause: e });
+                    Logger.get().error("Unable to deny permission for user", {cause: e});
                 });
         } else {
-            const confirmation = await this.confirmationFactory(msg, await response.translate("user:permission.delete.confirm", { username: user.name }), 30);
+            const confirmation = await this.confirmationFactory(msg, await response.translate("user:permission.delete.confirm", {username: user.name}), 30);
             confirmation.addListener(ConfirmedEvent, () => {
                 return UserPermissionsEntity.clear(user)
-                    .then(() => response.message("user:permission.delete.all", { username: user.name }))
+                    .then(() => response.message("user:permission.delete.all", {username: user.name}))
                     .catch(e => {
                         response.genericError();
-                        Logger.get().error("Unable to deny permission for user", { cause: e });
+                        Logger.get().error("Unable to deny permission for user", {cause: e});
                     });
             });
             confirmation.run();
@@ -139,8 +138,8 @@ export default class UserModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await ChatterEntity.createTable({ channel });
-        await UserPermissionsEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await ChatterEntity.createTable({channel});
+        await UserPermissionsEntity.createTable({channel});
     }
 }

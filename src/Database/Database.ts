@@ -11,10 +11,10 @@ export default class Database {
         const service = process.env.SERVICE;
         this.instance = new sqlite3.Database(path.join(process.cwd(), "data", "database.db"), sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
         try {
-            await ChannelEntity.createTable({ service });
-            await IgnoredEntity.createTable({ service });
-            await FiltersEntity.createTable({ service });
-        } catch(e) {
+            await ChannelEntity.createTable({service});
+            await IgnoredEntity.createTable({service});
+            await FiltersEntity.createTable({service});
+        } catch (e) {
             console.error("Unable to create databases for channels and users");
             console.error("Cause: " + e.message);
             console.error(e.stack);

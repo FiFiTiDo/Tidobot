@@ -1,8 +1,7 @@
 import {AdapterOptions} from "../Services/Adapter";
 import args from "args";
 import moment from "moment";
-import {inject, injectable} from "inversify";
-import symbols from "../symbols";
+import {inject} from "inversify";
 import Bot from "./Bot";
 import Logger from "../Utilities/Logger";
 import {provide} from "inversify-binding-decorators";
@@ -17,12 +16,16 @@ export default class Application {
     constructor(@inject(Bot) private bot: Bot) {
     }
 
+    public static getUptime(): moment.Duration {
+        return moment.duration(this.startTime.diff(moment()));
+    }
+
     public async start(argv: string[]): Promise<void> {
         Logger.get().info("Initializing database");
         try {
             await Database.initialize();
         } catch (e) {
-            Logger.get().emerg("Unable to initialize the database", { cause: e });
+            Logger.get().emerg("Unable to initialize the database", {cause: e});
             process.exit(1);
         }
         Logger.get().info("Database initialized successfully");
@@ -37,9 +40,5 @@ export default class Application {
 
         Logger.get().debug("Application#runCommand executed.");
         this.bot.start(options as AdapterOptions);
-    }
-
-    public static getUptime(): moment.Duration {
-        return moment.duration(this.startTime.diff(moment()));
     }
 }

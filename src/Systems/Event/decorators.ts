@@ -30,6 +30,6 @@ export function HandlesEvents() {
 
 export function EventHandler<T extends Event<T>>(event: EventConstructor<T>, priority = EventPriority.NORMAL): Function {
     return function (target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<Listener<T>>): void {
-        addMetadata<EventHandler<T>>(EVENT_META_KEY, target.constructor, { event, priority, func: descriptor.value });
+        addMetadata<EventHandler<T>>(EVENT_META_KEY, target.constructor, {event, priority, func: descriptor.value});
     };
 }

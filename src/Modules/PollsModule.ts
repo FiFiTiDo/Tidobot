@@ -2,16 +2,15 @@ import AbstractModule from "./AbstractModule";
 import Message from "../Chat/Message";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
-import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
-import request = require("request-promise-native");
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import request = require("request-promise-native");
 
 interface StrawpollGetResponse {
     id: number;
@@ -75,7 +74,7 @@ class StrawpollCommand extends Command {
 
         const total = res.votes.reduce((prev, next) => prev + next);
         const resp = res.options.map((option, index) => option + ": " + ((res.votes[index] / total) * 100) + "%").join(", ");
-        await response.message("poll:results", { results: resp });
+        await response.message("poll:results", {results: resp});
     }
 
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -139,7 +138,10 @@ class StrawpollCommand extends Command {
 
         let times = await msg.getChannel().getSetting<number>("polls.spamStrawpollLink");
         if (isNaN(times)) times = 1;
-        await response.spam("poll:strawpoll.created", {url: `https://www.strawpoll.me/${resp.id}`}, { times, seconds: 1 });
+        await response.spam("poll:strawpoll.created", {url: `https://www.strawpoll.me/${resp.id}`}, {
+            times,
+            seconds: 1
+        });
     }
 }
 
@@ -182,7 +184,7 @@ class Poll {
         this._open = false;
     }
 
-    getOption(index: number): string|null {
+    getOption(index: number): string | null {
         index--;
         return index < 0 || index >= this.options.length ? null : this.options[index];
     }
@@ -198,7 +200,7 @@ class Poll {
     formatResults(): string {
         const votes = this.getResults();
         const total = this.getTotalVotes();
-        return  Object.keys(votes).map(option => {
+        return Object.keys(votes).map(option => {
             const optionVotes = votes[option].length;
             const percentage = total < 1 ? 0 : (optionVotes / total) * 100;
 
@@ -242,7 +244,7 @@ class VoteCommand extends Command {
 
         const successful = poll.addVote(option, msg.getChatter());
         if (announce)
-            return successful ? response.message("poll:vote-accepted", { option }) : response.message("poll:error.already-voted");
+            return successful ? response.message("poll:vote-accepted", {option}) : response.message("poll:error.already-voted");
     }
 }
 
@@ -254,17 +256,6 @@ class PollCommand extends Command {
         this.addSubcommand("stop", this.stop);
         this.addSubcommand("results", this.results);
         this.addSubcommand("res", this.results);
-    }
-
-    private async getPoll(msg: Message): Promise<Poll> {
-        if (!this.runningPolls.hasChannel(msg.getChannel())) {
-            await msg.getResponse().message("poll:error.not-running", {
-                prefix: await CommandSystem.getPrefix(msg.getChannel())
-            });
-            return;
-        }
-
-        return this.runningPolls.getChannel(msg.getChannel());
     }
 
     async run({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -286,14 +277,14 @@ class PollCommand extends Command {
         const prefix = await CommandSystem.getPrefix(msg.getChannel());
 
         if (this.runningPolls.hasChannel(msg.getChannel())) {
-            await response.message("poll:already-running", { prefix });
+            await response.message("poll:already-running", {prefix});
             return;
         }
 
         const poll = new Poll(options, msg.getChannel());
         this.runningPolls.setChannel(msg.getChannel(), poll);
 
-        await response.message("poll:open", { prefix });
+        await response.message("poll:open", {prefix});
         await response.message("poll:options", {
             options: options.map(((value, index) => "#" + (index + 1) + ": " + value)).join(", ")
         });
@@ -312,7 +303,7 @@ class PollCommand extends Command {
         await response.message("poll:lead-up");
 
         setTimeout(() => {
-            response.message("polls:results", { results: poll.formatResults() });
+            response.message("polls:results", {results: poll.formatResults()});
         }, 5000);
     }
 
@@ -325,7 +316,18 @@ class PollCommand extends Command {
 
         if (!(await msg.checkPermission("polls.results"))) return;
         const poll = await this.getPoll(msg);
-        await response.message("polls:results", { results: poll.formatResults() });
+        await response.message("polls:results", {results: poll.formatResults()});
+    }
+
+    private async getPoll(msg: Message): Promise<Poll> {
+        if (!this.runningPolls.hasChannel(msg.getChannel())) {
+            await msg.getResponse().message("poll:error.not-running", {
+                prefix: await CommandSystem.getPrefix(msg.getChannel())
+            });
+            return;
+        }
+
+        return this.runningPolls.getChannel(msg.getChannel());
     }
 }
 

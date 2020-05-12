@@ -21,7 +21,7 @@ export default class BannedEvent extends Event<BannedEvent> {
         return this.duration;
     }
 
-    getReason(): string|null {
+    getReason(): string | null {
         return this.reason;
     }
 

@@ -1,5 +1,5 @@
 import Entity, {EntityConstructor, EntityParameters} from "../Entities/Entity";
-import {getColumns, DataTypes} from "./Columns";
+import {DataTypes, getColumns} from "./Columns";
 import {formatConstraints} from "./Constraints";
 import {getMetadata, setMetadata} from "../../Utilities/DeccoratorUtils";
 
@@ -7,12 +7,12 @@ const TABLE_NAME_KEY = "entity:table_name";
 type TableNameFormatter = (params: EntityParameters) => string;
 
 export function Table(tableNameFormatter: TableNameFormatter): Function {
-    return function <T> (target: T): void {
+    return function <T>(target: T): void {
         setMetadata(TABLE_NAME_KEY, target, tableNameFormatter);
     };
 }
 
-export function getTableName<T extends Entity<T>>(entityConstructor: EntityConstructor<T>, params: EntityParameters): string|null {
+export function getTableName<T extends Entity<T>>(entityConstructor: EntityConstructor<T>, params: EntityParameters): string | null {
     const formatter = getMetadata<TableNameFormatter>(TABLE_NAME_KEY, entityConstructor);
     if (formatter === null) return null;
     params = entityConstructor.normalizeParameters(params);
@@ -23,7 +23,7 @@ export function formatForCreate<T extends Entity<T>>(entityConstructor: EntityCo
     const columns = getColumns(entityConstructor);
     const constraints = formatConstraints(entityConstructor);
     const parts = [];
-    for (const { settings: column } of columns.values()) {
+    for (const {settings: column} of columns.values()) {
         let type = "BLOB";
         switch (column.datatype) {
             case DataTypes.INTEGER:

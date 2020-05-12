@@ -1,5 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import {Key} from "../Utilities/Translator";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
@@ -59,14 +58,14 @@ class TidobotCommand extends Command {
         if (args === null) return;
         const chatter = args[0] as ChatterEntity;
         IgnoredEntity.add(chatter.getService(), chatter.userId)
-            .then(ignored => response.message(ignored ? "user:ignore.added" : "user:ignore.already", { username: chatter.name }))
+            .then(ignored => response.message(ignored ? "user:ignore.added" : "user:ignore.already", {username: chatter.name}))
             .catch(e => {
                 Logger.get().error("Failed to set a user as ignored", {cause: e});
                 return response.genericError();
             });
     }
 
-    async unignore({event, message: msg,  response}: CommandEventArgs): Promise<void> {
+    async unignore({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "tidobot unignore <user>",
             arguments: [
@@ -82,7 +81,7 @@ class TidobotCommand extends Command {
         if (args === null) return;
         const chatter = args[0] as ChatterEntity;
         IgnoredEntity.remove(chatter.getService(), chatter.userId)
-            .then(ignored => response.message(ignored ? "user:ignore.removed" : "user:ignore.not", { username: chatter.name }))
+            .then(ignored => response.message(ignored ? "user:ignore.removed" : "user:ignore.not", {username: chatter.name}))
             .catch(e => {
                 Logger.get().error("Failed to set a user as not ignored", {cause: e});
                 return response.genericError();
@@ -104,10 +103,10 @@ class TidobotCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (user.banned) return response.message("user:ban.already", { username: user.name });
+        if (user.banned) return response.message("user:ban.already", {username: user.name});
         user.banned = true;
         user.save()
-            .then(() => response.message("user:ban.added", { username: user.name }))
+            .then(() => response.message("user:ban.added", {username: user.name}))
             .catch(e => {
                 Logger.get().error("Failed to set a user as banned", {cause: e});
                 return response.genericError();
@@ -129,10 +128,10 @@ class TidobotCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (!user.banned) return response.message("user:ban.not", { username: user.name });
+        if (!user.banned) return response.message("user:ban.not", {username: user.name});
         user.banned = false;
         user.save()
-            .then(() => response.message("user:ban.removed", { username: user.name }))
+            .then(() => response.message("user:ban.removed", {username: user.name}))
             .catch(e => {
                 Logger.get().error("Failed to unset a user as unbanned", {cause: e});
                 return response.genericError();
@@ -164,12 +163,12 @@ class RegularCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (user.regular) return response.message("user:regular.already", { username: user.name });
+        if (user.regular) return response.message("user:regular.already", {username: user.name});
         user.regular = true;
         user.save()
-            .then(() => response.message("user:regular.added", { username: user.name }))
+            .then(() => response.message("user:regular.added", {username: user.name}))
             .catch(e => {
-                Logger.get().error("Failed to set a user as regular", { cause: e });
+                Logger.get().error("Failed to set a user as regular", {cause: e});
                 return response.genericError();
             });
     }
@@ -189,12 +188,12 @@ class RegularCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (!user.regular) return response.message("user:regular.not", { username: user.name });
+        if (!user.regular) return response.message("user:regular.not", {username: user.name});
         user.regular = false;
         user.save()
-            .then(() => response.message("user:regular.removed", { username: user.name }))
+            .then(() => response.message("user:regular.removed", {username: user.name}))
             .catch(e => {
-                Logger.get().error("Failed to unset a user as regular", { cause: e });
+                Logger.get().error("Failed to unset a user as regular", {cause: e});
                 return response.genericError();
             });
     }

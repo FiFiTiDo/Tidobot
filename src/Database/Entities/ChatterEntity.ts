@@ -14,30 +14,48 @@ import IgnoredEntity from "./IgnoredEntity";
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_chatters`)
 export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> {
+    @Column({name: "user_id", datatype: DataTypes.STRING, unique: true})
+    public userId: string;
+    @Column({datatype: DataTypes.STRING})
+    public name: string;
+    @Column({datatype: DataTypes.FLOAT})
+    public balance: number;
+    @Column({datatype: DataTypes.BOOLEAN})
+    public banned: boolean;
+    @Column({datatype: DataTypes.BOOLEAN})
+    public regular: boolean;
+
     constructor(id: number, params: EntityParameters) {
         super(ChatterEntity, id, params);
     }
 
-    @Column({ name: "user_id", datatype: DataTypes.STRING, unique: true })
-    public userId: string;
+    public static async findById(id: string, channel: ChannelEntity): Promise<ChatterEntity | null> {
+        return ChatterEntity.retrieve({channel}, where().eq("user_id", id));
+    }
 
-    @Column({ datatype: DataTypes.STRING })
-    public name: string;
+    public static async findByName(name: string, channel: ChannelEntity): Promise<ChatterEntity | null> {
+        return ChatterEntity.retrieve({channel}, where().eq("name", name));
+    }
 
-    @Column({ datatype: DataTypes.FLOAT })
-    public balance: number;
-
-    @Column({ datatype: DataTypes.BOOLEAN })
-    public banned: boolean;
-
-    @Column({ datatype: DataTypes.BOOLEAN })
-    public regular: boolean;
+    public static async from(userId: string, name: string, channel: ChannelEntity): Promise<ChatterEntity | null> {
+        return this.retrieveOrMake({channel}, where().eq("user_id", userId), {
+            user_id: userId,
+            name,
+            balance: 0.0,
+            banned: 0,
+            regular: 0
+        });
+    }
 
     @ManyToMany(GroupsEntity, GroupMembersEntity, "user_id", "user_id", "id", "group_id")
-    public async groups(): Promise<GroupsEntity[]> { return []; }
+    public async groups(): Promise<GroupsEntity[]> {
+        return [];
+    }
 
     @OneToMany(UserPermissionsEntity, "user_id", "user_id")
-    public async permissions(): Promise<UserPermissionsEntity[]> { return []; }
+    public async permissions(): Promise<UserPermissionsEntity[]> {
+        return [];
+    }
 
     public async hasPermission(perm: Permission): Promise<boolean> {
         for (const permission of await this.permissions())
@@ -73,20 +91,9 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
     public isIgnored(): Promise<boolean> {
         return IgnoredEntity.isIgnored(this.getService(), this.userId);
     }
-
-    public static async findById(id: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
-        return ChatterEntity.retrieve({ channel }, where().eq("user_id", id));
-    }
-
-    public static async findByName(name: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
-        return ChatterEntity.retrieve({ channel }, where().eq("name", name));
-    }
-
-    public static async from(userId: string, name: string, channel: ChannelEntity): Promise<ChatterEntity|null> {
-        return this.retrieveOrMake({ channel }, where().eq("user_id", userId), { user_id: userId, name, balance: 0.0, banned: 0, regular: 0 });
-    }
 }
 export type ChatterStateListItem<T> = [ChatterEntity, T];
+
 export class ChatterStateList<T> {
     private readonly list: ChannelStateList<{ [key: string]: T }>;
     private readonly users: Map<string, ChatterEntity>;
@@ -120,8 +127,8 @@ export class ChatterStateList<T> {
         return Object.keys(this.list.getChannel(channel)).length;
     }
 
-    *entries(channel: ChannelEntity): Generator<ChatterStateListItem<T>, any, unknown> {
-        for (const [ user_id, num ] of Object.entries(this.list.getChannel(channel))) {
+    * entries(channel: ChannelEntity): Generator<ChatterStateListItem<T>, any, unknown> {
+        for (const [user_id, num] of Object.entries(this.list.getChannel(channel))) {
             yield [this.users.get(user_id), num];
         }
     }

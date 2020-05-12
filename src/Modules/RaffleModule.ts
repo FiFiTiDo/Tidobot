@@ -4,7 +4,6 @@ import {array_rand} from "../Utilities/ArrayUtils";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import Message from "../Chat/Message";
-import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -99,25 +98,6 @@ class RaffleCommand extends Command {
         this.addSubcommand("pull", this.pull);
     }
 
-    private async getRaffle(msg: Message, state: RaffleState = RaffleState.OPEN | RaffleState.CLOSED): Promise<Raffle|null> {
-        if (!this.raffles.hasChannel(msg.getChannel())) {
-            await msg.getResponse().message("raffle:error.no-recent");
-            return null;
-        }
-
-        const raffle = this.raffles.getChannel(msg.getChannel());
-        if (raffle.getState() & state) {
-            return raffle;
-        } else {
-            if ((state & RaffleState.OPEN) === RaffleState.OPEN) {
-                await msg.getResponse().message("raffle:error.not-open");
-            } else if ((state & RaffleState.CLOSED) === RaffleState.CLOSED) {
-                await msg.getResponse().message("raffle:error.already-open");
-            }
-            return null;
-        }
-    }
-
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
             usage: "raffle open [keyword]",
@@ -148,7 +128,7 @@ class RaffleCommand extends Command {
             duplicateWins: await msg.getChannel().getSettings().get("raffles.max-entries")
         });
         raffle.open();
-        await response.message("raffle:opened", { keyword });
+        await response.message("raffle:opened", {keyword});
     }
 
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -191,6 +171,25 @@ class RaffleCommand extends Command {
 
         await response.message("raffle:pull-lead-up");
         setTimeout(() => msg.getResponse().message("@" + winner + "!!!"), 1000);
+    }
+
+    private async getRaffle(msg: Message, state: RaffleState = RaffleState.OPEN | RaffleState.CLOSED): Promise<Raffle | null> {
+        if (!this.raffles.hasChannel(msg.getChannel())) {
+            await msg.getResponse().message("raffle:error.no-recent");
+            return null;
+        }
+
+        const raffle = this.raffles.getChannel(msg.getChannel());
+        if (raffle.getState() & state) {
+            return raffle;
+        } else {
+            if ((state & RaffleState.OPEN) === RaffleState.OPEN) {
+                await msg.getResponse().message("raffle:error.not-open");
+            } else if ((state & RaffleState.CLOSED) === RaffleState.CLOSED) {
+                await msg.getResponse().message("raffle:error.already-open");
+            }
+            return null;
+        }
     }
 }
 

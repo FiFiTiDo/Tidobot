@@ -1,5 +1,5 @@
 export interface RawRowData {
-    [key: string]: string|number;
+    [key: string]: string | number;
 }
 
 export interface RawRowDataWithId extends RawRowData {
@@ -13,7 +13,7 @@ export interface PreparedData {
 }
 
 export function prepareData(data: RawRowData): PreparedData {
-    const preparedData: PreparedData = { columns: [], keys: [], prepared: {} };
+    const preparedData: PreparedData = {columns: [], keys: [], prepared: {}};
     for (const [column, value] of Object.entries(data)) {
         const key = "$" + column;
         preparedData.keys.push(key);

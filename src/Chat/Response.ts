@@ -13,24 +13,21 @@ export class Response {
         return this.adapter.sendMessage(message, this.msg.getChannel());
     }
 
-    async message<
-        TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
+    async message<TKeys extends TFunctionKeys = string,
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
         return this.rawMessage(await this.translate(key, options));
     }
 
-    async action<
-        TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
+    async action<TKeys extends TFunctionKeys = string,
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
         return this.adapter.sendAction(await this.translate(key, options), this.msg.getChannel());
     }
 
-    async spam<
-        TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options?: TOptions<TInterpolationMap>, { times, seconds } = { times: 1, seconds: 1}): Promise<void> {
+    async spam<TKeys extends TFunctionKeys = string,
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>, {times, seconds} = {
+        times: 1,
+        seconds: 1
+    }): Promise<void> {
         const send = async (): Promise<void> => {
             await this.rawMessage(await this.translate(key, options));
             if (--times > 0) setTimeout(send, seconds * 1000);
@@ -38,29 +35,23 @@ export class Response {
         return send();
     }
 
-    async broadcast<
-        TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
+    async broadcast<TKeys extends TFunctionKeys = string,
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
         const ops = [];
         for (const channel of this.channelManager.getAll())
             ops.push(this.adapter.sendMessage(await this.translate(key, options), channel));
         await Promise.all(ops);
     }
 
-    async translate<
-        TResult extends TFunctionResult = string,
+    async translate<TResult extends TFunctionResult = string,
         TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options?: TOptions<TInterpolationMap>): Promise<TResult> {
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<TResult> {
         return (await this.translator())(key, options);
     }
 
-    async getTranslation<
-        TResult extends TFunctionResult = string,
+    async getTranslation<TResult extends TFunctionResult = string,
         TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options?: TOptions<TInterpolationMap>): Promise<TResult> {
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<TResult> {
         return (await this.translator())(key, Object.assign({}, options, {
             returnObjects: true
         }));

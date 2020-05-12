@@ -5,12 +5,14 @@ import deepmerge from "deepmerge";
 import {helix, kraken} from "./TwitchApi";
 import moment from "moment-timezone";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";;
+import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import {Role} from "../../Systems/Permissions/Role";
 import Logger from "../../Utilities/Logger";
-import IStream = helix.Stream;
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
 import {ResponseFactory} from "../../Chat/Response";
+
+
+import IStream = helix.Stream;
 
 export class TwitchMessage extends Message {
     private api: helix.Api;
@@ -47,7 +49,7 @@ export class TwitchMessage extends Message {
     }
 
     public async getExpressionContext(): Promise<ExpressionContext> {
-        const getStreamProperty = async (key: keyof IStream): Promise<string|number|string[]> => {
+        const getStreamProperty = async (key: keyof IStream): Promise<string | number | string[]> => {
             try {
                 const chanResp = await this.api.getStreams({user_id: this.getChannel().channelId});
                 if (chanResp.data.length > 0) {
@@ -99,7 +101,7 @@ export class TwitchMessage extends Message {
                         return "Cannot determine follow age.";
                     });
                 },
-                isFollowing: async(): Promise<boolean> => {
+                isFollowing: async (): Promise<boolean> => {
                     return this.api.getUserFollow({
                         from_id: this.getChatter().userId,
                         to_id: this.getChannel().channelId

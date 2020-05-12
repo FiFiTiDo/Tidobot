@@ -17,7 +17,7 @@ import {join} from "path";
 
 require("winston-daily-rotate-file");
 
-const container = new Container({ defaultScope: "Singleton" });
+const container = new Container({defaultScope: "Singleton"});
 
 container.bind<winston.Logger>(symbols.Logger).toConstantValue(Logger.get());
 container.bind<Dictionary>(symbols.Config).toConstantValue(FileDictionaryParser.parseSync("config", JSON.parse));

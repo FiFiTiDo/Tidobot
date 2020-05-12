@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -11,7 +10,7 @@ import {ConvertedSetting, SettingType} from "../Systems/Settings/Setting";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
-import {inject, injectable} from "inversify";
+import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
@@ -46,7 +45,7 @@ class SetCommand extends Command {
         const [key, value] = args;
 
         msg.getChannel().getSettings().set(key, value)
-            .then(() => response.message("setting:set", { setting: key, value }))
+            .then(() => response.message("setting:set", {setting: key, value}))
             .catch(e => {
                 response.genericError();
                 Logger.get().error("Unable to set setting", {cause: e});
@@ -75,7 +74,7 @@ class UnsetCommand extends Command {
         if (args === null) return;
         const key = args[0];
         msg.getChannel().getSettings().unset(key)
-            .then(() => response.message("setting:unset", { setting: key }))
+            .then(() => response.message("setting:unset", {setting: key}))
             .catch(e => {
                 response.genericError();
                 Logger.get().error("Unable to unset setting", {cause: e});
@@ -130,7 +129,7 @@ export default class SettingsModule extends AbstractModule {
 
         ExpressionSystem.getInstance().registerResolver(msg => ({
             settings: {
-                get: async <T> (key: string, defVal?: T): Promise<ConvertedSetting|T|null> => {
+                get: async <T>(key: string, defVal?: T): Promise<ConvertedSetting | T | null> => {
                     if (defVal === undefined) defVal = null;
                     const value = msg.getChannel().getSetting(key);
                     return value === null ? defVal : value;
@@ -140,9 +139,9 @@ export default class SettingsModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await SettingsEntity.createTable({ channel });
-        await SettingsEntity.make({ channel },
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await SettingsEntity.createTable({channel});
+        await SettingsEntity.make({channel},
             SettingsSystem.getInstance().getAll().map(setting => {
                 return {
                     key: setting.getKey(),

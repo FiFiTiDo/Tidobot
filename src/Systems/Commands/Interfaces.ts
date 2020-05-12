@@ -1,4 +1,5 @@
 import {ValueSettingsTypes} from "../../Utilities/Convert";
+
 export interface CommandArgument {
     value: ValueSettingsTypes;
     required: boolean;

@@ -1,6 +1,3 @@
-import Dictionary, {FileDictionaryParser} from "./Structures/Dictionary";
-import YAML from "yaml"
-import * as util from "util"
 import {injectable} from "inversify";
 import i18next, {StringMap, TFunction, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
 import Backend from "i18next-fs-backend";
@@ -29,11 +26,9 @@ export default class Translator {
         });
     }
 
-    get<
-        TResult extends TFunctionResult = string,
+    get<TResult extends TFunctionResult = string,
         TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options: TOptions<TInterpolationMap>): TResult {
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options: TOptions<TInterpolationMap>): TResult {
         if (this.translateFunc === null)
             throw new Error("Translator not initialized.");
 
@@ -42,11 +37,9 @@ export default class Translator {
         }));
     }
 
-    translate<
-        TResult extends TFunctionResult = string,
+    translate<TResult extends TFunctionResult = string,
         TKeys extends TFunctionKeys = string,
-        TInterpolationMap extends object = StringMap
-    >(key: TKeys|TKeys[], options: TOptions<TInterpolationMap>): TResult {
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options: TOptions<TInterpolationMap>): TResult {
         if (this.translateFunc === null)
             throw new Error("Translator not initialized.");
 

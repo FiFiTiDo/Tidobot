@@ -53,7 +53,7 @@ export function Column(settings: ColumnSettingsTypes = {}): Function {
             }
         }
 
-        addMetadata<ColumnProp>(COLUMNS_KEY, target.constructor, { property, settings });
+        addMetadata<ColumnProp>(COLUMNS_KEY, target.constructor, {property, settings});
     };
 }
 

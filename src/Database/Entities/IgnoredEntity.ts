@@ -6,15 +6,15 @@ import {where} from "../Where";
 @Id
 @Table(({service}) => `${service}_ignored`)
 export default class IgnoredEntity extends Entity<IgnoredEntity> {
+    @Column({name: "user_id", datatype: DataTypes.STRING, unique: true})
+    public userId: string;
+
     constructor(id: number, params: EntityParameters) {
         super(IgnoredEntity, id, params);
     }
 
-    @Column({ name: "user_id", datatype: DataTypes.STRING, unique: true })
-    public userId: string;
-
     public static findByChatter(service: string, userId: string): Promise<IgnoredEntity | null> {
-        return IgnoredEntity.retrieve({ service }, where().eq("user_id", userId));
+        return IgnoredEntity.retrieve({service}, where().eq("user_id", userId));
     }
 
     public static isIgnored(service: string, userId: string): Promise<boolean> {
@@ -22,7 +22,7 @@ export default class IgnoredEntity extends Entity<IgnoredEntity> {
     }
 
     public static async add(service: string, userId: string): Promise<boolean> {
-        return this.make({ service }, { user_id: userId }).then(entity => entity !== null);
+        return this.make({service}, {user_id: userId}).then(entity => entity !== null);
     }
 
     public static async remove(service: string, userId: string): Promise<boolean> {

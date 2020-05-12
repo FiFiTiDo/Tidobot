@@ -2,7 +2,6 @@ import AbstractModule from "./AbstractModule";
 import Message from "../Chat/Message";
 import {where} from "../Database/Where";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
-import {Key} from "../Utilities/Translator";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
@@ -57,19 +56,13 @@ export default class PermissionModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await PermissionEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await PermissionEntity.createTable({channel});
         await PermissionSystem.getInstance().resetChannelPermissions(channel);
     }
 }
 
 class PermissionCommand extends Command {
-    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity|null> => {
-        const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
-        if (perm === null) msg.getResponse().message("permission:error.unknown", { permission: raw });
-        return perm;
-    };
-
     constructor() {
         super("permission", "<create|delete|set|reset>", ["perm"]);
 
@@ -79,6 +72,12 @@ class PermissionCommand extends Command {
         this.addSubcommand("set", this.set);
         this.addSubcommand("reset", this.reset);
     }
+
+    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity | null> => {
+        const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
+        if (perm === null) msg.getResponse().message("permission:error.unknown", {permission: raw});
+        return perm;
+    };
 
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate({
@@ -109,7 +108,7 @@ class PermissionCommand extends Command {
         }
 
         try {
-            const permission = await PermissionEntity.make({ channel: msg.getChannel() }, {
+            const permission = await PermissionEntity.make({channel: msg.getChannel()}, {
                 permission: perm_str,
                 role: Role[role],
                 default_role: Role[role],
@@ -119,9 +118,9 @@ class PermissionCommand extends Command {
             if (permission === null)
                 await response.message("permission:error.already-exists");
             else
-                await response.message("permission:created", { permission: perm_str, role: Role[role] });
+                await response.message("permission:created", {permission: perm_str, role: Role[role]});
         } catch (err) {
-            Logger.get().error("Unable to create new permission", { cause: err });
+            Logger.get().error("Unable to create new permission", {cause: err});
             return response.genericError();
         }
     }
@@ -144,10 +143,10 @@ class PermissionCommand extends Command {
         const [permission] = args as [PermissionEntity];
 
         if (permission.moduleDefined)
-            return response.message("permission:error.module-defined", { permission: permission.permission });
+            return response.message("permission:error.module-defined", {permission: permission.permission});
 
         permission.delete()
-            .then(() => response.message("permission:deleted", { permission: permission.permission }))
+            .then(() => response.message("permission:deleted", {permission: permission.permission}))
             .catch(e => {
                 response.genericError();
                 Logger.get().error("Unable to delete custom permission", {cause: e});
@@ -185,7 +184,7 @@ class PermissionCommand extends Command {
 
         permission.role = role;
         permission.save()
-            .then(() => response.message("permission:set", { permission: permission.permission, role: Role[role] }))
+            .then(() => response.message("permission:set", {permission: permission.permission, role: Role[role]}))
             .catch(e => {
                 response.genericError();
                 Logger.get().error("Unable to set permission level", {cause: e});
@@ -207,7 +206,7 @@ class PermissionCommand extends Command {
             permission: "permission.reset"
         });
         if (args === null) return;
-        const [permission] = args as [PermissionEntity|undefined];
+        const [permission] = args as [PermissionEntity | undefined];
 
         if (permission) {
             if (!(await msg.checkPermission(permission.permission)))
@@ -215,7 +214,7 @@ class PermissionCommand extends Command {
 
             permission.role = permission.defaultRole;
             await permission.save()
-                .then(() => response.message("permissions:reset", { permission: permission.permission }))
+                .then(() => response.message("permissions:reset", {permission: permission.permission}))
                 .catch(e => {
                     response.genericError();
                     Logger.get().error("Unable to reset permission", {cause: e});

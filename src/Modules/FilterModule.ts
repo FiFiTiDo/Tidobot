@@ -7,7 +7,6 @@ import Message from "../Chat/Message";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import FiltersEntity from "../Database/Entities/FiltersEntity";
 import {array_add, array_contains, array_remove} from "../Utilities/ArrayUtils";
-import {Key, TranslationKey} from "../Utilities/Translator";
 import Bot from "../Application/Bot";
 import {getMaxRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -28,7 +27,6 @@ const URL_PATTERN = /((http|ftp|https|sftp):\/\/)?(([\w.-]*)\.([\w]*))/igm;
 const CAPS_PATTERN = /[A-Z]/g;
 const SYMBOLS_PATTERN = /[`~!@#$%^&*()-_=+[{\]}\\|;:'",<.>/?]/g;
 const FAKE_PURGE = /^<message \w+>|^<\w+ deleted>/i;
-
 
 
 class PermitCommand extends Command {
@@ -82,7 +80,7 @@ class PardonCommand extends Command {
         const [chatter] = args as [ChatterEntity];
 
         this.filterModule.strikes.setChatter(chatter, 0);
-        await response.message("filter:strikes-cleared", { username: chatter.name });
+        await response.message("filter:strikes-cleared", {username: chatter.name});
     }
 }
 
@@ -107,8 +105,8 @@ class PurgeCommand extends Command {
         if (args === null) return;
         const [chatter] = args as [ChatterEntity];
         await this.bot.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"),
-            await response.translate("filter:purge-reason", { username: msg.getChatter().name }));
-        await response.message("filter:purged", { username: chatter.name });
+            await response.translate("filter:purge-reason", {username: msg.getChatter().name}));
+        await response.message("filter:purged", {username: chatter.name});
     }
 }
 
@@ -139,18 +137,18 @@ class FilterCommand extends Command {
             permission: "filter.list.add"
         });
         if (args === null) return;
-        const [list, item] = args as ["domains"|"bad_words"|"emotes", string];
+        const [list, item] = args as ["domains" | "bad_words" | "emotes", string];
         const lists = await FiltersEntity.getByChannel(msg.getChannel());
 
         if (array_add(item, lists[list])) {
             try {
                 await lists.save();
-                await response.message("filter:list.added", { item, list });
+                await response.message("filter:list.added", {item, list});
             } catch (e) {
                 await response.genericError();
             }
         } else
-            await response.message("filter:list.exists", { list, item });
+            await response.message("filter:list.exists", {list, item});
     }
 
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -175,18 +173,18 @@ class FilterCommand extends Command {
             permission: "filter.list.remove"
         });
         if (args === null) return;
-        const [list, item] = args as ["domains"|"bad_words"|"emotes", string];
+        const [list, item] = args as ["domains" | "bad_words" | "emotes", string];
         const lists = await FiltersEntity.getByChannel(msg.getChannel());
 
         if (array_remove(item, lists[list])) {
             try {
                 await lists.save();
-                await response.message("filter:list.removed", { item, list });
+                await response.message("filter:list.removed", {item, list});
             } catch (e) {
                 await response.genericError();
             }
         } else
-            await response.message("filter:list.unknown", { list, item });
+            await response.message("filter:list.unknown", {list, item});
     }
 
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -204,7 +202,7 @@ class FilterCommand extends Command {
             permission: "filter.list.add"
         });
         if (args === null) return;
-        const [list] = args as ["domains"|"bad_words"|"emotes"];
+        const [list] = args as ["domains" | "bad_words" | "emotes"];
         const lists = await FiltersEntity.getByChannel(msg.getChannel());
 
         const confirmation = await this.makeConfirmation(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);
@@ -213,7 +211,7 @@ class FilterCommand extends Command {
                 lists[list] = [];
 
                 await lists.save()
-                    .then(() => response.message("filter:list.reset.specific", { list }))
+                    .then(() => response.message("filter:list.reset.specific", {list}))
                     .catch(() => response.genericError());
             } else {
                 lists.badWords = [];
@@ -283,7 +281,7 @@ export default class FilterModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
         await FiltersEntity.createForChannel(channel);
     }
 
@@ -401,6 +399,6 @@ export default class FilterModule extends AbstractModule {
         this.strikes.setChatter(msg.getChatter(), strike);
         const reason = await msg.getResponse().translate(`filter:reasons.${reasonKey}`);
 
-        await msg.getResponse().message("filter:strike", { username: msg.getChatter().name, reason, number: strike });
+        await msg.getResponse().message("filter:strike", {username: msg.getChatter().name, reason, number: strike});
     }
 }

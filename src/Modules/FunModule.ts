@@ -1,11 +1,10 @@
 import AbstractModule from "./AbstractModule";
 import {array_rand} from "../Utilities/ArrayUtils";
-import {Key} from "../Utilities/Translator";
 import Bot from "../Application/Bot";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import {inject, injectable} from "inversify";
+import {inject} from "inversify";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
@@ -38,7 +37,7 @@ class RouletteCommand extends Command {
                 try {
                     await this.bot.tempbanChatter(msg.getChatter(), 60, await response.translate("fun:roulette.reason"));
                 } catch (e) {
-                    Logger.get().warning(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", { cause: e });
+                    Logger.get().warning(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", {cause: e});
                     return response.message("error.bot-not-permitted");
                 }
             }
@@ -61,7 +60,7 @@ class SeppukuCommand extends Command {
         try {
             return this.bot.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
         } catch (e) {
-            Logger.get().warning(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", { cause: e });
+            Logger.get().warning(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", {cause: e});
             return response.message("error.bot-not-permitted");
         }
     }
@@ -80,7 +79,7 @@ class Magic8BallCommand extends Command {
         if (args === null) return;
 
         const resp = array_rand(await response.getTranslation("fun:8ball.responses"));
-        await response.message("fun:8ball.response", { response: resp });
+        await response.message("fun:8ball.response", {response: resp});
     }
 }
 

@@ -96,7 +96,7 @@ export async function getOrSetProp<T>(obj: object, key: string, f: () => T | Pro
     if (!prop || !prop.value) {
         let value = f();
         if (value instanceof Promise) value = await value;
-        Object.defineProperty(obj, varKey, { value, configurable: true, enumerable: true });
+        Object.defineProperty(obj, varKey, {value, configurable: true, enumerable: true});
     }
     return Object.getOwnPropertyDescriptor(obj, varKey).value;
 }

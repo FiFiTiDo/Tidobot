@@ -1,4 +1,4 @@
-export function objectHasProperty(object: object, key: string|number): key is keyof object {
+export function objectHasProperty(object: object, key: string | number): key is keyof object {
     return Object.prototype.hasOwnProperty.call(object, key);
 }
 

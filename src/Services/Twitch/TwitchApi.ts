@@ -160,33 +160,6 @@ export namespace helix {
         }
 
         /**
-         * Get the access token for API requests
-         * Retrieves it if it hasn't been retrieved yet
-         * Refreshes if it has been but is expired
-         *
-         * @returns The AccessToken object
-         */
-        private async getAccessToken(): Promise<AccessToken> {
-            if (this.accessToken === null) { // Has not been retrieved yet
-                try {
-                    this.accessToken = await AccessToken.retrieve(this.clientId, this.clientSecret);
-                } catch (error) {
-                    Logger.get().emerg("Unable to retrieve the access token", { cause: error });
-                    process.exit(1);
-                }
-            }
-
-            try {
-                await this.accessToken.validate();
-            } catch (error) {
-                Logger.get().emerg("Unable to validate access token", { cause: error });
-                process.exit(1);
-            }
-
-            return this.accessToken;
-        }
-
-        /**
          * Search for all games matching the given parameters
          *
          * @param params The parameters of the request
@@ -234,7 +207,6 @@ export namespace helix {
             }));
         }
 
-
         /**
          * Search for all user follows matching the given parameters
          *
@@ -249,6 +221,33 @@ export namespace helix {
                     query: params as values
                 }));
             }));
+        }
+
+        /**
+         * Get the access token for API requests
+         * Retrieves it if it hasn't been retrieved yet
+         * Refreshes if it has been but is expired
+         *
+         * @returns The AccessToken object
+         */
+        private async getAccessToken(): Promise<AccessToken> {
+            if (this.accessToken === null) { // Has not been retrieved yet
+                try {
+                    this.accessToken = await AccessToken.retrieve(this.clientId, this.clientSecret);
+                } catch (error) {
+                    Logger.get().emerg("Unable to retrieve the access token", {cause: error});
+                    process.exit(1);
+                }
+            }
+
+            try {
+                await this.accessToken.validate();
+            } catch (error) {
+                Logger.get().emerg("Unable to validate access token", {cause: error});
+                process.exit(1);
+            }
+
+            return this.accessToken;
         }
 
         /**

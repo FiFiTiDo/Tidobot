@@ -8,14 +8,13 @@ import ChannelEntity from "../Database/Entities/ChannelEntity";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import {Key} from "../Utilities/Translator";
 import Logger from "../Utilities/Logger";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {inject, injectable} from "inversify";
+import {inject} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
 import Bot from "../Application/Bot";
@@ -58,7 +57,7 @@ class NewsCommand extends Command {
 
         try {
             const item = await NewsEntity.create(value, msg.getChannel());
-            await response.message("news:added", { id: item.id });
+            await response.message("news:added", {id: item.id});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Failed to add news item", {cause: e});
@@ -81,15 +80,15 @@ class NewsCommand extends Command {
         if (args === null) return;
         const [id] = args as [number];
 
-        const item = await NewsEntity.get(id, { channel: msg.getChannel() });
+        const item = await NewsEntity.get(id, {channel: msg.getChannel()});
         if (item === null) {
-            await response.message("news:unknown", { id });
+            await response.message("news:unknown", {id});
             return;
         }
 
         try {
             await item.delete();
-            await response.message("news:removed", { id });
+            await response.message("news:removed", {id});
         } catch (e) {
             await response.genericError();
             Logger.get().error("Failed to remove news item", {cause: e});
@@ -106,7 +105,7 @@ class NewsCommand extends Command {
         const confirmation = await this.confirmationFactory(msg, "Are you sure you want to clear all news items?", 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
-                await NewsEntity.removeEntries({ channel: msg.getChannel() });
+                await NewsEntity.removeEntries({channel: msg.getChannel()});
                 await response.message("news:cleared");
             } catch (e) {
                 await response.genericError();
@@ -146,8 +145,8 @@ export default class NewsModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs): Promise<void> {
-        await NewsEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await NewsEntity.createTable({channel});
     }
 
     tryNext = async (channel: ChannelEntity, increment = false): Promise<void> => {
@@ -177,7 +176,7 @@ export default class NewsModule extends AbstractModule {
     }
 
     private async showNextMessage(channel: ChannelEntity): Promise<void> {
-        const items: NewsEntity[] = await NewsEntity.getAll({ channel });
+        const items: NewsEntity[] = await NewsEntity.getAll({channel});
         if (items.length < 1) return;
         let nextItem: NewsEntity = null;
         if (this.lastMessage.has(channel.channelId)) {

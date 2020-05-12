@@ -30,7 +30,7 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
     @Column({ datatype: DataTypes.STRING })
     public name: string;
 
-    @Column({ name: "disabled_modules", datatype: DataTypes.ARRAY })
+    @Column({ name: "disabled_modules" })
     public disabledModules: string[];
 
     public online: Observable<boolean> = new Observable<boolean>(false);

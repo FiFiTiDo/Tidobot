@@ -34,7 +34,7 @@ export default class Command {
     async execute(args: CommandEventArgs): Promise<void> {
         const {message, response } = args;
         if (!this.executeSubcommands(args))
-            return response.message(await this.formatUsage(message.getChannel()));
+            return response.rawMessage(await this.formatUsage(message.getChannel()));
     }
 
     protected async executeSubcommands(args: CommandEventArgs): Promise<boolean> {

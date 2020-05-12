@@ -1,12 +1,12 @@
 import Event from "../Event/Event";
-import Message, {Response} from "../../Chat/Message";
+import Message from "../../Chat/Message";
 import Logger from "../../Utilities/Logger";
 import {objectHasProperties} from "../../Utilities/ObjectUtils";
-import {Key} from "../../Utilities/Translator";
 import Convert from "../../Utilities/Convert";
 import CommandSystem from "./CommandSystem";
 import minimist = require("minimist-string");
 import {CliArgsEventValidationOptions, CommandEventValidationOptions} from "./Interfaces";
+import {Response} from "../../Chat/Response";
 
 function isCliArgs(arg: any): arg is CliArgsEventValidationOptions {
     return arg.cli_args !== undefined;
@@ -89,7 +89,7 @@ export class CommandEvent extends Event<CommandEvent> {
                     } else {
                         if (arg.required) {
                             if (!arg.silentFail)
-                                await response.message(Key("general.expected_cli_arg"), arg.key, usage);
+                                await response.message("command:expected-cli", { arg: arg.key, usage });
                             return null;
                         } else
                             value = arg.defaultValue || null;

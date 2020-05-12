@@ -1,0 +1,17 @@
+{
+    "error": {
+        "low-balance": "You do not have enough {{currency_name}} to do that"
+    },
+    "give": "Gave {{amount}} to {{username}}",
+    "give-all": "Gave {{amount}} to everyone",
+    "take": "Took {{amount}} from {{username}}",
+    "take-all": "Took {{amount}} from everyone",
+    "reset": {
+        "user": "Reset {{username}}'s account",
+        "all": "Reset the currency module",
+        "all-confirm": "Are you sure you wish to reset the currency module?"
+    },
+    "pay": "Paid {{amount}} to {{username}}",
+    "balance": "@{{username}}, Your balance is: {{balance}}",
+    "balance-other": "{{username}}'s balance: {{balance}}"
+}

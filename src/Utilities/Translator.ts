@@ -2,38 +2,54 @@ import Dictionary, {FileDictionaryParser} from "./Structures/Dictionary";
 import YAML from "yaml"
 import * as util from "util"
 import {injectable} from "inversify";
+import i18next, {StringMap, TFunction, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
+import Backend from "i18next-fs-backend";
 
-export class TranslationKey {
-    constructor(public key: string) {
+
+export class TranslationKey<TKeys extends TFunctionKeys = string> {
+    constructor(public key: TKeys) {
     }
 }
 
-export function Key(key: string): TranslationKey {
+export function Key<TKeys extends TFunctionKeys = string>(key: TKeys): TranslationKey<TKeys> {
     return new TranslationKey(key);
 }
 
 @injectable()
 export default class Translator {
-    private readonly translations: Dictionary;
+    private translateFunc: TFunction = null;
 
-    constructor(directory = "lang") {
-        this.translations = FileDictionaryParser.parseSync(directory, YAML.parse);
+    public async initialize() {
+        this.translateFunc = await i18next.use(Backend).init({
+            ns: [
+                "bet", "command", "confirmation", "counter", "default", "expression", "filter", "fun", "groups", "lists",
+                "news", "permission", "poll", "raffle", "setting", "user"
+            ],
+            defaultNS: "default"
+        });
     }
 
-    getLanguage(): Dictionary {
-        if (!this.translations.exists(process.env.LANGUAGE))
-            return null;
+    get<
+        TResult extends TFunctionResult = string,
+        TKeys extends TFunctionKeys = string,
+        TInterpolationMap extends object = StringMap
+    >(key: TKeys|TKeys[], options: TOptions<TInterpolationMap>): TResult {
+        if (this.translateFunc === null)
+            throw new Error("Translator not initialized.");
 
-        return new Dictionary(this.translations.get(process.env.LANGUAGE));
+        return this.translateFunc(key, Object.assign({}, options, {
+            returnObjects: true
+        }));
     }
 
-    get<T>(key: string|TranslationKey): T {
-        if (key instanceof TranslationKey) key = key.key;
-        return this.getLanguage().get(key);
-    }
+    translate<
+        TResult extends TFunctionResult = string,
+        TKeys extends TFunctionKeys = string,
+        TInterpolationMap extends object = StringMap
+    >(key: TKeys|TKeys[], options: TOptions<TInterpolationMap>): TResult {
+        if (this.translateFunc === null)
+            throw new Error("Translator not initialized.");
 
-    translate(key: string|TranslationKey, ...args: any[]): string {
-        if (key instanceof TranslationKey) key = key.key;
-        return util.format(this.get<string>(key), ...args);
+        return this.translateFunc(key, options);
     }
 }

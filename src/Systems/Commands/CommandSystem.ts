@@ -44,13 +44,18 @@ export default class CommandSystem {
     }
 
     static async showInvalidSyntax(usage: string, msg: Message): Promise<void> {
-        const prefix = await this.getPrefix(msg.getChannel());
-        await msg.getResponse().message(Key("general.invalid_syntax"), prefix + usage);
+        await msg.getResponse().message("command:error.syntax", {
+            prefix: await this.getPrefix(msg.getChannel()),
+            usage
+        });
     }
 
     static async showInvalidArgument(argument: string, given: any, usage: string, msg: Message): Promise<void> {
-        const prefix = await this.getPrefix(msg.getChannel());
-        await msg.getResponse().message(Key("general.invalid_argument"), argument, given, prefix + usage);
+        await msg.getResponse().message("command:error.argument-arg", {
+            argument, given,
+            prefix: await this.getPrefix(msg.getChannel()),
+            usage
+        });
     }
 
     @EventHandler(MessageEvent)

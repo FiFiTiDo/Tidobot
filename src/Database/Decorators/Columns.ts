@@ -39,11 +39,14 @@ export function Column(settings: ColumnSettingsTypes = {}): Function {
         if (!settings.datatype) {
             const type = Reflect.getMetadata("design:type", target, property);
             switch (type) {
-                case "string":
+                case String:
                     settings.datatype = DataTypes.STRING;
                     break;
-                case "boolean":
+                case Boolean:
                     settings.datatype = DataTypes.BOOLEAN;
+                    break;
+                case Array:
+                    settings.datatype = DataTypes.ARRAY;
                     break;
                 default:
                     throw new Error("Unable to infer column type, please specify using the datatype setting.")

@@ -50,10 +50,10 @@ class CommandCommand extends Command {
 
         try {
             const command = await CommandEntity.create(trigger, resp, msg.getChannel());
-            await response.message(Key("commands.add.successful"), command.id);
+            await response.message("command:added", { id: command.id });
         } catch (e) {
+            await response.genericError();
             Logger.get().error("Unable to add custom command", {cause: e});
-            await response.message(Key("commands.add.failed"));
         }
     }
 
@@ -87,7 +87,7 @@ class CommandCommand extends Command {
         const [type, id, value] = args;
         const command: CommandEntity = await CommandEntity.get(id, { channel: msg.getChannel() });
         if (command === null) {
-            await response.message(Key("commands.unknown"), id);
+            await response.message("command:error.unknown", { id });
             return;
         }
 
@@ -105,7 +105,7 @@ class CommandCommand extends Command {
                 const price = parseFloat(value);
 
                 if (isNaN(price)) {
-                    await CommandSystem.showInvalidArgument("new price", value, "command edit price <id> <new price>", msg);
+                    await CommandSystem.showInvalidArgument(await response.translate("command:argument.price"), value, "command edit price <id> <new price>", msg);
                     return;
                 }
 
@@ -116,7 +116,7 @@ class CommandCommand extends Command {
                 const seconds = parseInt(value);
 
                 if (isNaN(seconds)) {
-                    await CommandSystem.showInvalidArgument("seconds", value, "command edit cooldown <id> <seconds>", msg);
+                    await CommandSystem.showInvalidArgument(await response.translate("command:argument.cooldown"), value, "command edit cooldown <id> <seconds>", msg);
                     return;
                 }
 
@@ -124,19 +124,14 @@ class CommandCommand extends Command {
                 break;
             }
             default:
-                await CommandSystem.showInvalidArgument("type", type, "command edit <trigger|condition|response|price> <id> <new value>", msg);
+                await CommandSystem.showInvalidArgument(await response.translate("command:argument.type"), type, "command edit <trigger|condition|response|price> <id> <new value>", msg);
                 return;
         }
 
         command.save()
-            .then(() => {
-                if (type === "response" || type === "condition")
-                    response.message(Key("commands.edit." + type + ".successful"), id);
-                else
-                    response.message(Key("commands.edit." + type + ".successful"), id, value);
-            })
-            .catch(e => {
-                response.message(Key("commands.edit." + type + ".failed"));
+            .then(() => response.message(`command:edit.${type}`, { id, value }))
+            .catch(async (e) => {
+                await response.genericError();
                 Logger.get().error("Failed to save changes to custom command", {cause: e});
             });
     }
@@ -157,15 +152,12 @@ class CommandCommand extends Command {
 
         const [id] = args;
         const command = await CommandEntity.get(id, { channel: msg.getChannel() });
-        if (command === null) {
-            await response.message(Key("commands.unknown"), id);
-            return;
-        }
+        if (command === null) return response.message("command:error.unknown", { id });
 
         command.delete()
-            .then(() => response.message(Key("commands.delete.successful"), id))
-            .catch(e => {
-                response.message(Key("commands.delete.failed"));
+            .then(() => response.message("command:deleted", { id }))
+            .catch(async (e) => {
+                await response.genericError();
                 Logger.get().error("Failed to delete the custom command", {cause: e});
             });
     }
@@ -219,8 +211,10 @@ export default class CustomCommandModule extends AbstractModule {
 
         ExpressionSystem.getInstance().registerResolver(msg => ({
             alias: async (command: unknown): Promise<string> => new Promise( resolve => {
-                if (typeof command !== "string") return "Invalid argument, expected a string";
-                if (msg.checkLoopProtection(command)) return "Infinite loop detected";
+                if (typeof command !== "string") return msg.getResponse().translate("expression:error.argument", {
+                   expected: msg.getResponse().translate("expression:types.string")
+                });
+                if (msg.checkLoopProtection(command)) return msg.getResponse().translate("expression:error.infinite-loop");
                 const newMsg = msg.extend(`${command} ${msg.getParts().slice(1).join(" ")}`, resolve);
                 newMsg.addToLoopProtection(command);
                 this.handleMessage({ event: new MessageEvent(newMsg) });

@@ -1,0 +1,30 @@
+{
+    "unknown": "Hmm... I don't seem to know the user: {{username}}",
+    "permission": {
+        "granted": "Granted permission {{permission}} to the user {{username}}",
+        "denied": "Denied the user {{permission}} access to the permission {{username}}",
+        "delete": {
+            "specific":  "Successfully deleted the permission {{permission}} for the user {{username}}",
+            "all": "Successfully deleted all of the permissions for the user {{username}}",
+            "confirm": "Are you sure you want to delete the permissions for the user {{username}}?"
+        }
+    },
+    "regular": {
+        "already": "{{username}} is already a regular",
+        "not": "{{username}} is not a regular",
+        "added": "{{username}} is now a regular",
+        "removed": "{{username}} is no longer a regular"
+    },
+    "ban": {
+        "already": "{{username}} is already banned",
+        "not": "{{username}} is not banned",
+        "added": "{{username}} is now banned from using the bot",
+        "removed": "{{username}} is no longer banned from using the bot"
+    },
+    "ignore": {
+        "already": "Already ignoring {{username}}",
+        "not": "I'm not ignoring {{username}}",
+        "added": "Now ignoring {{username}}",
+        "removed": "No longer ignoring {{username}}"
+    }
+}

@@ -58,9 +58,12 @@ class BankCommand extends Command {
 
         try {
             await chatter.deposit(amount);
-            await response.message(Key("currency.give.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
+            await response.message("currency:give", {
+                amount: await CurrencyModule.formatAmount(amount, msg.getChannel()),
+                username: chatter.name
+            });
         } catch (e) {
-            await response.message(Key("currency.give.failed"));
+            await response.genericError();
             Logger.get().error("Failed to give money to chatter's bank account", {cause: e});
         }
     }
@@ -90,10 +93,12 @@ class BankCommand extends Command {
 
         try {
             await Promise.all(ops);
-            await response.message(Key("currency.give-all.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()));
+            await response.message("currency:give-all", {
+                amount: await CurrencyModule.formatAmount(amount, msg.getChannel())
+            });
         } catch (e) {
+            await response.genericError();
             Logger.get().error("Failed to give amount to all chatter's accounts", {cause: e});
-            await response.message(Key("currency.give-all.failed"));
         }
     }
 
@@ -121,9 +126,12 @@ class BankCommand extends Command {
 
         try {
             await chatter.withdraw(amount);
-            await response.message(Key("currency.take.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
+            await response.message("currency:take", {
+                amount: await CurrencyModule.formatAmount(amount, msg.getChannel()),
+                username: chatter.name
+            });
         } catch (e) {
-            await response.message(Key("currency.take.failed"));
+            await response.genericError();
             Logger.get().error("Failed to take money from chatter's bank account", {cause: e});
         }
     }
@@ -153,10 +161,12 @@ class BankCommand extends Command {
 
         try {
             await Promise.all(ops);
-            await response.message(Key("currency.take-all.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()));
+            await response.message("currency.take-all", {
+                amount: await CurrencyModule.formatAmount(amount, msg.getChannel())
+            });
         } catch (e) {
+            await response.genericError();
             Logger.get().error("Failed to take amount out of all chatter's accounts", {cause: e});
-            await response.message(Key("currency.take-all.failed"));
         }
     }
 
@@ -176,7 +186,10 @@ class BankCommand extends Command {
         if (args === null) return;
         const [chatter] = args as [ChatterEntity];
 
-        await response.message(Key("currency.balance-other"), chatter.name, await CurrencyModule.formatAmount(chatter.balance, msg.getChannel()));
+        await response.message("currency:balance-other", {
+            username: chatter.name,
+            balance: await CurrencyModule.formatAmount(chatter.balance, msg.getChannel())
+        });
     }
 
     async reset({event, response}: CommandEventArgs): Promise<void> {
@@ -198,9 +211,11 @@ class BankCommand extends Command {
         try {
             chatter.balance = 0;
             await chatter.save();
-            await response.message(Key("currency.reset.successful"), chatter.name);
+            await response.message("currency:reset.user", {
+                username: chatter.name
+            });
         } catch (e) {
-            await response.message(Key("currency.reset.failed"));
+            await response.genericError();
             Logger.get().error("Failed to reset chatter's bank account", {cause: e});
         }
     }
@@ -212,7 +227,7 @@ class BankCommand extends Command {
         });
         if (args === null) return;
 
-        const confirmation = await this.confirmationFactory(msg, response.translate(Key("currency.reset-all.confirmation")), 30);
+        const confirmation = await this.confirmationFactory(msg, await response.translate("currency.reset.all-confirm"), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
                 const chatters: ChatterEntity[] = await ChatterEntity.getAll({channel: msg.getChannel()});
@@ -222,9 +237,9 @@ class BankCommand extends Command {
                     ops.push(chatter.save());
                 }
                 await Promise.all(ops);
-                await response.message(Key("currency.reset-all.successful"));
+                await response.message("currency:reset.all");
             } catch (e) {
-                await response.message(Key("currency.reset-all.successful"));
+                await response.genericError();
                 Logger.get().error("Unable to reset currency module", {cause: e});
             }
         });
@@ -245,7 +260,10 @@ class BalanceCommand extends Command {
         if (args === null) return;
 
         const balance = msg.getChatter().balance;
-        await response.message(Key("currency.balance"), msg.getChatter().name, await CurrencyModule.formatAmount(balance, msg.getChannel()));
+        await response.message("currency:balance", {
+            username: msg.getChatter().name,
+            balance: await CurrencyModule.formatAmount(balance, msg.getChannel())
+        });
     }
 }
 
@@ -278,12 +296,15 @@ class PayCommand extends Command {
 
         const successful = await msg.getChatter().charge(amount);
         if (successful === false) {
-            await response.message(Key("currency.low-balance"));
+            await response.message("currency:error.low-balance");
         } else if (successful === null) {
-            await response.message(Key("currency.pay.failed"));
+            await response.genericError();
         } else {
             await chatter.deposit(amount);
-            await response.message(Key("currency.pay.successful"), await CurrencyModule.formatAmount(amount, msg.getChannel()), chatter.name);
+            await response.message("currency.pay", {
+                username: chatter.name,
+                amount: await CurrencyModule.formatAmount(amount, msg.getChannel())
+            });
         }
     }
 }

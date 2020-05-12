@@ -101,7 +101,7 @@ class RaffleCommand extends Command {
 
     private async getRaffle(msg: Message, state: RaffleState = RaffleState.OPEN | RaffleState.CLOSED): Promise<Raffle|null> {
         if (!this.raffles.hasChannel(msg.getChannel())) {
-            await msg.getResponse().message(Key("raffles.does_not_exist"));
+            await msg.getResponse().message("raffle:error.no-recent");
             return null;
         }
 
@@ -110,9 +110,9 @@ class RaffleCommand extends Command {
             return raffle;
         } else {
             if ((state & RaffleState.OPEN) === RaffleState.OPEN) {
-                await msg.getResponse().message(Key("raffle.not_open"));
+                await msg.getResponse().message("raffle:error.not-open");
             } else if ((state & RaffleState.CLOSED) === RaffleState.CLOSED) {
-                await msg.getResponse().message(Key("raffle.already_open"));
+                await msg.getResponse().message("raffle:error.already-open");
             }
             return null;
         }
@@ -133,21 +133,22 @@ class RaffleCommand extends Command {
             permission: "raffle.open"
         });
         if (args === null) return;
+        const [keyword] = args as [string];
 
         if (this.raffles.hasChannel(msg.getChannel())) {
             if (this.raffles.getChannel(msg.getChannel()).isOpen()) {
-                await response.message(Key("raffles.open.already_open"));
+                await response.message("raffle:error.already-open");
                 return;
             }
         }
 
-        const raffle = new Raffle(args[1], msg.getChannel(), {
+        const raffle = new Raffle(keyword, msg.getChannel(), {
             price: await msg.getChannel().getSettings().get("raffles.price"),
             maxEntries: await msg.getChannel().getSettings().get("raffles.max-entries"),
             duplicateWins: await msg.getChannel().getSettings().get("raffles.max-entries")
         });
         raffle.open();
-        await response.message(Key("raffles.open.successful"), args[1]);
+        await response.message("raffle:opened", { keyword });
     }
 
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -159,7 +160,7 @@ class RaffleCommand extends Command {
         if (args === null || raffle === null) return;
 
         raffle.close();
-        await response.message(Key("raffle.close.successful"));
+        await response.message("raffle:closed");
     }
 
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -171,7 +172,7 @@ class RaffleCommand extends Command {
         if (args === null || raffle === null) return;
 
         raffle.reset();
-        await response.message(Key("raffle.reset.successful"));
+        await response.message("raffle:reset");
     }
 
     async pull({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -184,11 +185,11 @@ class RaffleCommand extends Command {
 
         const winner = raffle.pullWinner();
         if (winner === null) {
-            await response.message(Key("raffle.pull.failed"));
+            await response.message("raffle:error.no-entries");
             return;
         }
 
-        await response.message(Key("raffle.pull.lead_up"));
+        await response.message("raffle:pull-lead-up");
         setTimeout(() => msg.getResponse().message("@" + winner + "!!!"), 1000);
     }
 }

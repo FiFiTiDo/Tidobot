@@ -1,0 +1,12 @@
+{
+    "unknown": "The list {{list}} does not exist",
+    "exists": "The list {{list}} already exists",
+    "created": "Created the list {{list}}",
+    "deleted": "Deleted the list {{list}}",
+    "item": {
+        "unknown": "There is no list item with that number",
+        "added": "Added list item #{{number}}",
+        "edited": "Edited list item #{{number}}",
+        "deleted": "Delete list item #{{number}}"
+    }
+}

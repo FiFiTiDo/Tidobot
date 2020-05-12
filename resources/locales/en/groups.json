@@ -1,0 +1,24 @@
+{
+    "error": {
+        "unknown": "Could not find the group: {{group}}",
+        "exists": "{{group}} is already an existing group"
+    },
+    "created": "Created the group {{group}}",
+    "deleted": "Deleted the group {{group}}",
+    "delete-confirm": "Are you sure you want to delete the group {{group}}?",
+    "user": {
+        "already": "{{username}} is already a member of {{group}}",
+        "not": "{{username}} is not a member of {{group}}",
+        "added": "Added {{username}} to the group {{group}}",
+        "removed": "Removed {{username}} from the group {{group}}"
+    },
+    "permission": {
+        "granted": "Granted permission {{permission}} to the group {{group}}",
+        "denied": "Denied the group {{group}} access to the permission {{permission}}",
+        "delete": {
+            "specific": "Successfully deleted the permission {{permission}} for the group {{group}}",
+            "all": "Successfully deleted all of the permissions for the group {{group}}",
+            "confirm": "Are you sure you want to delete all permissions for the group {{group}}?"
+        }
+    }
+}

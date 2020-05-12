@@ -1,0 +1,22 @@
+{
+    "error": {
+        "not-running": "There is no poll running, type {{prefix}}poll start <option 1> <option 2> ... [option n]",
+        "already-running": "There is already a poll running, type {{prefix}}poll stop to stop the current poll.",
+        "already-voted": "You already put in your vote!"
+    },
+    "open": "Poll now open for voting, type {{prefix}}vote <poll #> to vote for an option.",
+    "options": "Options: {{options}}",
+    "closed": "The poll is now closed for voting.",
+    "lead-up": "Drumroll please...",
+    "results": "Results: {{results}}",
+    "vote-accepted": "Added vote for the option {{option}}",
+    "vote-changed": "Changed your vote to the option {{option}}",
+    "strawpoll": {
+        "error": {
+            "no-recent": "There aren't any strawpolls recently created.",
+            "no-title": "Cannot run a strawpoll without a title, use --title \"title\" to set the title",
+            "no-options": "You need to specify at least 2 options for the poll"
+        },
+        "created": "Created strawpoll, click here to vote: {{url}}"
+    }
+}

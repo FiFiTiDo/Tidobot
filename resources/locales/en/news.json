@@ -1,0 +1,8 @@
+{
+    "unknown": "Invalid news item id: {{id}}",
+    "added": "Added news item #{{id}}",
+    "edited": "Edited news item #{{id}}",
+    "removed": "Deleted news item #{{id}}",
+    "cleared": "Deleted all news items",
+    "reloaded": "Reloaded news from the database"
+}

@@ -2,7 +2,6 @@ import AbstractModule from "./AbstractModule";
 import CurrencyModule from "./CurrencyModule";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
-import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -132,23 +131,27 @@ class BetCommand extends Command {
             const resp = await game.place(option, amount, msg.getChatter());
             switch (resp) {
                 case PlaceBetResponse.INVALID_OPTION:
-                    await response.message(Key("betting.place.invalid_option"));
+                    await response.message("bet:error.invalid-option");
                     break;
                 case PlaceBetResponse.LOW_BALANCE:
-                    await response.message(Key("betting.place.low_balance"), await CurrencyModule.getPluralName(msg.getChannel()));
+                    await response.message("currency:error.low-balance", {
+                        currency_name: await CurrencyModule.getPluralName(msg.getChannel())
+                    });
                     break;
                 case PlaceBetResponse.TOO_LOW:
-                    await response.message(Key("betting.place.too_low"));
+                    await response.message("bet:error.too-low");
                     break;
                 case PlaceBetResponse.TOO_HIGH:
-                    await response.message(Key("betting.place.too_high"));
+                    await response.message("bet:error.too-high");
                     break;
                 case PlaceBetResponse.BET_PLACED:
-                    await response.message(Key("betting.place.placed"), await CurrencyModule.formatAmount(amount, msg.getChannel()), option);
+                    await response.message("bet:placed", {
+                        amount: await CurrencyModule.formatAmount(amount, msg.getChannel()), option
+                    });
                     break;
             }
         } catch (e) {
-            await response.message(Key("betting.place.failed"));
+            await response.genericError();
             Logger.get().error("Failed to place the bet", { cause: e });
         }
     }
@@ -178,11 +181,14 @@ class BetCommand extends Command {
         const [title, options] = args as [string, string[]];
 
         if (this.betInstances.hasChannel(msg.getChannel()) && this.betInstances.getChannel(msg.getChannel()).isOpen())
-            return response.message(Key("betting.open.already_open"));
+            return response.message("bet:error.already-open");
 
         const game = new BettingGame(title, msg.getChannel(), options);
         this.betInstances.setChannel(msg.getChannel(), game);
-        await response.message(Key("betting.open.successful"), title, options.join(", "));
+        await response.message("bet:opened", {
+            title,
+            options: options.join(", ")
+        });
     }
 
     async close({ event, message: msg, response }: CommandEventArgs): Promise<void> {
@@ -202,15 +208,19 @@ class BetCommand extends Command {
         const [option] = args;
 
         if (!this.betInstances.hasChannel(msg.getChannel()) || !this.betInstances.getChannel(msg.getChannel()).isOpen())
-            return response.message(Key("betting.closed.not_open"));
+            return response.message("bet:error.not-open");
 
         const game = this.betInstances.getChannel(msg.getChannel());
         const winnings = await game.close(option);
 
         if (winnings === null)
-            return response.message(Key("betting.closed.invalid_option"));
+            return response.message("bet:error.invalid-option", { option });
         else
-            return response.message(Key("betting.closed.successful"), game.getTitle(), option, await CurrencyModule.formatAmount(winnings, msg.getChannel()));
+            return response.message("bet:closed", {
+                title: game.getTitle(),
+                option,
+                winnings: await CurrencyModule.formatAmount(winnings, msg.getChannel())
+            });
     }
 
     async check({ event, message: msg, response }: CommandEventArgs): Promise<void> {
@@ -221,14 +231,18 @@ class BetCommand extends Command {
         if (args === null) return;
 
         if (!this.betInstances.hasChannel(msg.getChannel()))
-            return response.message(Key("betting.check.no_recent"));
+            return response.message("bet:error.no-recent");
 
         const game = this.betInstances.getChannel(msg.getChannel());
         const grandTotal = game.getGrandTotal();
         const parts = [];
         for (const [option, total] of game.getTotals())
-            parts.push(response.getTranslator().translate("betting.check.part", option, await CurrencyModule.formatAmount(total, msg.getChannel()), (total / grandTotal) * 100));
-        await response.message(Key("betting.check.current_stats"), parts.join("; "));
+            parts.push(await response.translate("bet:check.part", {
+                option,
+                amount: await CurrencyModule.formatAmount(total, msg.getChannel()),
+                percentage: (total / grandTotal) * 100
+            }));
+        await response.message("bet:check.full", { options: parts.join("; ") });
     }
 }
 

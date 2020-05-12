@@ -58,9 +58,9 @@ class NewsCommand extends Command {
 
         try {
             const item = await NewsEntity.create(value, msg.getChannel());
-            await response.message(Key("news.add.successful"), item.id);
+            await response.message("news:added", { id: item.id });
         } catch (e) {
-            await response.message(Key("news.add.failed"));
+            await response.genericError();
             Logger.get().error("Failed to add news item", {cause: e});
         }
     }
@@ -83,15 +83,15 @@ class NewsCommand extends Command {
 
         const item = await NewsEntity.get(id, { channel: msg.getChannel() });
         if (item === null) {
-            await response.message(Key("news.invalid_id"), id);
+            await response.message("news:unknown", { id });
             return;
         }
 
         try {
             await item.delete();
-            await response.message(Key("news.remove.successful"), id);
+            await response.message("news:removed", { id });
         } catch (e) {
-            await response.message(Key("news.remove.failed"));
+            await response.genericError();
             Logger.get().error("Failed to remove news item", {cause: e});
         }
     }
@@ -107,9 +107,9 @@ class NewsCommand extends Command {
         confirmation.addListener(ConfirmedEvent, async () => {
             try {
                 await NewsEntity.removeEntries({ channel: msg.getChannel() });
-                await response.message(Key("news.clear.successful"));
+                await response.message("news:cleared");
             } catch (e) {
-                await response.message(Key("news.clear.failed"));
+                await response.genericError();
                 Logger.get().error("Failed to clear news items", {cause: e});
             }
         });

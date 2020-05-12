@@ -1,0 +1,8 @@
+{
+    "error": {
+        "expired": "It seems like there is no confirmation, maybe it expired?",
+        "no-code": "You need to specify the confirmation code to confirm."
+    },
+    "time": "Run {{prefix}}confirm {{code}} within {{seconds}} seconds to verify your decision.",
+    "warning": "Warning: this action might not be able to be undone."
+}

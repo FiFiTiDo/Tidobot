@@ -68,7 +68,7 @@ export default async (value: string, settings: ValueSettingsTypes, msg: Message)
             let chatter = msg.getChannel().findChatterByName(value);
             if (chatter === null) chatter = await ChatterEntity.findByName(value, msg.getChannel());
             if (chatter === null)
-                msg.getResponse().message(Key("users.unknown"), value);
+                msg.getResponse().message("user:unknown", { username: value });
 
             return chatter;
         }

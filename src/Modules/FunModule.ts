@@ -23,17 +23,23 @@ class RouletteCommand extends Command {
         });
         if (args === null) return;
 
-        await response.action(Key("fun.roulette.lead_up"), msg.getChatter().name);
-        setTimeout(() => {
+        await response.action("fun:roulette.lead_up", {
+            username: msg.getChatter().name
+        });
+        setTimeout(async () => {
             if (Math.random() > 1 / 6) {
-                response.message(Key("fun.roulette.safe"), msg.getChatter().name);
+                await response.message("fun:roulette.safe", {
+                    username: msg.getChatter().name
+                });
             } else {
-                response.message(Key("fun.roulette.hit"), msg.getChatter().name);
+                await response.message("fun:roulette.hit", {
+                    username: msg.getChatter().name
+                });
                 try {
-                    this.bot.tempbanChatter(msg.getChatter(), 60, response.translate(Key("fun.roulette.reason")));
+                    await this.bot.tempbanChatter(msg.getChatter(), 60, await response.translate("fun:roulette.reason"));
                 } catch (e) {
                     Logger.get().warning(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", { cause: e });
-                    return response.message("I'm afraid I cannot do that!");
+                    return response.message("error.bot-not-permitted");
                 }
             }
         }, 1000);
@@ -53,10 +59,10 @@ class SeppukuCommand extends Command {
         if (args === null) return;
 
         try {
-            return this.bot.tempbanChatter(msg.getChatter(), 30, response.translate(Key("fun.seppuku.reason")));
+            return this.bot.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
         } catch (e) {
             Logger.get().warning(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", { cause: e });
-            return response.message("I'm afraid I cannot do that!");
+            return response.message("error.bot-not-permitted");
         }
     }
 }
@@ -73,8 +79,8 @@ class Magic8BallCommand extends Command {
         });
         if (args === null) return;
 
-        const resp = array_rand(response.getTranslator().get("fun.8ball.responses"));
-        await response.message(Key("fun.8ball.response"), resp);
+        const resp = array_rand(await response.getTranslation("fun:8ball.responses"));
+        await response.message("fun:8ball.response", { response: resp });
     }
 }
 

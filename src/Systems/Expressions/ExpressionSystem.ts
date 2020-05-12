@@ -12,9 +12,8 @@ import Application from "../../Application/Application";
 import lexer from "./Lexer";
 import Dictionary from "../../Utilities/Structures/Dictionary";
 import deepmerge from "deepmerge";
-import {Key} from "../../Utilities/Translator";
 import chrono from "chrono-node";
-import {UnknownKeyError} from "./InterpreterErrors";
+import {IllegalStateError, OutOfBoundsError, UnknownKeyError} from "./InterpreterErrors";
 
 export interface ExpressionContext {
     [key: string]: any;
@@ -50,26 +49,30 @@ export default class ExpressionSystem {
     async evaluate(expr: string, msg: Message): Promise<string> {
         const objects = [];
         objects.push({
-            pick: (array: unknown) => {
-                if (!Array.isArray(array)) return "Error: pick requires an array of values.";
+            pick: async (array: unknown): Promise<any> => {
+                if (!Array.isArray(array)) return await msg.getResponse().translate("expression:error.argument", {
+                    expected: await msg.getResponse().translate("expression:types.array")
+                });
 
                 const i = Math.floor(Math.random() * (array.length - 1));
                 return array[i];
             },
-            getText: async (url: unknown) => {
-                if (typeof url !== "string") return "Invalid argument, expected a URL.";
+            getText: async (url: unknown): Promise<string> => {
+                if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                    expected: await msg.getResponse().translate("expression:types.url")
+                });
 
                 try {
                     return await rp(url);
                 } catch (e) {
                     Logger.get().error("Web request error", {cause: e});
-                    return "Web request error";
+                    return await msg.getResponse().translate("expression:error.network");
                 }
             },
-            getJson: async (url: unknown) => {
-                if (typeof url !== "string") {
-                    return "Invalid argument, expected a URL.";
-                }
+            getJson: async (url: unknown): Promise<string> => {
+                if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                    expected:await  msg.getResponse().translate("expression:types.url")
+                });
 
                 try {
                     return await rp({
@@ -78,13 +81,17 @@ export default class ExpressionSystem {
                     });
                 } catch (e) {
                     Logger.get().error("Web request error", {cause: e});
-                    return "Web request error";
+                    return await msg.getResponse().translate("expression:error.network");
                 }
             },
-            getHtml: async (url: unknown, selector: unknown) => {
-                if (typeof url !== "string" || typeof selector !== "string") {
-                    return "Invalid arguments, expected a URL and a CSS selector.";
-                }
+            getHtml: async (url: unknown, selector: unknown): Promise<string> => {
+                if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                    expected: await msg.getResponse().translate("expression:types.url")
+                });
+
+                if (typeof selector !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                    expected: await msg.getResponse().translate("expression:types.css-selector")
+                });
 
                 try {
                     return await rp(url).then((html: string) => {
@@ -93,13 +100,13 @@ export default class ExpressionSystem {
                     });
                 } catch (e) {
                     Logger.get().error("Web request error", {cause: e});
-                    return "Web request error";
+                    return await msg.getResponse().translate("expression:error.network");
                 }
             },
-            random: (min: number, max = NaN) => {
-                if (!min || isNaN(min)) {
-                    return "Requires at least one argument.";
-                }
+            random: async (min: number, max = NaN): Promise<number|string> => {
+                if (typeof min !== "number") return await msg.getResponse().translate("expression:error.argument", {
+                    expected: await msg.getResponse().translate("expression:types.number")
+                }) as string;
 
                 if (isNaN(max)) {
                     max = min;
@@ -108,25 +115,20 @@ export default class ExpressionSystem {
 
                 return Math.floor(Math.random() * (max - min) + min);
             },
-            eightBall: () => {
-                const responses = [
-                    "All signs point to yes...", "Yes!", "My sources say nope.", "You may rely on it.",
-                    "Concentrate and ask again...", "Outlook not so good...", "It is decidedly so!",
-                    "Better not tell you.", "Very doubtful.", "Yes - Definitely!", "It is certain!",
-                    "Most likely.", "Ask again later.", "No!", "Outlook good.", "Don't count on it."
-                ];
-                return array_rand(responses);
-            },
-            timeuntil: (timestring: unknown, longFormat = false) => {
-                if (typeof timestring !== "string") return "Invalid arguments, expected a timestring.";
+            timeuntil: async (timestring: unknown, longFormat = false): Promise<string> => {
+                if (typeof timestring !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                    expected: await msg.getResponse().translate("expression:types.time")
+                });
 
                 const parsed = chrono.parseDate(timestring, Date.now(), {forwardDate: true});
                 const datetime = moment(parsed);
                 const dur = moment.duration(datetime.diff(moment()));
                 return longFormat ? format_duration(dur) : dur.humanize();
             },
-            timesince: (timestring: unknown, longFormat = false) => {
-                if (typeof timestring !== "string") return "Invalid arguments, expected a timestring.";
+            timesince: async (timestring: unknown, longFormat = false): Promise<string> => {
+                if (typeof timestring !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                    expected: await msg.getResponse().translate("expression:types.time")
+                });
 
                 const parsed = chrono.parseDate(timestring, Date.now(), {forwardDate: false});
                 const datetime = moment(parsed);
@@ -134,9 +136,11 @@ export default class ExpressionSystem {
                 return longFormat ? format_duration(dur) : dur.humanize();
             },
             process: {
-                exit: (): string => "You thought you could stop my bot? lmao"
+                exit: async (): Promise<string> => await msg.getResponse().translate("expression:error.shutdown")
             },
-            uptime: () => prettyMilliseconds(Application.getUptime().asMilliseconds()),
+            bot: {
+                getUptime: () => prettyMilliseconds(Application.getUptime().asMilliseconds()),
+            },
             urlencode: (input: any) => encodeURIComponent(input)
         });
         objects.push(await msg.getExpressionContext());
@@ -149,11 +153,25 @@ export default class ExpressionSystem {
             return await this.interpreter.visit(cst, new Dictionary(deepmerge.all(objects)));
         } catch (e) {
             if (e instanceof UnknownKeyError) {
-                return e.message;
+                return await msg.getResponse().translate("expression:error.invalid-key", {
+                    key: e.key,
+                    column: e.token.startColumn
+                });
+            } else if (e instanceof OutOfBoundsError) {
+                return msg.getResponse().translate("expression:error.out-of-bounds", {
+                    index: e.index,
+                    column: e.token.startColumn
+                });
+            } else if (e instanceof IllegalStateError) {
+                return msg.getResponse().translate("expression:error.illegal-state", {
+                    expected: e.expected,
+                    given: e.given,
+                    column: e.token.startColumn
+                });
             }
 
             Logger.get().error("An error occurred with the expression parser", {cause: e});
-            return msg.getResponse().translate(Key("general.failed_to_eval"));
+            return msg.getResponse().translate("expression:error.generic");
         }
     }
 }

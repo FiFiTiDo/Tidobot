@@ -1,17 +1,19 @@
 import {Container} from "inversify";
 import Adapter from "./Services/Adapter";
 import Dictionary, {FileDictionaryParser} from "./Utilities/Structures/Dictionary";
-import symbols from "./symbols";
+import symbols, {TranslationProvider} from "./symbols";
 import TwitchAdapter from "./Services/Twitch/TwitchAdapter";
 import {default as winston} from "winston";
 import ChannelManager from "./Chat/ChannelManager";
 import * as Modules from "./Modules";
-import Translator from "./Utilities/Translator";
 import {TwitchMessage, TwitchMessageFactory} from "./Services/Twitch/TwitchMessage";
 import Logger from "./Utilities/Logger";
 import {Database} from "sqlite3";
-import {Response, ResponseFactory} from "./Chat/Message";
 import ModuleManager from "./Modules/ModuleManager";
+import {Response, ResponseFactory} from "./Chat/Response";
+import i18next, {TFunction} from "i18next";
+import Backend from "i18next-fs-backend";
+import {join} from "path";
 
 require("winston-daily-rotate-file");
 
@@ -32,11 +34,27 @@ container.bind<Adapter>(Adapter).toDynamicValue(ctx => {
     }
 });
 container.bind<ModuleManager>(ModuleManager).toSelf();
-container.bind<Translator>(Translator).toSelf();
+container.bind<TranslationProvider>(symbols.TranslateFunc).toProvider<TFunction>(ctx => {
+    return async () => {
+        return await i18next.use(Backend).init({
+            ns: [
+                "bet", "command", "confirmation", "counter", "default", "expression", "filter", "fun", "groups", "lists",
+                "news", "permission", "poll", "raffle", "setting", "user"
+            ],
+            defaultNS: "default",
+            lng: process.env.LANGUAGE,
+            fallbackLng: "en",
+            backend: {
+                loadPath: join(__dirname, "../resources/locales/{{lng}}/{{ns}}.json"),
+                addPath: join(__dirname, "../resources/locales/{{lng}}/{{ns}}.missing.json")
+            }
+        });
+    }
+});
 container.bind<Database>(Database).toSelf();
 container.bind<ResponseFactory>(symbols.ResponseFactory).toFactory<Response>(ctx => (msg): Response => {
     const adapter = ctx.container.get<Adapter>(Adapter);
-    const translator = ctx.container.get<Translator>(Translator);
+    const translator = ctx.container.get<TranslationProvider>(symbols.TranslateFunc);
     const channelManager = ctx.container.get<ChannelManager>(ChannelManager);
     return new Response(adapter, translator, channelManager, msg);
 });

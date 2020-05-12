@@ -76,7 +76,7 @@ export default class ListModule extends AbstractModule {
 
     public static async listNameArgConverter(raw: string, msg: Message): Promise<ListsEntity|null> {
         const list = await ListsEntity.findByName(raw, msg.getChannel());
-        if (list === null) await msg.getResponse().message(Key("lists.unknown"), raw);
+        if (list === null) await msg.getResponse().message("lists:unknown", { list: raw });
         return list;
     }
 
@@ -132,7 +132,7 @@ class ListCommand extends Command {
 
             item = await list.getItem(itemNum);
             if (item === null) {
-                await response.message(Key("lists.item.unknown"), item);
+                await response.message("lists:item.unknown", { number: itemNum });
                 return;
             }
         } else {
@@ -162,13 +162,9 @@ class ListCommand extends Command {
 
         try {
             const list = await ListsEntity.create(name, msg.getChannel());
-            if (list === null) {
-                await response.message(Key("lists.create.already_exists"), name);
-            } else {
-                await response.message(Key("lists.create.successful"), name);
-            }
+            await response.message(list === null ? "lists:exists" : "lists:created", { list: name });
         } catch (e) {
-            await response.message(Key("lists.create.failed"), name);
+            await response.genericError();
         }
     }
 
@@ -191,9 +187,9 @@ class ListCommand extends Command {
 
         try {
             await list.delete();
-            await response.message(Key("lists.delete.successful"), name);
+            await response.message("lists:deleted", { list: name });
         } catch (e) {
-            await response.message(Key("lists.delete.failed"), name);
+            await response.genericError();
         }
     }
 
@@ -222,9 +218,9 @@ class ListCommand extends Command {
         const [list, value] = args as [ListsEntity, string];
         const item = await list.addItem(value);
         if (item === null) {
-            await response.message(Key("lists.item.add.failed"));
+            await response.genericError();
         } else {
-            await response.message(Key("lists.item.add.successful"), item.id);
+            await response.message("lists:item.added", { number: item.id });
         }
     }
 
@@ -259,14 +255,14 @@ class ListCommand extends Command {
         const [list, itemNum, value ] = args as [ListsEntity, number, string];
         const item = await list.getItem(itemNum);
         if (item === null) {
-            await response.message(Key("lists.item.unknown"), item);
+            await response.message("lists:item.unknown", { number: itemNum });
         } else {
             try {
                 item.value = value;
                 await item.save();
-                await response.message(Key("lists.item.edit.successful"), item.id);
+                await response.message("lists:item.edited", { number: item.id });
             } catch (e) {
-                await response.message(Key("lists.item.edit.failed"));
+                await response.genericError();
             }
         }
     }
@@ -295,13 +291,13 @@ class ListCommand extends Command {
         const [list, itemNum] = args as [ListsEntity, number];
         const item = await list.getItem(itemNum);
         if (item === null) {
-            await response.message(Key("lists.item.unknown"), item);
+            await response.message("lists:item.unknown", { number: itemNum });
         } else {
             try {
                 await item.delete();
-                await response.message(Key("lists.item.delete.successful"), item.id);
+                await response.message("lists:item.deleted", { number: item.id });
             } catch (e) {
-                await response.message(Key("lists.item.delete.failed"));
+                await response.genericError();
             }
         }
     }

@@ -1,0 +1,16 @@
+{
+    "error": {
+        "illegal-value": "The setting {{setting}} should be {{expected}} but is set to {{value}}"
+    },
+    "set": "Updated setting {{setting}} to {{value}}",
+    "unset": "Unset the setting {{setting}}",
+    "reset": "Reset all of the channel's settings back to default",
+    "confirm-reset": "Are you sure you want to reset the channel's settings?",
+    "types": {
+        "string": "a string",
+        "integer": "an integer",
+        "float": "a float value",
+        "boolean": "a boolean value",
+        "timezone": "a valid timezone"
+    }
+}

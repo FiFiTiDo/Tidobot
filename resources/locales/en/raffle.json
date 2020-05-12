@@ -1,0 +1,12 @@
+{
+    "error": {
+        "no-recent": "There has not been a recent raffle",
+        "already-open": "There is already a raffle running",
+        "not-open": "There is no running raffle",
+        "no-entries": "There are no more entries to select from!"
+    },
+    "opened": "The raffle is now accepting new entries type \"{{keyword}}\" to enter.",
+    "closed": "THe raffle is now closed for new entries",
+    "reset": "Cleared all raffle entries",
+    "pull-lead-up": "And the winner is..."
+}

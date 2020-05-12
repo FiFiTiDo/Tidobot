@@ -53,7 +53,10 @@ class PermitCommand extends Command {
         const [chatter] = args as [ChatterEntity];
 
         this.filterModule.permits.setChatter(chatter, moment());
-        await response.message(Key("filter.permit"), chatter.name, await msg.getChannel().getSettings().get("filter.permit-length"));
+        await response.message("filter:permit", {
+            username: chatter.name,
+            second: await msg.getChannel().getSettings().get("filter.permit-length")
+        });
     }
 }
 
@@ -79,7 +82,7 @@ class PardonCommand extends Command {
         const [chatter] = args as [ChatterEntity];
 
         this.filterModule.strikes.setChatter(chatter, 0);
-        await response.message(Key("filter.strikes-cleared"), chatter.name);
+        await response.message("filter:strikes-cleared", { username: chatter.name });
     }
 }
 
@@ -103,8 +106,9 @@ class PurgeCommand extends Command {
         });
         if (args === null) return;
         const [chatter] = args as [ChatterEntity];
-        await this.bot.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"), "Purged by " + msg.getChatter().name);
-        await response.message(Key("filter.purged"), chatter.name);
+        await this.bot.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"),
+            await response.translate("filter:purge-reason", { username: msg.getChatter().name }));
+        await response.message("filter:purged", { username: chatter.name });
     }
 }
 
@@ -141,12 +145,12 @@ class FilterCommand extends Command {
         if (array_add(item, lists[list])) {
             try {
                 await lists.save();
-                await response.message(Key("filter.list.add.successful"), item, list);
+                await response.message("filter:list.added", { item, list });
             } catch (e) {
-                await response.message(Key("filter.list.add.failed"));
+                await response.genericError();
             }
         } else
-            await response.message(Key("filter.list.add.already_exists"), list, item);
+            await response.message("filter:list.exists", { list, item });
     }
 
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -177,12 +181,12 @@ class FilterCommand extends Command {
         if (array_remove(item, lists[list])) {
             try {
                 await lists.save();
-                await response.message(Key("filter.list.remove.successful"), item, list);
+                await response.message("filter:list.removed", { item, list });
             } catch (e) {
-                await response.message(Key("filter.list.remove.failed"));
+                await response.genericError();
             }
         } else
-            await response.message(Key("filter.list.remove.non_existent"), list, item);
+            await response.message("filter:list.unknown", { list, item });
     }
 
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -203,22 +207,22 @@ class FilterCommand extends Command {
         const [list] = args as ["domains"|"bad_words"|"emotes"];
         const lists = await FiltersEntity.getByChannel(msg.getChannel());
 
-        const confirmation = await this.makeConfirmation(msg, response.getTranslator().translate(`filter.list.reset.${list ? "specific" : "all"}.confirmation`), 30);
+        const confirmation = await this.makeConfirmation(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             if (list) {
                 lists[list] = [];
 
                 await lists.save()
-                    .then(() => response.message(Key("filter.list.reset.specific.successful"), list))
-                    .catch(() => response.message(Key("filter.list.reset.specific.failed"), list));
+                    .then(() => response.message("filter:list.reset.specific", { list }))
+                    .catch(() => response.genericError());
             } else {
                 lists.badWords = [];
                 lists.emotes = [];
                 lists.domains = [];
 
                 await lists.save()
-                    .then(() => response.message(Key("filter.list.reset.all.successful")))
-                    .catch(() => response.message(Key("filter.list.reset.all.failed")));
+                    .then(() => response.message("filter:list.reset.all"))
+                    .catch(() => response.genericError());
             }
         });
         confirmation.run();
@@ -318,7 +322,7 @@ export default class FilterModule extends AbstractModule {
             const domain = res[3];
 
             if (whitelistUrl ? !array_contains(domain, lists.domains) : array_contains(domain, lists.domains)) {
-                await this.nextStrike(Key("filter.reasons.url"), msg);
+                await this.nextStrike("url", msg);
                 return;
             }
         }
@@ -326,7 +330,7 @@ export default class FilterModule extends AbstractModule {
         if (await msg.getChannel().getSettings().get("filter.caps.enabled")) {
             const amount = (msg.getRaw().match(CAPS_PATTERN) || []).length;
             if (amount >= await msg.getChannel().getSettings().get("filter.caps.amount")) {
-                await this.nextStrike(Key("filter.reasons.caps"), msg);
+                await this.nextStrike("caps", msg);
                 return;
             }
         }
@@ -338,7 +342,7 @@ export default class FilterModule extends AbstractModule {
         if (await msg.getChannel().getSettings().get("filter.symbols.enabled")) {
             const amount = (msg.getRaw().match(SYMBOLS_PATTERN) || []).length;
             if (amount >= await msg.getChannel().getSettings().get("filter.symbols.amount")) {
-                await this.nextStrike(Key("filter.reasons.symbols"), msg);
+                await this.nextStrike("symbols", msg);
                 return;
             }
         }
@@ -349,7 +353,7 @@ export default class FilterModule extends AbstractModule {
             const whitelist = await msg.getChannel().getSettings().get("filter.emotes.whitelist");
             for (const badWord of badWords) {
                 if (whitelist ? lower.indexOf(badWord.toLowerCase()) < 0 : lower.indexOf(badWord.toLowerCase()) >= 0) {
-                    await this.nextStrike(Key("filter.reasons.emote.blacklisted"), msg);
+                    await this.nextStrike("emote.blacklisted", msg);
                     return;
                 }
             }
@@ -359,7 +363,7 @@ export default class FilterModule extends AbstractModule {
                     return previous + next.length;
                 }, 0);
                 if (amount >= await msg.getChannel().getSettings().get("filter.emotes.amount")) {
-                    await this.nextStrike(Key("filter.reasons.emote.too_many"), msg);
+                    await this.nextStrike("emote.too_many", msg);
                     return;
                 }
             }
@@ -367,7 +371,7 @@ export default class FilterModule extends AbstractModule {
 
         if (await msg.getChannel().getSettings().get("filter.fake-purge.enabled")) {
             if (FAKE_PURGE.test(msg.getRaw())) {
-                await this.nextStrike(Key("filter.reasons.fake_purge"), msg);
+                await this.nextStrike("fake_purge", msg);
                 return;
             }
         }
@@ -378,7 +382,7 @@ export default class FilterModule extends AbstractModule {
             for (const badWord of badWords) {
                 if (badWord.length < 1) continue;
                 if (lower.indexOf(badWord.toLowerCase()) >= 0) {
-                    await this.nextStrike(Key("filter.reasons.bad_word"), msg);
+                    await this.nextStrike("bad_word", msg);
                     return;
                 }
             }
@@ -386,17 +390,17 @@ export default class FilterModule extends AbstractModule {
 
         if (await msg.getChannel().getSettings().get("filter.long-message.enabled")) {
             if (msg.getRaw().length >= await msg.getChannel().getSettings().get("filter.long-message.length")) {
-                await this.nextStrike(Key("filter.reasons.long_message"), msg);
+                await this.nextStrike("long_message", msg);
                 return;
             }
         }
     }
 
-    async nextStrike(reasonKey: TranslationKey, msg: Message): Promise<void> {
+    async nextStrike(reasonKey: string, msg: Message): Promise<void> {
         const strike = (this.strikes.getChatter(msg.getChatter()) + 1) % 4;
         this.strikes.setChatter(msg.getChatter(), strike);
-        const reason = msg.getResponse().translate(reasonKey);
+        const reason = await msg.getResponse().translate(`filter:reasons.${reasonKey}`);
 
-        await msg.getResponse().message(Key("filter.strike"), msg.getChatter().name, reason, strike);
+        await msg.getResponse().message("filter:strike", { username: msg.getChatter().name, reason, number: strike });
     }
 }

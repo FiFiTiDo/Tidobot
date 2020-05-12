@@ -1,0 +1,18 @@
+{
+    "pong": "@{{username}}, pong!",
+    "error": {
+        "bot-not-permitted": "I'm afraid I cannot do that!"
+    },
+    "shutdown": [
+        "OH NO! It's past my bed time, time for me to go to sleep!",
+        "Shutting down, goodbye!",
+        "Gotta blast! B)",
+        "I gtg, but don't cry! I'll be back later :)",
+        "You can't stop me!! Oh wait... you can.",
+        "Hey! That tickles! *shutsdown*"
+    ],
+    "generic-error": [
+        "Uh oh! Something went wrong.",
+        "Oops! I seemed to have messed something up."
+    ]
+}

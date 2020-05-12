@@ -1,0 +1,17 @@
+{
+    "error": {
+        "invalid-option": "{{option}} is not a valid option.",
+        "too-low": "That bet is below the set minimum bet",
+        "too-high": "That bet is above the set maximum bet",
+        "already-open": "There is already a running bet",
+        "not-open": "There is no running bet",
+        "no-recent": "There haven't been any recent bets"
+    },
+    "placed": "Placed {{amount}} on {{option}}",
+    "opened": "{{title}}? (Options: {{options}}) Place your bets!",
+    "closed": "\"{{title}}?\" is now closed for betting. The winning option was {{option}}, winners will receive {{winnings}}",
+    "check": {
+        "option": "Option {{option}}, {{amount}} ({{percentage}}%)",
+        "full": "Current stats: {{options}}"
+    }
+}

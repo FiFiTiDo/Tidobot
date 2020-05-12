@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import CountersEntity from "../Database/Entities/CountersEntity";
-import {Key} from "../Utilities/Translator";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -33,7 +32,7 @@ class CounterCommand extends Command {
     static async counterConverter(input: string, msg: Message): Promise<CountersEntity|null> {
         const counter = CountersEntity.findByName(input, msg.getChannel());
         if (counter === null) {
-            await msg.getResponse().message(Key("counter.unknown"), input);
+            await msg.getResponse().message("counter:unknown", { counter: input });
             return null;
         }
         return counter;
@@ -59,7 +58,7 @@ class CounterCommand extends Command {
         if (args === null) return;
         const [counter] = args as [CountersEntity];
 
-        await response.message(Key("counter.value"), counter.name, counter.value);
+        await response.message("counter:value", { counter: counter.name, value: counter.value });
     }
 
     async increment({event, response}: CommandEventArgs): Promise<void> {
@@ -84,14 +83,14 @@ class CounterCommand extends Command {
             permission: "counter.change"
         });
         if (args === null) return;
-        const [counter, amt] = args as [CountersEntity, number];
+        const [counter, amount] = args as [CountersEntity, number];
 
         try {
-            counter.value += amt;
+            counter.value += amount;
             await counter.save();
-            await response.message(Key("counter.increment.successful"), counter.name, amt);
+            await response.message("counter:incremented", { counter: counter.name, amount });
         } catch (e) {
-            await response.message(Key("counter.increment.failed"));
+            await response.genericError();
             Logger.get().error("Failed to increment counter", {cause: e});
         }
     }
@@ -118,14 +117,14 @@ class CounterCommand extends Command {
             permission: "counter.change"
         });
         if (args === null) return;
-        const [counter, amt] = args as [CountersEntity, number];
+        const [counter, amount] = args as [CountersEntity, number];
 
         try {
-            counter.value -= amt;
+            counter.value -= amount;
             await counter.save();
-            await response.message(Key("counter.decrement.successful"), counter.name, amt);
+            await response.message("counter:decremented", { counter: counter.name, amount });
         } catch (e) {
-            await response.message(Key("counter.decrement.failed"));
+            await response.genericError();
             Logger.get().error("Failed to decrement from counter", {cause: e});
         }
     }
@@ -151,14 +150,14 @@ class CounterCommand extends Command {
             permission: "counter.change"
         });
         if (args === null) return;
-        const [counter, amt] = args as [CountersEntity, number];
+        const [counter, amount] = args as [CountersEntity, number];
 
         try {
-            counter.value = amt;
+            counter.value = amount;
             await counter.save();
-            await response.message(Key("counter.set.successful"), counter.name, amt);
+            await response.message("counter:set", { counter: counter.name, amount });
         } catch (e) {
-            await response.message(Key("counter.set.failed"));
+            await response.genericError();
             Logger.get().error("Failed to set counter", {cause: e});
         }
     }
@@ -182,12 +181,12 @@ class CounterCommand extends Command {
         try {
             const counter = await CountersEntity.make({channel: msg.getChannel()}, {name, value: 0});
             if (counter === null) {
-                await response.message(Key("counter.create.already_exists"), name);
+                await response.message("counter:error.exists", { counter: name });
                 return;
             }
-            await response.message(Key("counter.create.successful"), counter.name);
+            await response.message("counter:created", { counter: counter.name });
         } catch (e) {
-            await response.message(Key("counter.create.failed"));
+            await response.genericError();
             Logger.get().error("Failed to create counter", {cause: e});
         }
     }
@@ -211,9 +210,9 @@ class CounterCommand extends Command {
 
         try {
             await counter.delete();
-            await response.message(Key("counter.delete.successful"), counter.name);
+            await response.message("counter.deleted", { counter: counter.name });
         } catch (e) {
-            await response.message(Key("counter.delete.failed"));
+            await response.genericError();
             Logger.get().error("Failed to delete counter", {cause: e});
         }
     }

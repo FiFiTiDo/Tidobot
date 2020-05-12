@@ -66,7 +66,7 @@ export default class PermissionModule extends AbstractModule {
 class PermissionCommand extends Command {
     public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity|null> => {
         const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
-        if (perm === null) msg.getResponse().message(Key("permissions.unknown"), raw);
+        if (perm === null) msg.getResponse().message("permission:error.unknown", { permission: raw });
         return perm;
     };
 
@@ -104,7 +104,7 @@ class PermissionCommand extends Command {
         const [perm_str, role] = args as [string, Role];
 
         if (!await msg.checkPermission(perm_str)) {
-            await response.message(Key("permissions.set.now_allowed"));
+            await response.message("permission:error.not-permitted");
             return;
         }
 
@@ -117,12 +117,12 @@ class PermissionCommand extends Command {
             });
 
             if (permission === null)
-                await response.message(Key("permissions.create.already_exists"));
+                await response.message("permission:error.already-exists");
             else
-                await response.message(Key("permissions.create.successful"), perm_str, Role[role]);
+                await response.message("permission:created", { permission: perm_str, role: Role[role] });
         } catch (err) {
             Logger.get().error("Unable to create new permission", { cause: err });
-            await response.message(Key("permissions.create.failed"), perm_str);
+            return response.genericError();
         }
     }
 
@@ -144,12 +144,12 @@ class PermissionCommand extends Command {
         const [permission] = args as [PermissionEntity];
 
         if (permission.moduleDefined)
-            return response.message(Key("permissions.delete.module_defined"), permission.permission);
+            return response.message("permission:error.module-defined", { permission: permission.permission });
 
         permission.delete()
-            .then(() => response.message(Key("permissions.delete.successful"), permission.permission))
+            .then(() => response.message("permission:deleted", { permission: permission.permission }))
             .catch(e => {
-                response.message(Key("permissions.delete.failed"), permission.permission);
+                response.genericError();
                 Logger.get().error("Unable to delete custom permission", {cause: e});
             });
     }
@@ -179,15 +179,15 @@ class PermissionCommand extends Command {
         const [permission, role] = args as [PermissionEntity, Role];
 
         if (!await msg.checkPermission(permission.permission)) {
-            await response.message(Key("permissions.set.now_allowed"));
+            await response.message("permission:error.not-permitted");
             return;
         }
 
         permission.role = role;
         permission.save()
-            .then(() => response.message(Key("permissions.set.successful"), permission.permission, Role[role]))
+            .then(() => response.message("permission:set", { permission: permission.permission, role: Role[role] }))
             .catch(e => {
-                response.message(Key("permissions.set.failed"), permission.permission);
+                response.genericError();
                 Logger.get().error("Unable to set permission level", {cause: e});
             });
     }
@@ -211,23 +211,23 @@ class PermissionCommand extends Command {
 
         if (permission) {
             if (!(await msg.checkPermission(permission.permission)))
-                return response.message(Key("permissions.reset.not_allowed"));
+                await response.message("permission:error.not-permitted");
 
             permission.role = permission.defaultRole;
             await permission.save()
-                .then(() => response.message(Key("permissions.reset.successful"), permission.permission))
+                .then(() => response.message("permissions:reset", { permission: permission.permission }))
                 .catch(e => {
-                    response.message(Key("permissions.reset.failed"), permission.permission);
+                    response.genericError();
                     Logger.get().error("Unable to reset permission", {cause: e});
                 });
         } else {
             if (!(await msg.checkPermission("permission.reset.all")))
-                return response.message(Key("permissions.reset-all.not_allowed"));
+                await response.message("permission:error.not-permitted");
 
             PermissionSystem.getInstance().resetChannelPermissions(msg.getChannel())
-                .then(() => response.message(Key("permissions.reset-all.successful")))
+                .then(() => response.message("permission:reset-all"))
                 .catch(e => {
-                    response.message(Key("permissions.reset-all.failed"));
+                    response.genericError();
                     Logger.get().error("Unable to reset all permissions", {cause: e});
                 });
         }

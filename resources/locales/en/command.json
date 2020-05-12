@@ -1,0 +1,29 @@
+{
+    "error": {
+        "unknown": "Could not find a command with the ID: {{id}}",
+        "generic": "Oops! An error occurred while executing the command",
+        "syntax": "Invalid syntax, usage: {{prefix}}{{usage}}",
+        "argument-arg": "Invalid argument {{argument}} given: {{given}}, usage: {{prefix}}{{usage}}",
+        "argument-index": "Expected argument #{{number}} to be {{expected}} but was given {{given}}",
+        "argument-usage": "Expected argument #{{number}} to be {{expected}} but was given {{given}}, usage {{prefix}}{{usage}}",
+        "expected-cli": "Missing argument {{arg}}, usage: {{usage}}",
+        "argument-cli": "Expected argument {{arg}} to be {{expected}} but was given {{given}}, usage {{usage}}",
+        "cooldown": "Whoa! You're doing that too quickly, try again later.",
+        "permission": "Hey! You are not permitted to do that.",
+        "database": "A database error occurred while executing the command"
+    },
+    "added": "Added command #{{id}}",
+    "edit": {
+        "response": "Updated the response the command #{{id}}",
+        "trigger": "Updated the trigger for command #{{id}} to {{value}}",
+        "condition": "Updated the condition for command #{{id}}",
+        "price": "Updated the price for command #{{id}} to {{value}}",
+        "cooldown": "Updated the cooldown for command #{{id}} to {{value}} seconds"
+    },
+    "deleted": "Deleted command #{{id}}",
+    "arguments": {
+        "price": "new price",
+        "cooldown": "seconds",
+        "type": "type"
+    }
+}

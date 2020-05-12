@@ -59,15 +59,10 @@ class TidobotCommand extends Command {
         if (args === null) return;
         const chatter = args[0] as ChatterEntity;
         IgnoredEntity.add(chatter.getService(), chatter.userId)
-            .then(ignored => {
-                if (ignored)
-                    response.message(Key("general.ignore.add.successful"), chatter.name);
-                else
-                    response.message(Key("general.ignore.add.already_ignored"), chatter.name);
-            })
+            .then(ignored => response.message(ignored ? "user:ignore.added" : "user:ignore.already", { username: chatter.name }))
             .catch(e => {
                 Logger.get().error("Failed to set a user as ignored", {cause: e});
-                return response.message(Key("general.ignore.add.failed"), chatter.name);
+                return response.genericError();
             });
     }
 
@@ -87,15 +82,10 @@ class TidobotCommand extends Command {
         if (args === null) return;
         const chatter = args[0] as ChatterEntity;
         IgnoredEntity.remove(chatter.getService(), chatter.userId)
-            .then(ignored => {
-                if (ignored)
-                    response.message(Key("general.ignore.remove.successful"), chatter.name);
-                else
-                    response.message(Key("general.ignore.remove.not_ignored"), chatter.name);
-            })
+            .then(ignored => response.message(ignored ? "user:ignore.removed" : "user:ignore.not", { username: chatter.name }))
             .catch(e => {
                 Logger.get().error("Failed to set a user as not ignored", {cause: e});
-                return response.message(Key("general.ignore.remove.failed"), chatter.name);
+                return response.genericError();
             });
     }
 
@@ -114,13 +104,13 @@ class TidobotCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (user.banned) return response.message(Key("general.ban.add.already_banned"), user.name);
+        if (user.banned) return response.message("user:ban.already", { username: user.name });
         user.banned = true;
         user.save()
-            .then(() => response.message(Key("general.ban.add.successful"), user.name))
+            .then(() => response.message("user:ban.added", { username: user.name }))
             .catch(e => {
                 Logger.get().error("Failed to set a user as banned", {cause: e});
-                return response.message(Key("general.ban.add.failed"), user.name);
+                return response.genericError();
             });
     }
 
@@ -139,13 +129,13 @@ class TidobotCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (!user.banned) return response.message(Key("general.ban.remove.not_banned"), user.name);
+        if (!user.banned) return response.message("user:ban.not", { username: user.name });
         user.banned = false;
         user.save()
-            .then(() => response.message(Key("general.ban.remove.successful"), user.name))
+            .then(() => response.message("user:ban.removed", { username: user.name }))
             .catch(e => {
                 Logger.get().error("Failed to unset a user as unbanned", {cause: e});
-                return response.message(Key("general.ban.remove.failed"), user.name);
+                return response.genericError();
             });
     }
 }
@@ -174,13 +164,13 @@ class RegularCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (user.regular) return response.message(Key("general.regular.add.already_a_regular"), user.name);
+        if (user.regular) return response.message("user:regular.already", { username: user.name });
         user.regular = true;
         user.save()
-            .then(() => response.message(Key("general.regular.add.successful"), user.name))
+            .then(() => response.message("user:regular.added", { username: user.name }))
             .catch(e => {
                 Logger.get().error("Failed to set a user as regular", { cause: e });
-                return response.message(Key("general.regular.add.failed"), user.name);
+                return response.genericError();
             });
     }
 
@@ -199,13 +189,13 @@ class RegularCommand extends Command {
         });
         if (args === null) return;
         const [user] = args as [ChatterEntity];
-        if (!user.regular) return response.message(Key("general.regular.remove.not_a_regular"), user.name);
+        if (!user.regular) return response.message("user:regular.not", { username: user.name });
         user.regular = false;
         user.save()
-            .then(() => response.message(Key("general.regular.remove.successful"), user.name))
+            .then(() => response.message("user:regular.removed", { username: user.name }))
             .catch(e => {
                 Logger.get().error("Failed to unset a user as regular", { cause: e });
-                return response.message(Key("general.regular.remove.failed"), user.name);
+                return response.genericError();
             });
     }
 }

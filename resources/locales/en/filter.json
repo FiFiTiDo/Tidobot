@@ -1,0 +1,46 @@
+{
+    "list": {
+        "exists": "{{list}} already has the item {{item}}",
+        "unknown": "{{list}} does not have the item {{item}}",
+        "added": "Added {{item}} to {{list}}",
+        "removed": "Removed {{item}} from {{list}}",
+        "reset": {
+            "confirm-all": "Are you sure you want to reset all filter lists?",
+            "all": "Reset all filter lists",
+            "confirm-specific": "Are you sure you want to reset the list {{list}}?",
+            "specific": "Reset the list {{list}}"
+        }
+    },
+    "permit": "Permitted user {{username}} for {{seconds}} seconds",
+    "strikes-cleared": "Cleared all strikes for the user {{username}}",
+    "purged": "Purged user {{username}}",
+    "purge-reason": "Purged by {{username}}",
+    "strike": "@{{username}}, {{reason}} [Strike #{{number}}]",
+    "reasons": {
+        "url": "URLs from that domain are not permitted",
+        "caps": "Calm down! There's no reason to shout",
+        "spam": "You're spamming too much",
+        "symbols": "What is this? Hieroglyphics?",
+        "emotes": {
+            "too-many": "Whoa man, that's too many emotes",
+            "blacklisted": "You're not allowed to use that emote"
+        },
+        "fake_purge": "You can't fool me with your fake purge",
+        "bad_word": "HEY! You can't say that!",
+        "long_message": "Please don't post a monologue in the chat"
+    },
+    "ban-reasons": {
+        "url": "Blacklisted/Non-whitelisted URL",
+        "caps": "Too many caps",
+        "spam": "Spamming",
+        "symbols": "Too many symbols",
+        "emotes": {
+            "too-many": "Too many emotes",
+            "blacklisted": "Blacklisted emote"
+        },
+        "fake_purge": "Fake purge message",
+        "bad_word": "Blacklisted word",
+        "long_message": "Long message"
+    },
+    "ban-reason": "{{reason}} // Automated by TidoBot"
+}

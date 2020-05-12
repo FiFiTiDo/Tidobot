@@ -41,12 +41,12 @@ class UserCommand extends Command {
             permission: "permission.grant"
         });
         if (args === null) return;
-        const [user, permStr] = args as [ChatterEntity, string];
+        const [user, permission] = args as [ChatterEntity, string];
 
-        await UserPermissionsEntity.update(user, permStr, true, msg.getChannel())
-            .then(() => response.message(Key("users.permission.granted.successful"), permStr, user.name))
+        await UserPermissionsEntity.update(user, permission, true, msg.getChannel())
+            .then(() => response.message("user:permission.granted", { permission, username: user.name }))
             .catch(e => {
-                response.message(Key("users.permission.granted.failed"), permStr, user.name);
+                response.genericError();
                 Logger.get().error("Unable to grant permission to user", { cause: e });
             });
     }
@@ -71,12 +71,12 @@ class UserCommand extends Command {
             permission: "permission.deny"
         });
         if (args === null) return;
-        const [user, permStr] = args as [ChatterEntity, string];
+        const [user, permission] = args as [ChatterEntity, string];
 
-        await UserPermissionsEntity.update(user, permStr, false, msg.getChannel())
-            .then(() => response.message(Key("users.permission.denied.successful"), user.name, permStr))
+        await UserPermissionsEntity.update(user, permission, false, msg.getChannel())
+            .then(() => response.message("user:permission.denied", { username: user.name, permission }))
             .catch(e => {
-                response.message(Key("users.permission.denied.failed"), user.name, permStr);
+                response.genericError();
                 Logger.get().error("Unable to deny permission for user", { cause: e });
             });
     }
@@ -101,22 +101,22 @@ class UserCommand extends Command {
             permission: "permission.reset"
         });
         if (args === null) return;
-        const [user, permStr] = args as [ChatterEntity, string|undefined];
+        const [user, permission] = args as [ChatterEntity, string|undefined];
 
-        if (permStr) {
-            await UserPermissionsEntity.delete(user, permStr)
-                .then(() => response.message(Key("users.permission.deleted.specific.successful"), user.name, permStr))
+        if (permission) {
+            await UserPermissionsEntity.delete(user, permission)
+                .then(() => response.message("user:permission.delete.specific", { username: user.name, permission }))
                 .catch(e => {
-                    response.message(Key("users.permission.deleted.specific.failed"), user.name, permStr);
+                    response.genericError();
                     Logger.get().error("Unable to deny permission for user", { cause: e });
                 });
         } else {
-            const confirmation = await this.confirmationFactory(msg, response.translate(Key("users.permission.deleted.all.confirm")), 30);
+            const confirmation = await this.confirmationFactory(msg, await response.translate("user:permission.delete.confirm", { username: user.name }), 30);
             confirmation.addListener(ConfirmedEvent, () => {
                 return UserPermissionsEntity.clear(user)
-                    .then(() => response.message(Key("users.permission.deleted.all.failed.successful"), user.name, permStr))
+                    .then(() => response.message("user:permission.delete.all", { username: user.name }))
                     .catch(e => {
-                        response.message(Key("users.permission.deleted.all.failed"), user.name, permStr);
+                        response.genericError();
                         Logger.get().error("Unable to deny permission for user", { cause: e });
                     });
             });

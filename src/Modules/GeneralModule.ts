@@ -25,7 +25,7 @@ class PingCommand extends Command {
         });
         if (args === null) return;
 
-        await response.message(Key("general.pong"), msg.getChatter().name);
+        await response.message("pong", { username: msg.getChatter().name });
     }
 }
 
@@ -51,7 +51,7 @@ class RawCommand extends Command {
         if (args === null) return;
         const [value] = args;
 
-        await response.message(value);
+        await response.rawMessage(value);
     }
 }
 
@@ -77,7 +77,7 @@ class EchoCommand extends Command {
         if (args === null) return;
         const [message] = args;
 
-        await response.message(">> " + message);
+        await response.rawMessage(">> " + message);
     }
 }
 
@@ -103,12 +103,7 @@ class EvalCommand extends Command {
         if (args === null) return;
         const [rawExpr] = args;
 
-        try {
-            await response.message(">> " +  await msg.evaluateExpression(rawExpr));
-        } catch (e) {
-            Logger.get().error("Unable to evaluate expression " + rawExpr, {cause: e});
-            await response.message(Key("general.failed_to_eval"));
-        }
+        await response.rawMessage(">> " +  await msg.evaluateExpression(rawExpr));
     }
 }
 
@@ -124,7 +119,7 @@ class ShutdownCommand extends Command {
         });
         if (args === null) return;
 
-        await response.broadcast(array_rand(response.getTranslation(Key("general.shutdown"))));
+        await response.broadcast(array_rand(await response.getTranslation("shutdown")));
         Logger.get().info("Shutting down...");
         process.exit();
     }
@@ -157,9 +152,9 @@ export default class GeneralModule extends AbstractModule {
         settings.registerSetting(new Setting("timezone", "America/New_York", SettingType.TIMEZONE));
 
         ExpressionSystem.getInstance().registerResolver(msg => ({
-            datetime: async (format?: string): Promise<string> => {
+            datetime: async (format = "Y-m-d h:i:s"): Promise<string> => {
                 const timezone = await msg.getChannel().getSetting<moment.MomentZone>("timezone");
-                return moment().tz(timezone.name).format(format ? format : "Y-m-d h:i:s");
+                return moment().tz(timezone.name).format(format);
             }
         }));
     }

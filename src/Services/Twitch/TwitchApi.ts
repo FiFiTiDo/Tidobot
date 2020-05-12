@@ -262,7 +262,10 @@ export namespace helix {
             const method = opts.method ? opts.method : "GET";
             const body = opts.body ? opts.body : undefined;
             const url = this.BASE_URL + opts.endpoint;
-            const headers = { "Authorization": `Bearer ${accessToken.token}` };
+            const headers = {
+                "Client-ID": this.clientId,
+                "Authorization": `Bearer ${accessToken.token}`
+            };
             if (opts.headers) Object.assign(headers, opts.headers);
             const qs = opts.query ? opts.query : undefined;
             const json = true;

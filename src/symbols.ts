@@ -1,6 +1,8 @@
 import {Database} from "sqlite3";
+import {TFunction} from "i18next";
 
 export default {
+    TranslateFunc: Symbol("Translation function"),
     Config: Symbol("config"),
     Logger: Symbol("logger"),
     DB: Symbol("database"),
@@ -11,4 +13,4 @@ export default {
     TwitchMessageFactory: Symbol("Twitch Message Factory")
 };
 
-export type DatabaseProvider = () => Promise<Database>;
+export type TranslationProvider = () => Promise<TFunction>;

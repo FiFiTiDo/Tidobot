@@ -62,10 +62,6 @@ export class Confirmation extends Dispatcher {
     check(code: string): boolean {
         return this.code === code;
     }
-
-    getCode(): string {
-        return this.code;
-    }
 }
 
 export interface ConfirmationFactory {
@@ -78,8 +74,8 @@ class ConfirmCommand extends Command {
     }
 
     execute({ event, message, response }: CommandEventArgs): Promise<any> {
-        if (!this.confirmations.hasChatter(message.getChatter())) return response.message("No confirmation found, it may have expired.");
-        if (event.getArgumentCount() < 1) return response.message("You need to specify the confirmation code to confirm.");
+        if (!this.confirmations.hasChatter(message.getChatter())) return response.message("confirmation:error.expired");
+        if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");
 
         const confirmation = this.confirmations.getChatter(message.getChatter());
         if (confirmation.check(event.getArgument(0))) {
@@ -111,11 +107,12 @@ export default class ConfirmationModule extends AbstractModule {
         confirmation.addListener(ExpiredEvent, () => this.confirmations.removeChatter(chatter));
         this.confirmations.setChatter(chatter, confirmation);
 
-        await message.getResponse().message(prompt);
-        await message.getResponse().message("Run %sconfirm %s within %d seconds to verify your decision.",
-            (await CommandSystem.getPrefix(message.getChannel())), code, seconds
-        );
-        await message.getResponse().message("Warning: this action might not be able to be undone.");
+        await message.getResponse().rawMessage(prompt);
+        await message.getResponse().message("confirmation:time", {
+            prefix: await CommandSystem.getPrefix(message.getChannel()),
+            code, seconds
+        });
+        await message.getResponse().message("confirmation:warning");
 
         return confirmation;
     }

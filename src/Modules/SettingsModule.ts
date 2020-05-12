@@ -46,9 +46,9 @@ class SetCommand extends Command {
         const [key, value] = args;
 
         msg.getChannel().getSettings().set(key, value)
-            .then(() => response.message(Key("settings.set.successful"), key, value))
+            .then(() => response.message("setting:set", { setting: key, value }))
             .catch(e => {
-                response.message(Key("settings.set.failed"), key);
+                response.genericError();
                 Logger.get().error("Unable to set setting", {cause: e});
             });
     }
@@ -75,9 +75,9 @@ class UnsetCommand extends Command {
         if (args === null) return;
         const key = args[0];
         msg.getChannel().getSettings().unset(key)
-            .then(() => response.message(Key("settings.unset.successful"), key))
+            .then(() => response.message("setting:unset", { setting: key }))
             .catch(e => {
-                response.message(Key("settings.unset.failed"), key);
+                response.genericError();
                 Logger.get().error("Unable to unset setting", {cause: e});
             });
     }
@@ -95,12 +95,12 @@ class ResetCommand extends Command {
         });
         if (args === null) return;
 
-        const confirmation = await this.confirmationFactory(msg, response.translate(Key("settings.reset.confirmation")), 30);
+        const confirmation = await this.confirmationFactory(msg, await response.translate("setting:confirm-reset"), 30);
         confirmation.addListener(ConfirmedEvent, () => {
             msg.getChannel().getSettings().reset()
-                .then(() => response.message(Key("settings.reset.successful")))
+                .then(() => response.message("setting:reset"))
                 .catch((e) => {
-                    response.message(Key("settings.reset.failed"));
+                    response.genericError();
                     Logger.get().error("Unable to reset the channel's settings", {cause: e});
                 });
         });

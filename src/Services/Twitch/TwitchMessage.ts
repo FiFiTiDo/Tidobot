@@ -5,12 +5,12 @@ import deepmerge from "deepmerge";
 import {helix, kraken} from "./TwitchApi";
 import moment from "moment-timezone";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import {ResponseFactory} from "../../Chat/Message";
+import ChannelEntity from "../../Database/Entities/ChannelEntity";;
 import {Role} from "../../Systems/Permissions/Role";
 import Logger from "../../Utilities/Logger";
 import IStream = helix.Stream;
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
+import {ResponseFactory} from "../../Chat/Response";
 
 export class TwitchMessage extends Message {
     private api: helix.Api;

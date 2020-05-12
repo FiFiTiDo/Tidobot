@@ -1,0 +1,12 @@
+{
+    "error": {
+        "unknown": "Could not find the counter: {{counter}}",
+        "exists": "There already exists a counter by the name {{counter}}"
+    },
+    "incremented": "Incremented counter {{counter}} by {{amount}}",
+    "decremented": "Decremented counter {{counter}} by {{amount}}",
+    "set": "Set counter {{counter}} to {{amount}}",
+    "created": "Created counter {{counter}}",
+    "deleted": "Deleted counter {{counter}}",
+    "value": "The counter {{counter}} is currently at the value {{value}}"
+}

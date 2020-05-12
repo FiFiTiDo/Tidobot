@@ -1,0 +1,14 @@
+{
+    "error": {
+        "not-permitted": "Hey! You cannot do that >:(",
+        "unknown": "Unknown permission: {{permission}}",
+        "invalid-role": "Invalid permission role: {{role}}",
+        "already-exists": "The permission {{permission}} already exists.",
+        "module-defined": "You cannot delete the permission {{permission}} as it is defined by a module"
+    },
+    "created": "Created the permission {{permission}} with the default role {{role}}",
+    "deleted": "Deleted the permission {{permission}}",
+    "reset": "Reset the permission {{permission}} back to it's default value",
+    "reset-all": "Reset all permissions back to their default values",
+    "set": "Set the permission level for {{permission}} to {{role}}"
+}

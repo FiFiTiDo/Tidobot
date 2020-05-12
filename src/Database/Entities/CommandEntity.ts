@@ -19,13 +19,13 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
         super(CommandEntity, id, params);
     }
 
-    @Column({ datatype: DataTypes.STRING })
+    @Column()
     public trigger: string;
 
-    @Column({ datatype: DataTypes.STRING })
+    @Column()
     public response: string;
 
-    @Column({ datatype: DataTypes.STRING })
+    @Column()
     public condition: string;
 
     @Column({ datatype: DataTypes.FLOAT })

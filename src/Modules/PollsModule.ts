@@ -59,7 +59,7 @@ class StrawpollCommand extends Command {
         let pollId;
         if (args.length < 1) {
             if (!this.lastStrawpoll.hasChannel(msg.getChannel())) {
-                await response.message(Key("polls.strawpoll.not_found"));
+                await response.message("poll:strawpoll.error.no-recent");
                 return;
             }
 
@@ -75,7 +75,7 @@ class StrawpollCommand extends Command {
 
         const total = res.votes.reduce((prev, next) => prev + next);
         const resp = res.options.map((option, index) => option + ": " + ((res.votes[index] / total) * 100) + "%").join(", ");
-        await response.message(Key("polls.results"), resp);
+        await response.message("poll:results", { results: resp });
     }
 
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -128,7 +128,7 @@ class StrawpollCommand extends Command {
         if (args === null) return;
         const {title, _: options, multi, dupcheck, captcha} = args;
 
-        if (options.length < 2) return response.message(Key("polls.strawpoll.no_options"));
+        if (options.length < 2) return response.message("poll:strawpoll.error.no-options");
 
         const resp: StrawpollPostResponse = await request({
             uri: "https://www.strawpoll.me/api/v2/polls",
@@ -139,7 +139,7 @@ class StrawpollCommand extends Command {
 
         let times = await msg.getChannel().getSetting<number>("polls.spamStrawpollLink");
         if (isNaN(times)) times = 1;
-        await response.spam(Key("polls.strawpoll.created"), times, 1, `https://www.strawpoll.me/${resp.id}`);
+        await response.spam("poll:strawpoll.created", {url: `https://www.strawpoll.me/${resp.id}`}, { times, seconds: 1 });
     }
 }
 
@@ -242,7 +242,7 @@ class VoteCommand extends Command {
 
         const successful = poll.addVote(option, msg.getChatter());
         if (announce)
-            return successful ? response.message(Key("polls.vote_accepted"), option) : response.message(Key("polls.already_voted"));
+            return successful ? response.message("poll:vote-accepted", { option }) : response.message("poll:error.already-voted");
     }
 }
 
@@ -258,7 +258,9 @@ class PollCommand extends Command {
 
     private async getPoll(msg: Message): Promise<Poll> {
         if (!this.runningPolls.hasChannel(msg.getChannel())) {
-            await msg.getResponse().message(Key("polls.not_running"), await CommandSystem.getPrefix(msg.getChannel()));
+            await msg.getResponse().message("poll:error.not-running", {
+                prefix: await CommandSystem.getPrefix(msg.getChannel())
+            });
             return;
         }
 
@@ -284,15 +286,17 @@ class PollCommand extends Command {
         const prefix = await CommandSystem.getPrefix(msg.getChannel());
 
         if (this.runningPolls.hasChannel(msg.getChannel())) {
-            await response.message(Key("polls.already_running"), prefix);
+            await response.message("poll:already-running", { prefix });
             return;
         }
 
         const poll = new Poll(options, msg.getChannel());
         this.runningPolls.setChannel(msg.getChannel(), poll);
 
-        await response.message(Key("polls.open"), prefix);
-        await response.message(Key("polls.options"), options.map(((value, index) => "#" + (index + 1) + ": " + value)).join(", "));
+        await response.message("poll:open", { prefix });
+        await response.message("poll:options", {
+            options: options.map(((value, index) => "#" + (index + 1) + ": " + value)).join(", ")
+        });
     }
 
     async stop({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -304,11 +308,11 @@ class PollCommand extends Command {
 
         const poll = await this.getPoll(msg);
         poll.close();
-        await response.message(Key("polls.closed"));
-        await response.message(Key("polls.drumroll_please"));
+        await response.message("poll:closed");
+        await response.message("poll:lead-up");
 
         setTimeout(() => {
-            response.message(Key("polls.results"), poll.formatResults());
+            response.message("polls:results", { results: poll.formatResults() });
         }, 5000);
     }
 
@@ -321,7 +325,7 @@ class PollCommand extends Command {
 
         if (!(await msg.checkPermission("polls.results"))) return;
         const poll = await this.getPoll(msg);
-        await response.message(Key("polls.results"), poll.formatResults());
+        await response.message("polls:results", { results: poll.formatResults() });
     }
 }
 

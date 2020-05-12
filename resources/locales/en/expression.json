@@ -1,0 +1,20 @@
+{
+    "error": {
+        "generic": "An error occurred while evaluating the expression",
+        "network": "A network error occurred",
+        "infinite-loop": "Infinite loop detected",
+        "argument": "Invalid argument, expected {{expected}}",
+        "shutdown": "You thought you could stop my bot? lmao",
+        "invalid-key": "Unknown key {{key}} at column {{column}}",
+        "out-of-bounds": "Index out of bounds, index: {{index}} at column {{column}}",
+        "illegal-state": "Illegal state: Expected {{expected}} but was given {{given}} at column {{column}}"
+    },
+    "types": {
+        "string": "a string",
+        "number": "a number",
+        "array": "an array",
+        "url": "a URL",
+        "css-selector": "a CSS selector",
+        "time": "a time string"
+    }
+}

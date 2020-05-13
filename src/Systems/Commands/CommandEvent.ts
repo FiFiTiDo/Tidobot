@@ -136,11 +136,12 @@ export class CommandEvent extends Event<CommandEvent> {
                     }
                 }
 
-                if (value === ValidatorResponse.FAILED) {
+                const isNumber = arg.value.type === "integer" || arg.value.type === "float";
+                if (value === ValidatorResponse.FAILED && !isNumber) {
                     if (!arg.silentFail)
                         await CommandSystem.showInvalidSyntax(opts.usage, this.msg);
                     return null;
-                } else if (value === ValidatorResponse.RESPONDED) {
+                } else if (value === ValidatorResponse.RESPONDED && !isNumber) {
                     return null;
                 }
 

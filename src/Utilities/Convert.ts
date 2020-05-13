@@ -61,10 +61,18 @@ export default async (value: string, settings: ValueSettingsTypes, msg: Message)
             return parseBool(value);
         case "integer": {
             const intVal = parseInt(value);
+            if (isNaN(intVal)) {
+                await msg.getResponse().message("error.convert", { value, expected: "an integer" });
+                return ValidatorResponse.RESPONDED;
+            }
             return checkRange(intVal, settings) ? intVal : ValidatorResponse.FAILED;
         }
         case "float": {
             const floatVal = parseFloat(value);
+            if (isNaN(floatVal)) {
+                await msg.getResponse().message("error.convert", { value, expected: "a float value" });
+                return ValidatorResponse.RESPONDED;
+            }
             return checkRange(floatVal, settings) ? floatVal : ValidatorResponse.FAILED;
         }
         case "string":

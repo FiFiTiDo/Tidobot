@@ -1,7 +1,8 @@
 {
     "pong": "@{{username}}, pong!",
     "error": {
-        "bot-not-permitted": "I'm afraid I cannot do that!"
+        "bot-not-permitted": "I'm afraid I cannot do that!",
+        "convert": "Unable to convert {{value}} to {{expected}}"
     },
     "shutdown": [
         "OH NO! It's past my bed time, time for me to go to sleep!",

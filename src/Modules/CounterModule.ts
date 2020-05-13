@@ -8,7 +8,7 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Message from "../Chat/Message";
 
@@ -29,11 +29,11 @@ class CounterCommand extends Command {
         this.addSubcommand("del", this.delete);
     }
 
-    static async counterConverter(input: string, msg: Message): Promise<CountersEntity | null> {
+    static async counterConverter(input: string, msg: Message): Promise<CountersEntity | ValidatorResponse> {
         const counter = CountersEntity.findByName(input, msg.getChannel());
         if (counter === null) {
             await msg.getResponse().message("counter:unknown", {counter: input});
-            return null;
+            return ValidatorResponse.RESPONDED;
         }
         return counter;
     }

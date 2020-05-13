@@ -15,7 +15,7 @@ import {inject} from "inversify";
 import symbols from "../symbols";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
 
 @HandlesEvents()
 export default class GroupsModule extends AbstractModule {
@@ -25,9 +25,12 @@ export default class GroupsModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity | null> => {
+    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity | ValidatorResponse> => {
         const group = await GroupsEntity.findByName(raw, msg.getChannel());
-        if (group === null) msg.getResponse().message("groups:error.unknown", {group: raw});
+        if (group === null) {
+            msg.getResponse().message("groups:error.unknown", {group: raw});
+            return ValidatorResponse.RESPONDED;
+        }
         return group
     };
 

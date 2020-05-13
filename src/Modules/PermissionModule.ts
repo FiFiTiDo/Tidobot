@@ -11,7 +11,7 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
 
 @HandlesEvents()
 export default class PermissionModule extends AbstractModule {
@@ -73,9 +73,12 @@ class PermissionCommand extends Command {
         this.addSubcommand("reset", this.reset);
     }
 
-    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity | null> => {
+    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity | ValidatorResponse> => {
         const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
-        if (perm === null) msg.getResponse().message("permission:error.unknown", {permission: raw});
+        if (perm === null) {
+            msg.getResponse().message("permission:error.unknown", {permission: raw});
+            return ValidatorResponse.RESPONDED;
+        }
         return perm;
     };
 

@@ -21,12 +21,7 @@ import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-
-const DOT = /\s?\(dot\)\s?/gi;
-const URL_PATTERN = /((http|ftp|https|sftp):\/\/)?(([\w.-]*)\.([\w]*))/igm;
-const CAPS_PATTERN = /[A-Z]/g;
-const SYMBOLS_PATTERN = /[`~!@#$%^&*()-_=+[{\]}\\|;:'",<.>/?]/g;
-const FAKE_PURGE = /^<message \w+>|^<\w+ deleted>/i;
+import FilterSystem from "../Systems/Filter/FilterSystem";
 
 
 class PermitCommand extends Command {
@@ -50,6 +45,7 @@ class PermitCommand extends Command {
         if (args === null) return;
         const [chatter] = args as [ChatterEntity];
 
+        FilterSystem.getInstance().permitUser(chatter);
         this.filterModule.permits.setChatter(chatter, moment());
         await response.message("filter:permit", {
             username: chatter.name,
@@ -59,7 +55,7 @@ class PermitCommand extends Command {
 }
 
 class PardonCommand extends Command {
-    constructor(private filterModule: FilterModule) {
+    constructor() {
         super("pardon", "<user>");
     }
 
@@ -79,7 +75,7 @@ class PardonCommand extends Command {
         if (args === null) return;
         const [chatter] = args as [ChatterEntity];
 
-        this.filterModule.strikes.setChatter(chatter, 0);
+        FilterSystem.getInstance().pardonUser(chatter);
         await response.message("filter:strikes-cleared", {username: chatter.name});
     }
 }
@@ -247,7 +243,7 @@ export default class FilterModule extends AbstractModule {
     initialize(): void {
         const cmd = CommandSystem.getInstance();
         cmd.registerCommand(new PermitCommand(this), this);
-        cmd.registerCommand(new PardonCommand(this), this);
+        cmd.registerCommand(new PardonCommand(), this);
         cmd.registerCommand(new PurgeCommand(this.bot), this);
         cmd.registerCommand(new FilterCommand(this.makeConfirmation), this);
 

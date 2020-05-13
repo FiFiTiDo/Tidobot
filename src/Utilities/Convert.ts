@@ -1,6 +1,7 @@
 import Message from "../Chat/Message";
 import {parseBool} from "./functions";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
+import {ValidatorResponse} from "../Systems/Commands/CommandEvent";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -14,7 +15,7 @@ interface ValueSettings {
 
 interface CustomValueSettings<T> extends ValueSettings {
     type: "custom";
-    converter: ValueConverter<T>;
+    converter: ValueConverter<T|ValidatorResponse>;
 }
 
 interface NumberValueSettings extends ValueSettings {
@@ -52,7 +53,7 @@ function isAccepted(val: string, arg: StringValueSettings): boolean {
     return arg.accepted ? arg.accepted.indexOf(val) >= 0 : true;
 }
 
-export default async (value: string, settings: ValueSettingsTypes, msg: Message): Promise<any> => {
+export default async (value: string, settings: ValueSettingsTypes, msg: Message): Promise<any|ValidatorResponse> => {
     switch (settings.type) {
         case "custom":
             return settings.converter(value, msg);
@@ -60,19 +61,21 @@ export default async (value: string, settings: ValueSettingsTypes, msg: Message)
             return parseBool(value);
         case "integer": {
             const intVal = parseInt(value);
-            return checkRange(intVal, settings) ? intVal : null;
+            return checkRange(intVal, settings) ? intVal : ValidatorResponse.FAILED;
         }
         case "float": {
             const floatVal = parseFloat(value);
-            return checkRange(floatVal, settings) ? floatVal : null;
+            return checkRange(floatVal, settings) ? floatVal : ValidatorResponse.FAILED;
         }
         case "string":
-            return isAccepted(value, settings) ? value : null;
+            return isAccepted(value, settings) ? value : ValidatorResponse.FAILED;
         case "chatter": {
             let chatter = msg.getChannel().findChatterByName(value);
-            if (chatter === null) chatter = await ChatterEntity.findByName(value, msg.getChannel());
-            if (chatter === null)
+            if (chatter === null) chatter = await ChatterEntity.findByName(value.toLowerCase(), msg.getChannel());
+            if (chatter === null) {
                 msg.getResponse().message("user:unknown", {username: value});
+                return ValidatorResponse.RESPONDED;
+            }
 
             return chatter;
         }

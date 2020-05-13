@@ -10,7 +10,7 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import {CommandEvent, CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEvent, CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 
 @HandlesEvents()
@@ -19,9 +19,12 @@ export default class ListModule extends AbstractModule {
         super(ListModule.name);
     }
 
-    public static async listNameArgConverter(raw: string, msg: Message): Promise<ListsEntity | null> {
+    public static async listNameArgConverter(raw: string, msg: Message): Promise<ListsEntity | ValidatorResponse> {
         const list = await ListsEntity.findByName(raw, msg.getChannel());
-        if (list === null) await msg.getResponse().message("lists:unknown", {list: raw});
+        if (list === null) {
+            await msg.getResponse().message("lists:unknown", {list: raw});
+            return ValidatorResponse.RESPONDED;
+        }
         return list;
     }
 

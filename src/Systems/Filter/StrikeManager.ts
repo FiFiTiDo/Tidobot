@@ -1,8 +1,6 @@
 import ChatterEntity, {ChatterStateList} from "../../Database/Entities/ChatterEntity";
-import {Response} from "../../Chat/Response";
 import Setting, {SettingType} from "../Settings/Setting";
 import SettingsSystem from "../Settings/SettingsSystem";
-import Adapter from "../../Services/Adapter";
 import Logger from "../../Utilities/Logger";
 import Message from "../../Chat/Message";
 
@@ -42,14 +40,18 @@ export default class StrikeManager {
                     }));
                 Logger.get().info(`Final strike issued for the user ${chatter.name} in the channel ${chatter.getChannel().name}, reason: ${banReason}`)
             } else {
+                await response.message("filter:strike", {username: chatter.name, reason, number: strike});
                 const length = await chatter.getChannel().getSetting<number>(`filter.strike.${strike}`);
                 if (length > 0)
                     await adapter.tempbanChatter(chatter, length, banReason);
                 Logger.get().info(`Strike ${strike} issued for the user ${chatter.name} in the channel ${chatter.getChannel().name}, reason: ${banReason}`)
             }
         } catch (err) {
-            await response.message("filter:strike", {username: chatter.name, reason, number: strike});
             Logger.get().error("Unable to ban user while issuing strike", { cause: err });
         }
+    }
+
+    public pardonUser(chatter: ChatterEntity) {
+        this.strikes.setChatter(chatter, 0);
     }
 }

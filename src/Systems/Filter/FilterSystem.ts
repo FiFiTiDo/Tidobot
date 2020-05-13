@@ -13,14 +13,25 @@ import MessageEvent, {MessageEventArgs} from "../../Chat/Events/MessageEvent";
 import PermissionSystem from "../Permissions/PermissionSystem";
 import Permission from "../Permissions/Permission";
 import {Role} from "../Permissions/Role";
+import ChatterEntity, {ChatterStateList} from "../../Database/Entities/ChatterEntity";
+import moment from "moment";
 
 @HandlesEvents()
 export default class FilterSystem {
-    private readonly strikeManager: StrikeManager;
+    private static instance: FilterSystem = null;
+
+    public static getInstance(): FilterSystem {
+        if (this.instance === null)
+            this.instance = new FilterSystem();
+
+        return this.instance;
+    }
+
+    private readonly strikeManager: StrikeManager = new StrikeManager();
+    private readonly permits: ChatterStateList<moment.Moment> = new ChatterStateList<moment.Moment>(null);
     private readonly filters: Filter[];
 
     constructor() {
-        this.strikeManager = new StrikeManager();
         this.filters = [
             new BadWordFilter(this.strikeManager),
             new CapsFilter(this.strikeManager),
@@ -38,12 +49,30 @@ export default class FilterSystem {
 
     @EventHandler(MessageEvent)
     async onMessage(eventArgs: MessageEventArgs): Promise<void> {
-        if (await eventArgs.message.checkPermission("filter.ignore.all")) return;
+        const { sender, channel, message } = eventArgs;
+        if (await message.checkPermission("filter.ignore.all")) return;
+        if (this.permits.hasChatter(sender)) {
+            const timestamp = this.permits.getChatter(sender);
+            const expires = timestamp.clone().add(await channel.getSetting<string>("filter.permit-length"), "seconds");
+            if (moment().isBefore(expires))
+                return;
+            else
+                this.permits.removeChatter(sender);
+        }
+
 
         const lists = await eventArgs.channel.getFilters();
 
         for (const filter of this.filters)
             if (await filter.handleMessage(lists, eventArgs))
                 break;
+    }
+
+    pardonUser(chatter: ChatterEntity) {
+        this.strikeManager.pardonUser(chatter);
+    }
+
+    permitUser(chatter: ChatterEntity) {
+        this.permits.setChatter(chatter, moment());
     }
 }

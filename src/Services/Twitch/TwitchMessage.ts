@@ -31,14 +31,15 @@ export class TwitchMessage extends Message {
     public async getUserRoles(): Promise<Role[]> {
         const levels = await super.getUserRoles();
 
-        if (this.userstate.badges.premium) levels.push(Role.PREMIUM);
-        if (this.userstate.badges.turbo) levels.push(Role.PREMIUM);
-        if (this.userstate.badges.subscriber) levels.push(Role.SUBSCRIBER);
-        if (this.userstate.badges.moderator) levels.push(Role.MODERATOR);
-        if (this.userstate.badges.global_mod) levels.push(Role.MODERATOR);
-        if (this.userstate.badges.staff) levels.push(Role.ADMIN);
-        if (this.userstate.badges.admin) levels.push(Role.ADMIN);
-        if (this.userstate.badges.broadcaster) levels.push(Role.BROADCASTER);
+        const badges = this.userstate.badges || {};
+        if (badges.premium) levels.push(Role.PREMIUM);
+        if (badges.turbo) levels.push(Role.PREMIUM);
+        if (badges.subscriber) levels.push(Role.SUBSCRIBER);
+        if (badges.moderator) levels.push(Role.MODERATOR);
+        if (badges.global_mod) levels.push(Role.MODERATOR);
+        if (badges.staff) levels.push(Role.ADMIN);
+        if (badges.admin) levels.push(Role.ADMIN);
+        if (badges.broadcaster) levels.push(Role.BROADCASTER);
         if (this.userstate.username.toLowerCase() === "fifitido") levels.push(Role.OWNER);
 
         return levels;

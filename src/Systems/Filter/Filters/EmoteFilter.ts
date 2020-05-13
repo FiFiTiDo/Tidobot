@@ -15,7 +15,7 @@ export default class EmoteFilter extends Filter {
 
         const settings = SettingsSystem.getInstance();
         settings.registerSetting(new Setting("filter.emotes.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.emotes.whitelist", "true", SettingType.BOOLEAN));
+        settings.registerSetting(new Setting("filter.emotes.whitelist", "false", SettingType.BOOLEAN));
         settings.registerSetting(new Setting("filter.emotes.amount", "20", SettingType.INTEGER));
 
         const perm = PermissionSystem.getInstance();

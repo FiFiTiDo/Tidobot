@@ -13,7 +13,7 @@ import FilterSystem from "./Systems/Filter/FilterSystem";
 
 container.load(buildProviderModule());
 
-new FilterSystem();
+FilterSystem.getInstance();
 
 const app = container.get<Application>(Application);
 container.get<ModuleManager>(ModuleManager);

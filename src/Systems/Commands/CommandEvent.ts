@@ -18,6 +18,10 @@ export interface CommandEventArgs {
     response: Response;
 }
 
+export enum ValidatorResponse {
+    RESPONDED, FAILED
+}
+
 export class CommandEvent extends Event<CommandEvent> {
     constructor(private readonly command: string, private readonly args: string[], private readonly msg: Message) {
         super(CommandEvent.name);
@@ -131,11 +135,15 @@ export class CommandEvent extends Event<CommandEvent> {
                         value = rawValue;
                     }
                 }
-                if (value === null) {
+
+                if (value === ValidatorResponse.FAILED) {
                     if (!arg.silentFail)
                         await CommandSystem.showInvalidSyntax(opts.usage, this.msg);
                     return null;
+                } else if (value === ValidatorResponse.RESPONDED) {
+                    return null;
                 }
+
                 args.push(value);
             }
             return args;

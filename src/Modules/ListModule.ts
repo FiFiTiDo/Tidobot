@@ -139,8 +139,14 @@ class ListCommand extends Command {
             }
         } else {
             if (!await msg.checkPermission("list.view.random")) return;
+            const items = await list.getAllItems();
 
-            item = array_rand(await list.getAllItems());
+            if (items.length < 1) {
+                await msg.getResponse().message("lists:empty", {list: list.name});
+                return;
+            }
+
+            item = array_rand(items);
         }
 
         await msg.getResponse().message("#" + item.id + ": " + item.value);

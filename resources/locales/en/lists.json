@@ -1,5 +1,6 @@
 {
     "unknown": "The list {{list}} does not exist",
+    "empty": "The list {{list}} does not have any items on it",
     "exists": "The list {{list}} already exists",
     "created": "Created the list {{list}}",
     "deleted": "Deleted the list {{list}}",

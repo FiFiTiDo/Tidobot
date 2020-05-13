@@ -24,7 +24,7 @@ export default class ChatterList {
         for (let i = 0; i < this.chatters.length; i++) {
             const chatter2 = this.chatters[i];
             if (chatter.is(chatter2)) {
-                this.chatters[chatter.getChannel().channelId].splice(i, 1);
+                this.chatters.splice(i, 1);
                 return true;
             }
         }

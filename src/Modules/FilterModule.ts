@@ -113,6 +113,11 @@ class PurgeCommand extends Command {
 class FilterCommand extends Command {
     constructor(private makeConfirmation: ConfirmationFactory) {
         super("filter", "<add|remove|reset>");
+
+        this.addSubcommand("add", this.add);
+        this.addSubcommand("remove", this.remove);
+        this.addSubcommand("rem", this.remove);
+        this.addSubcommand("reset", this.reset);
     }
 
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -122,7 +127,7 @@ class FilterCommand extends Command {
                 {
                     value: {
                         type: "string",
-                        accepted: ["domains", "bad_words", "emotes"]
+                        accepted: ["domains", "badWords", "emotes"]
                     },
                     required: true
                 },
@@ -137,8 +142,8 @@ class FilterCommand extends Command {
             permission: "filter.list.add"
         });
         if (args === null) return;
-        const [list, item] = args as ["domains" | "bad_words" | "emotes", string];
-        const lists = await FiltersEntity.getByChannel(msg.getChannel());
+        const [list, item] = args as ["domains" | "badWords" | "emotes", string];
+        const lists = await msg.getChannel().getFilters();
 
         if (array_add(item, lists[list])) {
             try {
@@ -174,7 +179,7 @@ class FilterCommand extends Command {
         });
         if (args === null) return;
         const [list, item] = args as ["domains" | "bad_words" | "emotes", string];
-        const lists = await FiltersEntity.getByChannel(msg.getChannel());
+        const lists = await msg.getChannel().getFilters();
 
         if (array_remove(item, lists[list])) {
             try {
@@ -203,7 +208,7 @@ class FilterCommand extends Command {
         });
         if (args === null) return;
         const [list] = args as ["domains" | "bad_words" | "emotes"];
-        const lists = await FiltersEntity.getByChannel(msg.getChannel());
+        const lists = await msg.getChannel().getFilters();
 
         const confirmation = await this.makeConfirmation(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
@@ -256,149 +261,12 @@ export default class FilterModule extends AbstractModule {
         perm.registerPermission(new Permission("filter.purge", Role.MODERATOR));
 
         const settings = SettingsSystem.getInstance();
-        settings.registerSetting(new Setting("filter.urls.whitelist", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.caps.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.caps.amount", "20", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.spam.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.spam.amount", "15", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.symbols.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.symbols.amount", "20", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.emotes.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.emotes.whitelist", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.emotes.amount", "20", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.fake-purge.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.bad-word.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.long-message.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.long-message.length", "325", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.ignore-subs", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.ignore-vips", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.ignore-premium", "true", SettingType.BOOLEAN));
         settings.registerSetting(new Setting("filter.permit-length", "30", SettingType.INTEGER));
         settings.registerSetting(new Setting("filter.purge-length", "1", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.strike.1", "0", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.strike.2", "600", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.strike.3", "28800", SettingType.INTEGER));
     }
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
         await FiltersEntity.createForChannel(channel);
-    }
-
-    @EventHandler(MessageEvent)
-    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
-        const msg = event.getMessage();
-        const channel = msg.getChannel();
-
-        if (await msg.checkPermission("filter.ignore")) return;
-        if (this.permits.hasChatter(msg.getChatter())) {
-            const timestamp = this.permits.getChatter(msg.getChatter());
-            const expires = timestamp.clone().add(await msg.getChannel().getSetting<string>("filter.permit-length"), "seconds");
-            if (moment().isBefore(expires)) {
-                return;
-            } else {
-                this.permits.removeChatter(msg.getChatter());
-            }
-        }
-        const roles = await msg.getUserRoles();
-        if (roles.indexOf(Role.REGULAR) >= 0) return;
-        if (roles.indexOf(Role.SUBSCRIBER) >= 0 &&
-            await msg.getChannel().getSettings().get("filter.ignore-subs")) return;
-        if (roles.indexOf(Role.VIP) >= 0 &&
-            await msg.getChannel().getSettings().get("filter.ignore-vips")) return;
-        if (roles.indexOf(Role.PREMIUM) >= 0 &&
-            await msg.getChannel().getSettings().get("filter.ignore-premium")) return;
-        if (getMaxRole(roles) >= Role.MODERATOR) return;
-
-        const lists = await FiltersEntity.getByChannel(channel);
-
-        const noDot = msg.getRaw().replace(DOT, ".");
-        const whitelistUrl = await msg.getChannel().getSettings().get("filter.urls.whitelist");
-        while (true) {
-            const res = URL_PATTERN.exec(noDot);
-            if (res === null) break;
-            const domain = res[3];
-
-            if (whitelistUrl ? !array_contains(domain, lists.domains) : array_contains(domain, lists.domains)) {
-                await this.nextStrike("url", msg);
-                return;
-            }
-        }
-
-        if (await msg.getChannel().getSettings().get("filter.caps.enabled")) {
-            const amount = (msg.getRaw().match(CAPS_PATTERN) || []).length;
-            if (amount >= await msg.getChannel().getSettings().get("filter.caps.amount")) {
-                await this.nextStrike("caps", msg);
-                return;
-            }
-        }
-
-        if (await msg.getChannel().getSettings().get("filter.spam.enabled")) {
-            // TODO: Add spam filter
-        }
-
-        if (await msg.getChannel().getSettings().get("filter.symbols.enabled")) {
-            const amount = (msg.getRaw().match(SYMBOLS_PATTERN) || []).length;
-            if (amount >= await msg.getChannel().getSettings().get("filter.symbols.amount")) {
-                await this.nextStrike("symbols", msg);
-                return;
-            }
-        }
-
-        if (await msg.getChannel().getSettings().get("filter.emotes.enabled")) {
-            const badWords = lists.emotes;
-            const lower = msg.getRaw().toLowerCase();
-            const whitelist = await msg.getChannel().getSettings().get("filter.emotes.whitelist");
-            for (const badWord of badWords) {
-                if (whitelist ? lower.indexOf(badWord.toLowerCase()) < 0 : lower.indexOf(badWord.toLowerCase()) >= 0) {
-                    await this.nextStrike("emote.blacklisted", msg);
-                    return;
-                }
-            }
-
-            if (msg instanceof TwitchMessage && msg.getUserState() && msg.getUserState().emotes) {
-                const amount = Object.values(msg.getUserState().emotes).reduce<number>((previous, next) => {
-                    return previous + next.length;
-                }, 0);
-                if (amount >= await msg.getChannel().getSettings().get("filter.emotes.amount")) {
-                    await this.nextStrike("emote.too_many", msg);
-                    return;
-                }
-            }
-        }
-
-        if (await msg.getChannel().getSettings().get("filter.fake-purge.enabled")) {
-            if (FAKE_PURGE.test(msg.getRaw())) {
-                await this.nextStrike("fake_purge", msg);
-                return;
-            }
-        }
-
-        if (await msg.getChannel().getSettings().get("filter.bad-word.enabled")) {
-            const badWords = lists.badWords;
-            const lower = msg.getRaw().toLowerCase();
-            for (const badWord of badWords) {
-                if (badWord.length < 1) continue;
-                if (lower.indexOf(badWord.toLowerCase()) >= 0) {
-                    await this.nextStrike("bad_word", msg);
-                    return;
-                }
-            }
-        }
-
-        if (await msg.getChannel().getSettings().get("filter.long-message.enabled")) {
-            if (msg.getRaw().length >= await msg.getChannel().getSettings().get("filter.long-message.length")) {
-                await this.nextStrike("long_message", msg);
-                return;
-            }
-        }
-    }
-
-    async nextStrike(reasonKey: string, msg: Message): Promise<void> {
-        const strike = (this.strikes.getChatter(msg.getChatter()) + 1) % 4;
-        this.strikes.setChatter(msg.getChatter(), strike);
-        const reason = await msg.getResponse().translate(`filter:reasons.${reasonKey}`);
-
-        await msg.getResponse().message("filter:strike", {username: msg.getChatter().name, reason, number: strike});
     }
 }

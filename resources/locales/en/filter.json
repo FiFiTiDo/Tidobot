@@ -18,16 +18,16 @@
     "strike": "@{{username}}, {{reason}} [Strike #{{number}}]",
     "reasons": {
         "url": "URLs from that domain are not permitted",
-        "caps": "Calm down! There's no reason to shout",
-        "spam": "You're spamming too much",
+        "caps": "Calm down! There is no reason to shout",
+        "spam": "You are spamming too much",
         "symbols": "What is this? Hieroglyphics?",
         "emotes": {
-            "too-many": "Whoa man, that's too many emotes",
-            "blacklisted": "You're not allowed to use that emote"
+            "too-many": "Whoa man, that is too many emotes",
+            "blacklisted": "You are not allowed to use that emote"
         },
-        "fake_purge": "You can't fool me with your fake purge",
-        "bad_word": "HEY! You can't say that!",
-        "long_message": "Please don't post a monologue in the chat"
+        "fake-purge": "You cannot fool me with your fake purge",
+        "bad-word": "HEY! You cannot say that!",
+        "long-message": "Please do not post a monologue in the chat"
     },
     "ban-reasons": {
         "url": "Blacklisted/Non-whitelisted URL",
@@ -38,9 +38,10 @@
             "too-many": "Too many emotes",
             "blacklisted": "Blacklisted emote"
         },
-        "fake_purge": "Fake purge message",
-        "bad_word": "Blacklisted word",
-        "long_message": "Long message"
+        "fake-purge": "Fake purge message",
+        "bad-word": "Blacklisted word",
+        "long-message": "Long message"
     },
-    "ban-reason": "{{reason}} // Automated by TidoBot"
+    "ban-reason": "{{reason}} // Automated by TidoBot",
+    "strikeout": "Ran out of strikes // {{reason}}"
 }

@@ -92,6 +92,10 @@ export default class Message {
         return this.response;
     }
 
+    public getAdapter(): Adapter {
+        return this.adapter;
+    }
+
     public addToLoopProtection(command: string): void {
         this.loopProtection.push(command.toLowerCase());
     }

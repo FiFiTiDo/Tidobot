@@ -10,6 +10,7 @@ import {Observable} from "../../Utilities/Patterns/Observable";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import ChatterList from "../../Chat/ChatterList";
 import {ConvertedSetting} from "../../Systems/Settings/Setting";
+import FiltersEntity from "./FiltersEntity";
 
 @Id
 @Table(({service}) => `${service}_channels`)
@@ -84,10 +85,19 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
     getChatters(): ChatterEntity[] {
         return this.chatterList.getAll();
     }
+
+    async getFilters(): Promise<FiltersEntity> {
+        let filters = await FiltersEntity.getByChannel(this);
+        if (filters === null)
+            filters = await FiltersEntity.createForChannel(this);
+        if (filters === null)
+            throw new Error("Unable to retrieve filters.");
+        return filters;
+    }
 }
 
 export class ChannelStateList<T> {
-    private readonly list: { [key: string]: T };
+    private list: { [key: string]: T };
     private readonly defVal: T;
 
     constructor(defVal: T) {
@@ -112,5 +122,9 @@ export class ChannelStateList<T> {
 
     deleteChannel(channel: ChannelEntity): void {
         delete this.list[channel.channelId];
+    }
+
+    clear(): void {
+        this.list = {};
     }
 }

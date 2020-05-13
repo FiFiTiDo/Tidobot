@@ -60,6 +60,7 @@
     "ioredis": "^4.14.1",
     "jexl": "^2.2.2",
     "jison": "^0.4.18",
+    "leven": "^3.1.0",
     "minimist-string": "^1.0.2",
     "moment": "^2.24.0",
     "moment-timezone": "^0.5.27",

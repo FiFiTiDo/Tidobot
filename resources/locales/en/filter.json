@@ -27,7 +27,8 @@
         },
         "fake-purge": "You cannot fool me with your fake purge",
         "bad-word": "HEY! You cannot say that!",
-        "long-message": "Please do not post a monologue in the chat"
+        "long-message": "Please do not post a monologue in the chat",
+        "repetition": "No need to repeat yourself"
     },
     "ban-reasons": {
         "url": "Blacklisted/Non-whitelisted URL",
@@ -40,7 +41,8 @@
         },
         "fake-purge": "Fake purge message",
         "bad-word": "Blacklisted word",
-        "long-message": "Long message"
+        "long-message": "Long message",
+        "repetition": "Repetition"
     },
     "ban-reason": "{{reason}} // Automated by TidoBot",
     "strikeout": "Ran out of strikes // {{reason}}"

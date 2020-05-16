@@ -8,7 +8,7 @@ import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/Expres
 import {Response, ResponseFactory} from "./Response";
 
 export default class Message {
-
+    protected stripped: string;
     private readonly parts: string[];
     private readonly response: Response;
     private loopProtection: string[];
@@ -20,6 +20,7 @@ export default class Message {
         this.parts = MessageParser.parse(raw);
         this.loopProtection = [];
         this.response = responseFactory(this);
+        this.stripped = raw;
     }
 
     public async getUserRoles(): Promise<Role[]> {
@@ -70,6 +71,10 @@ export default class Message {
 
     public getRaw(): string {
         return this.raw;
+    }
+
+    public getStripped(): string {
+        return this.stripped;
     }
 
     public getPart(i: number): string {

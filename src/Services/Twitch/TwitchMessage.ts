@@ -10,8 +10,6 @@ import {Role} from "../../Systems/Permissions/Role";
 import Logger from "../../Utilities/Logger";
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
 import {ResponseFactory} from "../../Chat/Response";
-
-
 import IStream = helix.Stream;
 
 export class TwitchMessage extends Message {
@@ -26,6 +24,13 @@ export class TwitchMessage extends Message {
 
         this.api = adapter.api;
         this.oldApi = adapter.oldApi;
+
+        if (userstate.emotes) {
+            let stripped = message;
+            for (const emote of Object.keys(userstate.emotes))
+                stripped.replace(emote, '');
+            this.stripped = stripped;
+        }
     }
 
     public async getUserRoles(): Promise<Role[]> {

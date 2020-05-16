@@ -1,19 +1,15 @@
 import AbstractModule from "./AbstractModule";
-import MessageEvent from "../Chat/Events/MessageEvent";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
-import {TwitchMessage} from "../Services/Twitch/TwitchMessage";
-import Message from "../Chat/Message";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import FiltersEntity from "../Database/Entities/FiltersEntity";
-import {array_add, array_contains, array_remove} from "../Utilities/ArrayUtils";
+import {array_add, array_remove} from "../Utilities/ArrayUtils";
 import Bot from "../Application/Bot";
-import {getMaxRole, Role} from "../Systems/Permissions/Role";
+import {Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
-import {EventArguments} from "../Systems/Event/Event";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {inject} from "inversify";
@@ -70,7 +66,7 @@ class PardonCommand extends Command {
                     required: true
                 }
             ],
-            permission: "filter.clear-strikes"
+            permission: "filter.pardon"
         });
         if (args === null) return;
         const [chatter] = args as [ChatterEntity];

@@ -209,7 +209,7 @@ export default class QueueModule extends AbstractModule {
         perm.registerPermission(new Permission("queue.join", Role.NORMAL));
         perm.registerPermission(new Permission("queue.check", Role.NORMAL));
         perm.registerPermission(new Permission("queue.check.others", Role.MODERATOR));
-        perm.registerPermission(new Permission("queue.pop", Role.NORMAL));
+        perm.registerPermission(new Permission("queue.pop", Role.MODERATOR));
         perm.registerPermission(new Permission("queue.peak", Role.MODERATOR));
         perm.registerPermission(new Permission("queue.clear", Role.MODERATOR));
         perm.registerPermission(new Permission("queue.open", Role.MODERATOR));

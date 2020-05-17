@@ -19,11 +19,12 @@ import AbstractModule from "./AbstractModule";
 import UserModule from "./UserModule";
 import symbols from "../symbols";
 import {autoProvide} from "inversify-binding-decorators";
+import QueueModule from "./QueueModule";
 
 export const ALL_MODULES = [
     ConfirmationModule, PermissionModule, GroupsModule, SettingsModule, GeneralModule, CustomCommandModule, ListModule,
     PollsModule, CounterModule, FunModule, NewsModule, RaffleModule, CurrencyModule, FilterModule, BettingModule,
-    TidobotModule, UserModule
+    TidobotModule, UserModule, QueueModule
 ];
 
 export const ALL_MODULES_KEY = Symbol("All Modules");

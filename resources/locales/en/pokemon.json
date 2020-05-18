@@ -1,0 +1,33 @@
+{
+    "error": {
+        "full": "Your team is full, you need to release a pokemon from your team first",
+        "already-caught": "You have already caught that pokemon",
+        "not-caught": "You have not caught that pokemon",
+        "empty": "You do not have any pokemon on your team",
+        "empty-other": "{{username}} does not have any pokemon on their team",
+        "self": "You cannot battle yourself",
+        "no-team-target": "Wow rude, you are trying to attack a poor defenseless trainer?",
+        "no-team-self": "You cannot engage in a battle without any pokemon"
+    },
+    "team": "{{username}}'s team: {{team}}",
+    "catch": {
+        "failed": [
+            "Almost had it!",
+            "Not even close.",
+            "It broke free!",
+            "So close!"
+        ],
+        "success": "Got it! Nature: {{nature}}",
+        "full": "{{username}}: {{pokemon}}! {{result}}"
+    },
+    "released": "{{username}} has released {{pokemon}}",
+    "stats": "{{username}} {{ratio}}% // {{won}} won - {{lost}} lost - {{draw}} draw",
+    "top": "Masters: {{trainers}}",
+    "battle": {
+        "base": "{{self}}'s {{selfMon}} vs. {{target}}'s {{targetMon}} {{result}}",
+        "level-up": "{{pokemon}} levels up!",
+        "win": "{{trainer}} was victorious!",
+        "lose": "{{trainer}} was defeated!",
+        "draw": "It is a draw!"
+    }
+}

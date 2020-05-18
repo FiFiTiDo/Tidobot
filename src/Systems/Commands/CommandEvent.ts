@@ -7,6 +7,8 @@ import CommandSystem from "./CommandSystem";
 import {CliArgsEventValidationOptions, CommandEventValidationOptions} from "./Interfaces";
 import {Response} from "../../Chat/Response";
 import minimist = require("minimist-string");
+import ChatterEntity from "../../Database/Entities/ChatterEntity";
+import ChannelEntity from "../../Database/Entities/ChannelEntity";
 
 function isCliArgs(arg: any): arg is CliArgsEventValidationOptions {
     return arg.cli_args !== undefined;
@@ -16,6 +18,8 @@ export interface CommandEventArgs {
     event: CommandEvent;
     message: Message;
     response: Response;
+    sender: ChatterEntity;
+    channel: ChannelEntity;
 }
 
 export enum ValidatorResponse {
@@ -31,7 +35,9 @@ export class CommandEvent extends Event<CommandEvent> {
         return {
             event: this,
             message: this.msg,
-            response: this.msg.getResponse()
+            response: this.msg.getResponse(),
+            sender: this.msg.getChatter(),
+            channel: this.msg.getChannel()
         };
     }
 

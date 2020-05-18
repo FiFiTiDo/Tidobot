@@ -1,16 +1,6 @@
 import * as winston from "winston";
 import * as util from "util";
 import moment from "moment"
-import {array_rand} from "./ArrayUtils";
-
-export function generate_random_code(length: number): string {
-    let text = "";
-    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
-
-    for (let i = 0; i < length; i++) text += array_rand(possible);
-
-    return text;
-}
 
 export const error_format = winston.format(info => {
     if (info.cause && info.cause instanceof Error) {

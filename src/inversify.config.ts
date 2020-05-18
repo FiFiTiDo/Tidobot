@@ -34,12 +34,12 @@ container.bind<Adapter>(Adapter).toDynamicValue(ctx => {
     }
 });
 container.bind<ModuleManager>(ModuleManager).toSelf();
-container.bind<TranslationProvider>(symbols.TranslateFunc).toProvider<TFunction>(ctx => {
+container.bind<TranslationProvider>(symbols.TranslateFunc).toProvider<TFunction>(() => {
     return async () => {
         return await i18next.use(Backend).init({
             ns: [
                 "bet", "command", "confirmation", "counter", "default", "expression", "filter", "fun", "groups", "lists",
-                "news", "permission", "poll", "raffle", "setting", "user"
+                "news", "permission", "poll", "raffle", "setting", "user", "queue", "pokemon"
             ],
             defaultNS: "default",
             lng: process.env.LANGUAGE,

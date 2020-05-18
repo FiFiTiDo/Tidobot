@@ -2,11 +2,11 @@ import AbstractModule from "./AbstractModule";
 import Dispatcher from "../Systems/Event/Dispatcher";
 import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
-import {generate_random_code} from "../Utilities/functions";
 import {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
+import {generateRandomCode} from "../Utilities/RandomUtils";
 
 export class ConfirmedEvent extends Event<ConfirmedEvent> {
     public static readonly NAME = "confirmed";
@@ -101,7 +101,7 @@ export default class ConfirmationModule extends AbstractModule {
 
     async make(message: Message, prompt: string, seconds: number): Promise<Confirmation> {
         const chatter = message.getChatter();
-        const code = generate_random_code(6);
+        const code = generateRandomCode(6);
         const confirmation = new Confirmation(seconds, code);
         confirmation.addListener(ExpiredEvent, () => this.confirmations.removeChatter(chatter));
         this.confirmations.setChatter(chatter, confirmation);

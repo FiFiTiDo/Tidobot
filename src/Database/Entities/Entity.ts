@@ -207,7 +207,7 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
         return model;
     }
 
-    is(entity: Entity<any>): entity is this {
+    is(entity: Entity<any>): boolean {
         return entity.id === this.id;
     }
 

@@ -10,22 +10,26 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import {CommandEvent, CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
+import {CommandEvent, CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
+import {integer} from "../Systems/Commands/Validator/Integer";
+import {InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
+import {onePartConverter} from "../Systems/Commands/Validator/Converter";
+import {string} from "../Systems/Commands/Validator/String";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+
+const listConverter = onePartConverter("list name", "list", true, null, async (part, column, msg) => {
+    const list = await ListsEntity.findByName(part, msg.getChannel());
+    if (list === null)
+        throw new InvalidInputError(await msg.getResponse().translate("lists:unknown", {list: part}));
+    return list;
+});
 
 @HandlesEvents()
 export default class ListModule extends AbstractModule {
     constructor() {
         super(ListModule.name);
-    }
-
-    public static async listNameArgConverter(raw: string, msg: Message): Promise<ListsEntity | ValidatorResponse> {
-        const list = await ListsEntity.findByName(raw, msg.getChannel());
-        if (list === null) {
-            await msg.getResponse().message("lists:unknown", {list: raw});
-            return ValidatorResponse.RESPONDED;
-        }
-        return list;
     }
 
     initialize(): void {
@@ -105,31 +109,20 @@ class ListCommand extends Command {
         if (await super.executeSubcommands(eventArgs)) return;
 
         const {event, message: msg, response} = eventArgs;
-        const args = await event.validate({
+
+        const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, number]>({
             usage: "list <list name> [item number]",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: ListModule.listNameArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: false
-                }
+                listConverter,
+                integer({name: "item number", required: false})
             ],
-            permission: "list.view"
-        });
-        if (args === null) return;
-        const list: ListsEntity = args[0];
+            permission: args => args.length > 1 ? "list.view.specific" : "list.view.random"
+        }));
+        if (status !== ValidatorStatus.OK) return;
+        const list = args[0];
 
         let item: ListEntity;
         if (args.length > 1) {
-            if (!await msg.checkPermission("list.view.specific")) return;
             const itemNum = args[1];
 
             item = await list.getItem(itemNum);
@@ -138,7 +131,6 @@ class ListCommand extends Command {
                 return;
             }
         } else {
-            if (!await msg.checkPermission("list.view.random")) return;
             const items = await list.getAllItems();
 
             if (items.length < 1) {
@@ -153,19 +145,14 @@ class ListCommand extends Command {
     }
 
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list create <list name>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                string({name: "list name", required: true})
             ],
             permission: "list.create"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [name] = args;
 
         try {
@@ -177,20 +164,14 @@ class ListCommand extends Command {
     }
 
     async delete({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list delete <list name>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: ListModule.listNameArgConverter
-                    },
-                    required: true
-                }
+                listConverter
             ],
             permission: "list.delete"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const list: ListsEntity = args[0];
 
         try {
@@ -202,28 +183,16 @@ class ListCommand extends Command {
     }
 
     async add({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, string]>({
             usage: "list add <list name> <item>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: ListModule.listNameArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                listConverter,
+                string({name: "value", required: true, greedy: true})
             ],
             permission: "list.delete"
-        });
-        if (args === null) return;
-        const [list, value] = args as [ListsEntity, string];
+        }));
+        if (status !== ValidatorStatus.OK) return;
+        const [list, value] = args;
         const item = await list.addItem(value);
         if (item === null) {
             await response.genericError();
@@ -233,34 +202,17 @@ class ListCommand extends Command {
     }
 
     async edit({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy<[ListsEntity, number, string]>({
             usage: "list edit <list name> <item number> <new value>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: ListModule.listNameArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                listConverter,
+                integer({name: "item number", required: true}),
+                string({name: "new value", required: true, greedy: true})
             ],
             permission: "list.edit"
-        });
-        if (args === null) return;
-        const [list, itemNum, value] = args as [ListsEntity, number, string];
+        }));
+        if (status !== ValidatorStatus.OK) return;
+        const [list, itemNum, value] = args;
         const item = await list.getItem(itemNum);
         if (item === null) {
             await response.message("lists:item.unknown", {number: itemNum});
@@ -276,26 +228,15 @@ class ListCommand extends Command {
     }
 
     async remove({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "list remove <list name> <item number>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: ListModule.listNameArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true
-                }
+                listConverter,
+                integer({name: "item number", required: true})
             ],
             permission: "list.add"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [list, itemNum] = args as [ListsEntity, number];
         const item = await list.getItem(itemNum);
         if (item === null) {

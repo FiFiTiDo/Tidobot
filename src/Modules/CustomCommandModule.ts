@@ -12,6 +12,10 @@ import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {string} from "../Systems/Commands/Validator/String";
+import {integer} from "../Systems/Commands/Validator/Integer";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 
 
 class CommandCommand extends Command {
@@ -24,26 +28,15 @@ class CommandCommand extends Command {
     }
 
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command add <trigger> <response>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "trigger", required: true }),
+                string({ name: "response", required: true, greedy: true })
             ],
             permission: "command.add"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const trigger = (args[0] as string).toLowerCase();
         const resp = args[1] as string;
 
@@ -57,33 +50,17 @@ class CommandCommand extends Command {
     }
 
     async edit({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command edit <trigger|condition|response|price|cooldown> <id> <new value>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "attribute", required: true, accepted: ["trigger", "condition", "response", "price", "cooldown"] }),
+                integer({ name: "id", required: true, min: 0 }),
+                string({ name: "new value", required: true, greedy: true})
             ],
             permission: "command.edit"
-        });
-        if (args === null) return;
-        const [type, id, value] = args;
+        }));
+         if (status !== ValidatorStatus.OK) return;
+        const [type, id, value] = args as [string, number, string];
         const command: CommandEntity = await CommandEntity.get(id, {channel: msg.getChannel()});
         if (command === null) {
             await response.message("command:error.unknown", {id});
@@ -136,18 +113,13 @@ class CommandCommand extends Command {
     }
 
     async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command delete <id>",
             arguments: [
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true
-                }
+                integer({ name: "id", required: true, min: 0 }),
             ]
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const [id] = args;
         const command = await CommandEntity.get(id, {channel: msg.getChannel()});

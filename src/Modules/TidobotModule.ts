@@ -8,6 +8,9 @@ import IgnoredEntity from "../Database/Entities/IgnoredEntity";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 
 class TidobotCommand extends Command {
     constructor() {
@@ -23,39 +26,34 @@ class TidobotCommand extends Command {
     }
 
     async version({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot version",
             permission: "bot.version"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         await response.message("Tidobot v" + process.env.BOT_VERSION);
     }
 
     async about({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot about",
             permission: "bot.about"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         await response.message("Hi, " + msg.getChatter().name + "! My name is tidobot, I'm your friendly neighborhood robot here to enhance your chatting experience! To learn more visit https://www.fifitido.net/tidobot/");
     }
 
-    async ignore({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+    async ignore({event, response}: CommandEventArgs): Promise<void> {
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot ignore <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "bot.ignore.add"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const chatter = args[0] as ChatterEntity;
         IgnoredEntity.add(chatter.getService(), chatter.userId)
             .then(ignored => response.message(ignored ? "user:ignore.added" : "user:ignore.already", {username: chatter.name}))
@@ -65,20 +63,15 @@ class TidobotCommand extends Command {
             });
     }
 
-    async unignore({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+    async unignore({event, response}: CommandEventArgs): Promise<void> {
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot unignore <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "bot.ignore.remove"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const chatter = args[0] as ChatterEntity;
         IgnoredEntity.remove(chatter.getService(), chatter.userId)
             .then(ignored => response.message(ignored ? "user:ignore.removed" : "user:ignore.not", {username: chatter.name}))
@@ -89,19 +82,14 @@ class TidobotCommand extends Command {
     }
 
     async ban({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot ban <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "bot.ban"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [user] = args as [ChatterEntity];
         if (user.banned) return response.message("user:ban.already", {username: user.name});
         user.banned = true;
@@ -114,19 +102,14 @@ class TidobotCommand extends Command {
     }
 
     async unban({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot unban <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "bot.unban"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [user] = args as [ChatterEntity];
         if (!user.banned) return response.message("user:ban.not", {username: user.name});
         user.banned = false;
@@ -149,19 +132,14 @@ class RegularCommand extends Command {
     }
 
     async addRegular({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "regular add <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "regular.add"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [user] = args as [ChatterEntity];
         if (user.regular) return response.message("user:regular.already", {username: user.name});
         user.regular = true;
@@ -174,19 +152,14 @@ class RegularCommand extends Command {
     }
 
     async removeRegular({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "regular remove <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "regular.remove"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [user] = args as [ChatterEntity];
         if (!user.regular) return response.message("user:regular.not", {username: user.name});
         user.regular = false;

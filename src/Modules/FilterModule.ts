@@ -18,6 +18,10 @@ import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import FilterSystem from "../Systems/Filter/FilterSystem";
+import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
+import {string} from "../Systems/Commands/Validator/String";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 
 
 class PermitCommand extends Command {
@@ -26,19 +30,14 @@ class PermitCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permit <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true }),
             ],
             permission: "filter.permit"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [chatter] = args as [ChatterEntity];
 
         FilterSystem.getInstance().permitUser(chatter);
@@ -56,19 +55,14 @@ class PardonCommand extends Command {
     }
 
     async execute({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pardon <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "filter.pardon"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [chatter] = args as [ChatterEntity];
 
         FilterSystem.getInstance().pardonUser(chatter);
@@ -82,19 +76,14 @@ class PurgeCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "purge <user>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "filter.purge"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [chatter] = args as [ChatterEntity];
         await this.bot.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"),
             await response.translate("filter:purge-reason", {username: msg.getChatter().name}));
@@ -113,27 +102,15 @@ class FilterCommand extends Command {
     }
 
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter add <list> <item>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                        accepted: ["domains", "badWords", "emotes"]
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
+                string({ name: "item", required: true, greedy: true })
             ],
             permission: "filter.list.add"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [list, item] = args as ["domains" | "badWords" | "emotes", string];
         const lists = await msg.getChannel().getFilters();
 
@@ -149,27 +126,15 @@ class FilterCommand extends Command {
     }
 
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter remove <list> <item>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                        accepted: ["domain", "bad-word", "emote"]
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
+                string({ name: "item", required: true, greedy: true })
             ],
             permission: "filter.list.remove"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [list, item] = args as ["domains" | "bad_words" | "emotes", string];
         const lists = await msg.getChannel().getFilters();
 
@@ -185,20 +150,14 @@ class FilterCommand extends Command {
     }
 
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter reset [list]",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                        accepted: ["domain", "bad-word", "emote"]
-                    },
-                    required: false
-                }
+                string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]})
             ],
             permission: "filter.list.add"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [list] = args as ["domains" | "bad_words" | "emotes"];
         const lists = await msg.getChannel().getFilters();
 

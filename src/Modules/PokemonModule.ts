@@ -15,6 +15,10 @@ import {array_rand} from "../Utilities/ArrayUtils";
 import Logger from "../Utilities/Logger";
 import {Response} from "../Chat/Response";
 import ChannelManager from "../Chat/ChannelManager";
+import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
+import {string} from "../Systems/Commands/Validator/String";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 
 export const NATURES = [
     'evil', 'mean', 'crazy', 'happy', 'cute',
@@ -78,11 +82,11 @@ class PokemonCommand extends Command {
     }
 
     async team({ event, sender, response }: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
            usage: "pokemon team",
            permission: "pokemon.play"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const trainer = await TrainerEntity.getByChatter(sender);
         const teamArr = await trainer.team();
@@ -91,19 +95,14 @@ class PokemonCommand extends Command {
     }
 
     async throw({ event, sender, channel, response }: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon throw [user]",
             arguments: [
-                {
-                    value: {
-                        type: "chatter"
-                    },
-                    required: false
-                }
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "pokemon.play"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const { trainer, team } = await this.getTrainerData(sender, response);
         if (trainer === null) return;
@@ -147,19 +146,14 @@ class PokemonCommand extends Command {
     }
 
     async release({ event, response, sender}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release [pokemon]",
             arguments: [
-                {
-                    value: {
-                        type: "string"
-                    },
-                    required: false
-                }
+                string({ name: "pokemon name", required: false, defaultValue: undefined })
             ],
             permission: "pokemon.play"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const { trainer, team } = await this.getTrainerData(sender, response);
         if (trainer === null) return;
@@ -192,11 +186,11 @@ class PokemonCommand extends Command {
     }
 
     async releaseAll({ event, sender, response }: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release-all",
             permission: "pokemon.play"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const { trainer, team } = await this.getTrainerData(sender, response);
         if (trainer === null) return;
@@ -220,19 +214,14 @@ class PokemonCommand extends Command {
     }
 
     async fight({ event, sender, response, channel}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon fight <trainer>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter"
-                    },
-                    required: true,
-                }
+                chatterConverter({ name: "trainer", required: true, active: true })
             ],
             permission: "pokemon.play"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [chatter] = args as [ChatterEntity];
 
         if (sender.is(chatter)) return response.message("pokemon:error.self");
@@ -309,11 +298,11 @@ class PokemonCommand extends Command {
     }
 
     async stats({ event, sender, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon stats",
             permission: "pokemon.stats"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         let { trainer } = await this.getTrainerData(sender, response);
         if (trainer === null) return;
@@ -326,11 +315,11 @@ class PokemonCommand extends Command {
     }
 
     async top({ event, channel, response }: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release-all",
             permission: "pokemon.stats"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const names = [];
         const data = {};

@@ -21,6 +21,10 @@ import Bot from "../Application/Bot";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {string} from "../Systems/Commands/Validator/String";
+import {integer} from "../Systems/Commands/Validator/Integer";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 
 interface LastMessage {
     item: NewsEntity;
@@ -39,20 +43,14 @@ class NewsCommand extends Command {
     }
 
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news add <message>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "message", required: true, greedy: true })
             ],
             permission: "news.add"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [value] = args;
 
         try {
@@ -65,19 +63,14 @@ class NewsCommand extends Command {
     }
 
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news remove <index>",
             arguments: [
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true
-                }
+                integer({ name: "item id", required: true })
             ],
             permission: "news.remove"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [id] = args as [number];
 
         const item = await NewsEntity.get(id, {channel: msg.getChannel()});
@@ -96,11 +89,11 @@ class NewsCommand extends Command {
     }
 
     async clear({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "news clear",
             permission: "news.clear"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const confirmation = await this.confirmationFactory(msg, "Are you sure you want to clear all news items?", 30);
         confirmation.addListener(ConfirmedEvent, async () => {

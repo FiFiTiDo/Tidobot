@@ -11,7 +11,12 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {onePartConverter} from "../Systems/Commands/Validator/Converter";
+import {InvalidArgumentError, InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
+import {string} from "../Systems/Commands/Validator/String";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 
 @HandlesEvents()
 export default class PermissionModule extends AbstractModule {
@@ -62,6 +67,20 @@ export default class PermissionModule extends AbstractModule {
     }
 }
 
+const permissionConverter = onePartConverter("permission", "permission", true, null, async (part, column, msg) => {
+    const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", part));
+    if (perm === null)
+        throw new InvalidInputError(await msg.getResponse().translate("permission:error.unknown", {permission: part}));
+    return perm;
+});
+
+const roleConverter = (name) => onePartConverter(name, "role", true, Role.OWNER, (part, column, message) => {
+    const role = parseRole(part);
+    if (role === null)
+        throw new InvalidArgumentError(name, "role", part, column);
+    return role;
+});
+
 class PermissionCommand extends Command {
     constructor() {
         super("permission", "<create|delete|set|reset>", ["perm"]);
@@ -73,36 +92,16 @@ class PermissionCommand extends Command {
         this.addSubcommand("reset", this.reset);
     }
 
-    public static permissionArgConverter = async (raw: string, msg: Message): Promise<PermissionEntity | ValidatorResponse> => {
-        const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", raw));
-        if (perm === null) {
-            msg.getResponse().message("permission:error.unknown", {permission: raw});
-            return ValidatorResponse.RESPONDED;
-        }
-        return perm;
-    };
-
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission create <permission> <default-level>",
             arguments: [
-                {
-                    value: {
-                        type: "string"
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "custom",
-                        converter: parseRole
-                    },
-                    required: true
-                }
+                string({ name: "permission", required: true }),
+                roleConverter("default role")
             ],
             permission: "permission.create"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [perm_str, role] = args as [string, Role];
 
         if (!await msg.checkPermission(perm_str)) {
@@ -129,20 +128,14 @@ class PermissionCommand extends Command {
     }
 
     async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: PermissionCommand.permissionArgConverter
-                    },
-                    required: true
-                }
+                permissionConverter
             ],
             permission: "permission.delete"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [permission] = args as [PermissionEntity];
 
         if (permission.moduleDefined)
@@ -157,27 +150,15 @@ class PermissionCommand extends Command {
     }
 
     async set({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission set <permission> <level>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: PermissionCommand.permissionArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "custom",
-                        converter: parseRole
-                    },
-                    required: true
-                }
+                permissionConverter,
+                roleConverter("level")
             ],
             permission: "permission.set"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [permission, role] = args as [PermissionEntity, Role];
 
         if (!await msg.checkPermission(permission.permission)) {
@@ -195,20 +176,14 @@ class PermissionCommand extends Command {
     }
 
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: PermissionCommand.permissionArgConverter
-                    },
-                    required: false
-                }
+                permissionConverter
             ],
             permission: "permission.reset"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [permission] = args as [PermissionEntity | undefined];
 
         if (permission) {

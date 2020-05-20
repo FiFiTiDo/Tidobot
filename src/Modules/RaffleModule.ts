@@ -14,6 +14,8 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {string} from "../Systems/Commands/Validator/String";
+import {ValidatorStatus} from "../Systems/Commands/Validator/CommandEventValidator";
 
 enum RaffleState {
     OPEN = 1,
@@ -99,20 +101,14 @@ class RaffleCommand extends Command {
     }
 
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate({
             usage: "raffle open [keyword]",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "entry phrase", required: true, greedy: true})
             ],
             permission: "raffle.open"
         });
-        if (args === null) return;
+         if (status !== ValidatorStatus.OK) return;
         const [keyword] = args as [string];
 
         if (this.raffles.hasChannel(msg.getChannel())) {

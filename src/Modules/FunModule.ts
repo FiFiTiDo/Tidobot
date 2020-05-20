@@ -9,6 +9,8 @@ import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Logger from "../Utilities/Logger";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 
 class RouletteCommand extends Command {
     constructor(private bot: Bot) {
@@ -16,11 +18,11 @@ class RouletteCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "roulette",
             permission: "fun.roulette"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         await response.action("fun:roulette.lead_up", {
             username: msg.getChatter().name
@@ -51,11 +53,11 @@ class SeppukuCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "seppuku",
             permission: "fun.seppuku"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         try {
             return this.bot.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
@@ -72,11 +74,11 @@ class Magic8BallCommand extends Command {
     }
 
     async execute({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "8ball",
             permission: "fun.8ball"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const resp = array_rand(await response.getTranslation("fun:8ball.responses"));
         await response.message("fun:8ball.response", {response: resp});

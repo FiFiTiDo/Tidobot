@@ -8,9 +8,21 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import Message from "../Chat/Message";
+import {onePartConverter} from "../Systems/Commands/Validator/Converter";
+import {InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
+import {integer} from "../Systems/Commands/Validator/Integer";
+import {string} from "../Systems/Commands/Validator/String";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+
+const counterConverter = onePartConverter("counter name", "counter", true, null, async (part, column, msg) => {
+    const list = await CountersEntity.findByName(part, msg.getChannel());
+    if (list === null)
+        throw new InvalidInputError(await msg.getResponse().translate("counter:unknown", {counter: part}));
+    return list;
+});
 
 class CounterCommand extends Command {
     constructor() {
@@ -29,60 +41,33 @@ class CounterCommand extends Command {
         this.addSubcommand("del", this.delete);
     }
 
-    static async counterConverter(input: string, msg: Message): Promise<CountersEntity | ValidatorResponse> {
-        const counter = CountersEntity.findByName(input, msg.getChannel());
-        if (counter === null) {
-            await msg.getResponse().message("counter:unknown", {counter: input});
-            return ValidatorResponse.RESPONDED;
-        }
-        return counter;
-    }
-
     async execute(eventArgs: CommandEventArgs): Promise<void> {
         if (await super.executeSubcommands(eventArgs)) return;
 
         const {event, response} = eventArgs;
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "list <list name> [item number]",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: CounterCommand.counterConverter
-                    },
-                    required: true
-                }
+                counterConverter
             ],
             permission: "counter.check"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [counter] = args as [CountersEntity];
 
         await response.message("counter:value", {counter: counter.name, value: counter.value});
     }
 
     async increment({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter increment <counter> [amount]",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: CounterCommand.counterConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: false,
-                    defaultValue: "1"
-                }
+                counterConverter,
+                integer({ name: "amount", required: false, defaultValue: 1 })
             ],
             permission: "counter.change"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [counter, amount] = args as [CountersEntity, number];
 
         try {
@@ -96,27 +81,15 @@ class CounterCommand extends Command {
     }
 
     async decrement({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter decrement <counter> [amount]",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: CounterCommand.counterConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: false,
-                    defaultValue: "1"
-                }
+                counterConverter,
+                integer({ name: "amount", required: false, defaultValue: 1 })
             ],
             permission: "counter.change"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [counter, amount] = args as [CountersEntity, number];
 
         try {
@@ -130,26 +103,15 @@ class CounterCommand extends Command {
     }
 
     async set({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter set <counter> <amount>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: CounterCommand.counterConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true
-                }
+                counterConverter,
+                integer({ name: "amount", required: true })
             ],
             permission: "counter.change"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [counter, amount] = args as [CountersEntity, number];
 
         try {
@@ -163,20 +125,15 @@ class CounterCommand extends Command {
     }
 
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter create <counter>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                string({ name: "counter name", required: true })
             ],
             permission: "counter.create"
-        });
-        if (args === null) return;
-        const [name] = args;
+        }));
+        if (status !== ValidatorStatus.OK) return;
+        const [name] = args as [string];
 
         try {
             const counter = await CountersEntity.make({channel: msg.getChannel()}, {name, value: 0});
@@ -192,21 +149,15 @@ class CounterCommand extends Command {
     }
 
     async delete({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter delete <counter>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: CounterCommand.counterConverter
-                    },
-                    required: true
-                }
+                counterConverter
             ],
             permission: "counter.create"
-        });
-        if (args === null) return;
-        const [counter] = args as [CountersEntity];
+        }));
+        if (status !== ValidatorStatus.OK) return;
+        const [counter] = args;
 
         try {
             await counter.delete();

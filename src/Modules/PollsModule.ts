@@ -11,6 +11,13 @@ import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import request = require("request-promise-native");
+import {integer} from "../Systems/Commands/Validator/Integer";
+import {string} from "../Systems/Commands/Validator/String";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import CliArgsValidationStrategy from "../Systems/Commands/Validator/Strategies/CliArgsValidationStrategy";
+import {boolean} from "../Systems/Commands/Validator/Boolean";
+import axios from "axios";
 
 interface StrawpollGetResponse {
     id: number;
@@ -29,6 +36,14 @@ interface StrawpollPostResponse {
     captcha: boolean;
 }
 
+interface StrawpollCreateArgs {
+    title: string;
+    _: string[];
+    multi: boolean;
+    dupcheck: string;
+    captcha: boolean;
+}
+
 class StrawpollCommand extends Command {
     private lastStrawpoll: ChannelStateList<number>;
 
@@ -42,18 +57,13 @@ class StrawpollCommand extends Command {
     }
 
     async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "strawpoll check [poll id]",
             arguments: [
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: false
-                }
+                integer({ name: "poll id", required: true })
             ]
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         let pollId;
         if (args.length < 1) {
@@ -78,63 +88,28 @@ class StrawpollCommand extends Command {
     }
 
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new CliArgsValidationStrategy<StrawpollCreateArgs>({
             usage: "strawpoll create --title \"title\" <option 1> <option 2> ... [option n]",
-            arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    key: "title"
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    key: "_"
-                },
-                {
-                    value: {
-                        type: "boolean",
-                    },
-                    required: false,
-                    defaultValue: "false",
-                    key: "multi"
-                },
-                {
-                    value: {
-                        type: "string",
-                        accepted: ["normal", "permissive", "disabled"],
-                    },
-                    required: false,
-                    defaultValue: "normal",
-                    key: "dupcheck"
-                },
-                {
-                    value: {
-                        type: "boolean",
-                    },
-                    required: false,
-                    defaultValue: "false",
-                    key: "captcha"
-                }
-            ],
-            cliArgs: true,
+            arguments: {
+                title: string({ name: "title", required: true }),
+                _: string({ name: "options", required: true, array: true }),
+                multi: boolean({ name: "multi vote", required: false, defaultValue: false }),
+                dupcheck: string({ name: "dup checking", required: false, defaultValue: "normal", accepted: ["normal", "permissive", "disabled"] }),
+                captcha: boolean({ name: "captcha", required: false, defaultValue: false })
+            },
             permission: "polls.strawpoll.create"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const {title, _: options, multi, dupcheck, captcha} = args;
 
         if (options.length < 2) return response.message("poll:strawpoll.error.no-options");
 
-        const resp: StrawpollPostResponse = await request({
-            uri: "https://www.strawpoll.me/api/v2/polls",
+        const resp: StrawpollPostResponse = await axios({
+            url: "https://www.strawpoll.me/api/v2/polls",
             method: "post",
-            json: true,
-            body: {title, options, multi, dupcheck, captcha}
-        }).promise();
+            responseType: "json",
+            data: {title, options, multi, dupcheck, captcha}
+        }).then(resp => resp.data);
 
         let times = await msg.getChannel().getSetting<number>("polls.spamStrawpollLink");
         if (isNaN(times)) times = 1;
@@ -216,20 +191,15 @@ class VoteCommand extends Command {
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const announce = await msg.getChannel().getSettings().get("polls.announceVotes");
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "vote <option #>",
             arguments: [
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true,
-                    silentFail: !announce
-                }
+                integer({ name: "option number", required: true })
             ],
-            permission: "polls.vote"
-        });
-        if (args === null) return;
+            permission: "polls.vote",
+            silent: !announce
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         if (!this.runningPolls.hasChannel(msg.getChannel())) return;
         const poll = this.runningPolls.getChannel(msg.getChannel());
@@ -259,20 +229,14 @@ class PollCommand extends Command {
     }
 
     async run({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "!poll run <option 1> <option 2> ... <option n>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    array: true
-                }
+                string({ name: "poll options", required: true, quoted: true, array: true })
             ],
             permission: "polls.run"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [options] = args as [string[]];
         const prefix = await CommandSystem.getPrefix(msg.getChannel());
 
@@ -291,11 +255,11 @@ class PollCommand extends Command {
     }
 
     async stop({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "poll stop",
             permission: "polls.stop"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const poll = await this.getPoll(msg);
         poll.close();
@@ -308,11 +272,11 @@ class PollCommand extends Command {
     }
 
     async results({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "poll results",
             permission: "polls.results"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         if (!(await msg.checkPermission("polls.results"))) return;
         const poll = await this.getPoll(msg);

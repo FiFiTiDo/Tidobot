@@ -15,6 +15,9 @@ import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {string} from "../Systems/Commands/Validator/String";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 
 class SetCommand extends Command {
     constructor() {
@@ -22,26 +25,15 @@ class SetCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "set <setting> <value>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "setting", required: true }),
+                string({ name: "value", required: true, greedy: true })
             ],
             permission: "settings.set"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [key, value] = args;
 
         msg.getChannel().getSettings().set(key, value)
@@ -59,19 +51,14 @@ class UnsetCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "unset <setting>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                string({ name: "setting", required: true })
             ],
             permission: "settings.reset"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const key = args[0];
         msg.getChannel().getSettings().unset(key)
             .then(() => response.message("setting:unset", {setting: key}))
@@ -88,11 +75,11 @@ class ResetCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "reset-settings",
             permission: "settings.reset.all"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const confirmation = await this.confirmationFactory(msg, await response.translate("setting:confirm-reset"), 30);
         confirmation.addListener(ConfirmedEvent, () => {

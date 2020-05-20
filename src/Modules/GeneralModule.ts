@@ -11,6 +11,9 @@ import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {string} from "../Systems/Commands/Validator/String";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 
 class PingCommand extends Command {
     constructor() {
@@ -18,11 +21,11 @@ class PingCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "ping",
             permission: "general.ping"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         await response.message("pong", {username: msg.getChatter().name});
     }
@@ -34,20 +37,14 @@ class RawCommand extends Command {
     }
 
     async execute({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
-            usage: "raw",
+        const {args, status} = await event.validate(new StandardValidationStrategy({
+            usage: "raw <text>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "text", required: true, greedy: true })
             ],
             permission: "general.raw"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [value] = args;
 
         await response.rawMessage(value);
@@ -60,20 +57,14 @@ class EchoCommand extends Command {
     }
 
     async execute({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
-            usage: "echo <expression>",
+        const {args, status} = await event.validate(new StandardValidationStrategy({
+            usage: "echo <message>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "message", required: true, greedy: true })
             ],
             permission: "general.echo"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [message] = args;
 
         await response.rawMessage(">> " + message);
@@ -86,20 +77,14 @@ class EvalCommand extends Command {
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "eval <expression>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true,
-                    greedy: true
-                }
+                string({ name: "expression", required: true, greedy: true })
             ],
             permission: "general.eval"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [rawExpr] = args;
 
         await response.rawMessage(">> " + await msg.evaluateExpression(rawExpr));
@@ -112,11 +97,11 @@ class ShutdownCommand extends Command {
     }
 
     async execute({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "shutdown",
             permission: "general.shutdown"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         await response.broadcast(array_rand(await response.getTranslation("shutdown")));
         Logger.get().info("Shutting down...");

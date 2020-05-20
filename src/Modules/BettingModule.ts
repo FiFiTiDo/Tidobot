@@ -11,6 +11,10 @@ import Setting, {SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {string} from "../Systems/Commands/Validator/String";
+import {float} from "../Systems/Commands/Validator/Float";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 
 enum PlaceBetResponse {
     INVALID_OPTION, LOW_BALANCE, TOO_LOW, TOO_HIGH, BET_PLACED
@@ -102,25 +106,15 @@ class BetCommand extends Command {
     }
 
     async place({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet place <option> <amount>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "integer",
-                    },
-                    required: true
-                }
+                string({ name: "option", required: true }),
+                float({ name: "amount", required: true })
             ],
             permission: "bet.place"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [option, amount] = args as [string, number];
 
         if (!this.betInstances.hasChannel(msg.getChannel())) return;
@@ -157,27 +151,15 @@ class BetCommand extends Command {
     }
 
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet open \"<title>\" <option 1> <option 2> ... <option n>",
             arguments: [
-                {
-                    value: {
-                        type: "string"
-                    },
-                    specialString: true,
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string"
-                    },
-                    required: true,
-                    array: true
-                }
+                string({ name: "title", required: true, quoted: true }),
+                string({ name: "option", required: true, quoted: true, array: true })
             ],
             permission: "bet.open"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [title, options] = args as [string, string[]];
 
         if (this.betInstances.hasChannel(msg.getChannel()) && this.betInstances.getChannel(msg.getChannel()).isOpen())
@@ -192,19 +174,14 @@ class BetCommand extends Command {
     }
 
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet close <winning option>",
             arguments: [
-                {
-                    value: {
-                        type: "string"
-                    },
-                    required: true
-                }
+                string({ name: "winning option", required: true })
             ],
             permission: "bet.close"
-        });
-        if (args === null) return;
+        }));
+        if (status !== ValidatorStatus.OK) return;
         const [option] = args;
 
         if (!this.betInstances.hasChannel(msg.getChannel()) || !this.betInstances.getChannel(msg.getChannel()).isOpen())
@@ -224,10 +201,10 @@ class BetCommand extends Command {
     }
 
     async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const args = await event.validate(new StandardValidationStrategy({
             usage: "bet check",
             permission: "bet.check"
-        });
+        }));
         if (args === null) return;
 
         if (!this.betInstances.hasChannel(msg.getChannel()))

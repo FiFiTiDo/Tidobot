@@ -1,6 +1,5 @@
 import AbstractModule from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import Message from "../Chat/Message";
 import GroupsEntity from "../Database/Entities/GroupsEntity";
 import GroupMembersEntity from "../Database/Entities/GroupMembersEntity";
 import GroupPermissionsEntity from "../Database/Entities/GroupPermissionsEntity";
@@ -15,7 +14,20 @@ import {inject} from "inversify";
 import symbols from "../symbols";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs, ValidatorResponse} from "../Systems/Commands/CommandEvent";
+import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
+import {onePartConverter} from "../Systems/Commands/Validator/Converter";
+import {InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
+import {string} from "../Systems/Commands/Validator/String";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+
+const groupConverter = onePartConverter("group name", "group", true, null, async (part, column, msg) => {
+    const group = await GroupsEntity.findByName(part, msg.getChannel());
+    if (group === null)
+        throw new InvalidInputError(await msg.getResponse().translate("groups:error.unknown", {group: part}));
+    return group;
+});
 
 @HandlesEvents()
 export default class GroupsModule extends AbstractModule {
@@ -24,15 +36,6 @@ export default class GroupsModule extends AbstractModule {
 
         this.coreModule = true;
     }
-
-    public static groupArgConverter = async (raw: string, msg: Message): Promise<GroupsEntity | ValidatorResponse> => {
-        const group = await GroupsEntity.findByName(raw, msg.getChannel());
-        if (group === null) {
-            msg.getResponse().message("groups:error.unknown", {group: raw});
-            return ValidatorResponse.RESPONDED;
-        }
-        return group
-    };
 
     initialize(): void {
         const cmd = CommandSystem.getInstance();
@@ -67,26 +70,15 @@ class GroupCommand extends Command {
     }
 
     async addMember({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group add <group> <user>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: GroupsModule.groupArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                groupConverter,
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "permission.group.add"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [group, chatter] = args as [GroupsEntity, ChatterEntity];
 
         GroupMembersEntity.create(chatter.userId, group)
@@ -100,26 +92,15 @@ class GroupCommand extends Command {
     }
 
     async removeMember({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group remove <group> <user>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: GroupsModule.groupArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                }
+                groupConverter,
+                chatterConverter({ name: "user", required: true })
             ],
             permission: "permission.group.remove"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [group, chatter] = args as [GroupsEntity, ChatterEntity];
 
         try {
@@ -135,19 +116,14 @@ class GroupCommand extends Command {
     }
 
     async createGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group create <group>",
             arguments: [
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                string({ name: "group name", required: true })
             ],
             permission: "permission.group.create"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [name] = args;
 
         try {
@@ -160,20 +136,14 @@ class GroupCommand extends Command {
     }
 
     async deleteGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group delete <group>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: GroupsModule.groupArgConverter
-                    },
-                    required: true
-                }
+                groupConverter
             ],
             permission: "permission.group.delete"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [group] = args as [GroupsEntity];
 
         const confirmation = await this.confirmationFactory(msg, await response.translate("groups:delete-confirm", {
@@ -192,26 +162,15 @@ class GroupCommand extends Command {
     }
 
     async grantPerm({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group grant <group> <permission>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: GroupsModule.groupArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                groupConverter,
+                string({ name: "permission", required: true })
             ],
             permission: "permission.grant"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [group, permission] = args as [GroupsEntity, string];
 
         await GroupPermissionsEntity.update(group, permission, true)
@@ -223,26 +182,15 @@ class GroupCommand extends Command {
     }
 
     async denyPerm({event, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group deny <group> <permission>",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: GroupsModule.groupArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                groupConverter,
+                string({ name: "permission", required: true })
             ],
             permission: "permission.deny"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [group, permission] = args as [GroupsEntity, string];
 
         await GroupPermissionsEntity.update(group, permission, false)
@@ -254,26 +202,15 @@ class GroupCommand extends Command {
     }
 
     async resetPerms({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
             arguments: [
-                {
-                    value: {
-                        type: "custom",
-                        converter: GroupsModule.groupArgConverter
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: false
-                }
+                groupConverter,
+                string({ name: "permission", required: false, defaultValue: undefined })
             ],
             permission: "permission.reset"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [group, permission] = args as [GroupsEntity, string | undefined];
 
         if (permission) {

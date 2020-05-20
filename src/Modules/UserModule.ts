@@ -10,6 +10,10 @@ import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
+import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
+import {string} from "../Systems/Commands/Validator/String";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 
 class UserCommand extends Command {
     constructor(private confirmationFactory: ConfirmationFactory) {
@@ -21,25 +25,15 @@ class UserCommand extends Command {
     }
 
     async grant({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "user grant <group> <permission>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true }),
+                string({ name: "permission", required: true})
             ],
             permission: "permission.grant"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [user, permission] = args as [ChatterEntity, string];
 
         await UserPermissionsEntity.update(user, permission, true, msg.getChannel())
@@ -51,25 +45,15 @@ class UserCommand extends Command {
     }
 
     async deny({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "user deny <group> <permission>",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: true
-                }
+                chatterConverter({ name: "user", required: true }),
+                string({ name: "permission", required: true})
             ],
             permission: "permission.deny"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [user, permission] = args as [ChatterEntity, string];
 
         await UserPermissionsEntity.update(user, permission, false, msg.getChannel())
@@ -81,25 +65,15 @@ class UserCommand extends Command {
     }
 
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
             arguments: [
-                {
-                    value: {
-                        type: "chatter",
-                    },
-                    required: true
-                },
-                {
-                    value: {
-                        type: "string",
-                    },
-                    required: false
-                }
+                chatterConverter({ name: "user", required: true }),
+                string({ name: "permission", required: false, defaultValue: undefined })
             ],
             permission: "permission.reset"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
         const [user, permission] = args as [ChatterEntity, string | undefined];
 
         if (permission) {

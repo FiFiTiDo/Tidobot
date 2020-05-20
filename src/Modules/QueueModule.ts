@@ -11,6 +11,9 @@ import EntityStateList from "../Database/EntityStateList";
 import {appendOrdinal} from "../Utilities/NumberUtils";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
+import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 
 class Queue {
     private chatters: ChatterEntity[] = [];
@@ -76,11 +79,11 @@ class QueueCommand extends Command {
     }
 
     async join({event, message, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue join",
             permission: "queue.join"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
@@ -92,11 +95,11 @@ class QueueCommand extends Command {
     }
 
     async leave({event, response, message}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue leave",
             permission: "queue.join"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
@@ -106,34 +109,29 @@ class QueueCommand extends Command {
     }
 
     async check({ event, message, response }: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "queue check [user]",
             arguments: [
-                {
-                    value: {
-                        type: "chatter"
-                    },
-                    required: false
-                }
+                chatterConverter({ name: "user", required: false })
             ],
             permission: "queue.check"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
-        const index = queue.find(message.getChatter());
+        const index = queue.find(queue[0] || message.getChatter());
         if (index < 0) return response.message("queue:error.not-in");
         const position = appendOrdinal(index);
         await response.message("queue:check", { username: message.getChatter().name, position });
     }
 
     async pop({event, message, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue pull",
             permission: "queue.pop"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
@@ -143,11 +141,11 @@ class QueueCommand extends Command {
     }
 
     async peek({event, response, message} : CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue peek",
             permission: "queue.peek"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
@@ -157,11 +155,11 @@ class QueueCommand extends Command {
     }
 
     async clear({event, response, message}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue clear",
             permission: "queue.clear"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
@@ -170,11 +168,11 @@ class QueueCommand extends Command {
     }
 
     async open({ event, message, response }: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue open",
             permission: "queue.open"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (queue.isOpen()) return response.message("queue:error.open");
@@ -183,11 +181,11 @@ class QueueCommand extends Command {
     }
 
     async close({ event, message, response }: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue close",
             permission: "queue.close"
-        });
-        if (args === null) return;
+        }));
+         if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");

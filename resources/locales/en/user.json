@@ -1,5 +1,6 @@
 {
-    "unknown": "Hmm... I don't seem to know the user: {{username}}",
+    "unknown": "Hmm... I do not seem to know the user: {{username}}",
+    "inactive": "Hmm... It does not seem like {{user}} is here right now",
     "permission": {
         "granted": "Granted permission {{permission}} to the user {{username}}",
         "denied": "Denied the user {{permission}} access to the permission {{username}}",

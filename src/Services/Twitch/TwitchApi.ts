@@ -1,8 +1,8 @@
-import request = require("request-promise-native");
 import Cache from "../../Systems/Cache/Cache";
 import {parse_duration} from "../../Utilities/functions";
 import Logger from "../../Utilities/Logger";
 import {AccessToken} from "./ApiAuthentication";
+import axios, {Method, AxiosRequestConfig, AxiosInstance, AxiosPromise} from "axios";
 
 const CACHE_EXPIRY = parse_duration(process.env.CACHE_LENGTH);
 
@@ -136,7 +136,7 @@ export namespace helix {
      * Internal use for the private [[Api.makeRequest]] function
      */
     interface RequestOptions {
-        method?: string;
+        method?: Method;
         endpoint: string;
         query?: values;
         body?: values;
@@ -149,6 +149,7 @@ export namespace helix {
     export class Api {
         readonly BASE_URL = "https://api.twitch.tv/helix/";
         private accessToken: AccessToken = null;
+        private axios: AxiosInstance;
 
         /**
          * Api constructor.
@@ -157,6 +158,9 @@ export namespace helix {
          * @param clientSecret The client secret for the api
          */
         constructor(private clientId: string, private clientSecret: string) {
+            this.axios = axios.create({
+                baseURL: this.BASE_URL
+            })
         }
 
         /**
@@ -169,8 +173,7 @@ export namespace helix {
         async getGames(params: GameParams): Promise<Response<Game>> {
             return JSON.parse(await Cache.getInstance().retrieve("twitch.games." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Game>({
-                    endpoint: "games",
-                    query: params as values
+                    url: "/games", params
                 }));
             }));
         }
@@ -185,8 +188,7 @@ export namespace helix {
         async getStreams(params: StreamParams): Promise<Response<Stream>> {
             return JSON.parse(await Cache.getInstance().retrieve("twitch.streams." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Stream>({
-                    endpoint: "streams",
-                    query: params as values
+                    url: "/streams", params
                 }));
             }));
         }
@@ -201,8 +203,7 @@ export namespace helix {
         async getUsers(params: UserParams): Promise<Response<User>> {
             return JSON.parse(await Cache.getInstance().retrieve("twitch.users." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<User>({
-                    endpoint: "users",
-                    query: params as values
+                    url: "/users", params
                 }));
             }));
         }
@@ -217,8 +218,7 @@ export namespace helix {
         async getUserFollow(params: UserFollowParams): Promise<Response<UserFollow>> {
             return JSON.parse(await Cache.getInstance().retrieve("twitch.users.follow." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<UserFollow>({
-                    endpoint: "users/follows",
-                    query: params as values
+                    url: "/users/follows", params
                 }));
             }));
         }
@@ -255,22 +255,16 @@ export namespace helix {
          *
          * @param opts The options for the request
          */
-        private async makeRequest<T>(opts: RequestOptions): Promise<Response<T>> {
+        private async makeRequest<T>(opts: AxiosRequestConfig): Promise<Response<T>> {
             const accessToken = await this.getAccessToken();
 
-            const method = opts.method ? opts.method : "GET";
-            const body = opts.body ? opts.body : undefined;
-            const url = this.BASE_URL + opts.endpoint;
-            const headers = {
+            opts.headers = Object.assign({}, opts.headers || {}, {
                 "Client-ID": this.clientId,
-                "Authorization": `Bearer ${accessToken.token}`
-            };
-            if (opts.headers) Object.assign(headers, opts.headers);
-            const qs = opts.query ? opts.query : undefined;
-            const json = true;
-            const useQuerystring = true;
+                Authorization: `Bearer ${accessToken.token}`
+            });
+            opts.responseType = "json";
 
-            return request({method, url, headers, qs, body, useQuerystring, json}).promise();
+            return this.axios(opts).then(resp => resp.data);
         }
     }
 }
@@ -279,7 +273,7 @@ export namespace helix {
  * @deprecated The version 5 kraken api has been deprecated use [[helix.Api]] when possible
  */
 export namespace kraken {
-    export type ApiPromise<T> = request.RequestPromise<T>;
+    export type ApiPromise<T> = AxiosPromise<T>;
 
     export interface Channel {
         _id: number;
@@ -364,75 +358,61 @@ export namespace kraken {
     /** @ignore */
     type values = { [key: string]: any };
 
-    /**
-     * Internal use for the private [[Api.makeRequest]] function
-     */
-    interface RequestOptions {
-        method?: string;
-        endpoint: string;
-        query?: values;
-        body?: values;
-        headers?: values;
-    }
-
     export class Api {
         readonly BASE_URL = "https://api.twitch.tv/kraken/";
         private readonly clientId: string;
+        private readonly axios: AxiosInstance;
 
         constructor(clientId: string) {
             this.clientId = clientId;
+            this.axios = axios.create({
+                baseURL: this.BASE_URL
+            });
         }
 
         getChannel(id: string | number): ApiPromise<Channel> {
-            return this.makeRequest<Channel>({endpoint: "channels/" + id});
+            return this.makeRequest<Channel>({url: "channels/" + id});
         }
 
         updateChannel(id: string | number, params: ChannelUpdateParams): ApiPromise<Channel> {
             return this.makeRequest<Channel>({
                 method: "PUT",
-                endpoint: "channels/" + id,
-                body: {channel: params}
+                url: "channels/" + id,
+                data: {channel: params}
             });
         }
 
         getStreamByUser(id: string | number): ApiPromise<Stream> {
-            return this.makeRequest<Stream>({endpoint: "streams/" + id});
+            return this.makeRequest<Stream>({url: "streams/" + id});
         }
 
-        getStreams(opts: StreamsParams): ApiPromise<Streams> {
+        getStreams(params: StreamsParams): ApiPromise<Streams> {
             return this.makeRequest<Streams>({
-                endpoint: "streams/",
-                query: opts as values
+                url: "streams/", params
             });
         }
 
         getUser(id: string | number): ApiPromise<User> {
-            return this.makeRequest<User>({endpoint: "users/" + id});
+            return this.makeRequest<User>({url: "users/" + id});
         }
 
         getUsers(login: string[]): ApiPromise<Users> {
             return this.makeRequest<Users>({
-                endpoint: "users",
-                query: {
+                url: "users",
+                params: {
                     login: login.join(",")
                 }
             });
         }
 
-        private makeRequest<T>(opts: RequestOptions): ApiPromise<T> {
-            const method = opts.method ? opts.method : "GET";
-            const body = opts.body ? opts.body : undefined;
-            const url = this.BASE_URL + opts.endpoint;
-            const headers = {
+        private makeRequest<T>(opts: AxiosRequestConfig): ApiPromise<T> {
+            opts.headers = Object.assign({}, {
                 "Accept": "application/vnd.twitchtv.v5+json",
                 "Client-Id": this.clientId
-            };
-            if (opts.headers) Object.assign(headers, opts.headers);
-            const qs = opts.query ? opts.query : undefined;
-            const json = method == "GET" || typeof body != "string";
-            const useQuerystring = true;
+            }, opts.headers || {});
+            opts.responseType = "json";
 
-            return request({method, url, headers, qs, body, useQuerystring, json});
+            return this.axios(opts).then(resp => resp.data);
         }
     }
 }

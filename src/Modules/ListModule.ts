@@ -12,18 +12,10 @@ import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEvent, CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {integer} from "../Systems/Commands/Validator/Integer";
-import {InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
-import {onePartConverter} from "../Systems/Commands/Validator/Converter";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
-
-const listConverter = onePartConverter("list name", "list", true, null, async (part, column, msg) => {
-    const list = await ListsEntity.findByName(part, msg.getChannel());
-    if (list === null)
-        throw new InvalidInputError(await msg.getResponse().translate("lists:unknown", {list: part}));
-    return list;
-});
+import {entity} from "../Systems/Commands/Validator/Entity";
 
 @HandlesEvents()
 export default class ListModule extends AbstractModule {
@@ -112,7 +104,12 @@ class ListCommand extends Command {
         const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, number]>({
             usage: "list <list name> [item number]",
             arguments: tuple(
-                listConverter,
+                entity({
+                    name: "list name",
+                    entity: ListsEntity,
+                    required: true,
+                    error: {msgKey: "lists:unknown", optionKey: "list"}
+                }),
                 integer({name: "item number", required: false})
             ),
             permission: args => args.length > 1 ? "list.view.specific" : "list.view.random"
@@ -130,14 +127,12 @@ class ListCommand extends Command {
                 return;
             }
         } else {
-            const items = await list.getAllItems();
+            item = await list.getRandomItem();
 
-            if (items.length < 1) {
+            if (item === null) {
                 await msg.getResponse().message("lists:empty", {list: list.name});
                 return;
             }
-
-            item = array_rand(items);
         }
 
         await msg.getResponse().message("#" + item.id + ": " + item.value);
@@ -166,7 +161,12 @@ class ListCommand extends Command {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list delete <list name>",
             arguments: tuple(
-                listConverter
+                entity({
+                    name: "list name",
+                    entity: ListsEntity,
+                    required: true,
+                    error: {msgKey: "lists:unknown", optionKey: "list"}
+                }),
             ),
             permission: "list.delete"
         }));
@@ -185,7 +185,12 @@ class ListCommand extends Command {
         const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, string]>({
             usage: "list add <list name> <item>",
             arguments: tuple(
-                listConverter,
+                entity({
+                    name: "list name",
+                    entity: ListsEntity,
+                    required: true,
+                    error: {msgKey: "lists:unknown", optionKey: "list"}
+                }),
                 string({name: "value", required: true, greedy: true})
             ),
             permission: "list.delete"
@@ -204,7 +209,12 @@ class ListCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy<[ListsEntity, number, string]>({
             usage: "list edit <list name> <item number> <new value>",
             arguments: tuple(
-                listConverter,
+                entity({
+                    name: "list name",
+                    entity: ListsEntity,
+                    required: true,
+                    error: {msgKey: "lists:unknown", optionKey: "list"}
+                }),
                 integer({name: "item number", required: true}),
                 string({name: "new value", required: true, greedy: true})
             ),
@@ -230,7 +240,12 @@ class ListCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "list remove <list name> <item number>",
             arguments: tuple(
-                listConverter,
+                entity({
+                    name: "list name",
+                    entity: ListsEntity,
+                    required: true,
+                    error: {msgKey: "lists:unknown", optionKey: "list"}
+                }),
                 integer({name: "item number", required: true})
             ),
             permission: "list.add"

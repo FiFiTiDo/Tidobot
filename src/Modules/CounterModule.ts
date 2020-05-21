@@ -10,20 +10,12 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import {onePartConverter} from "../Systems/Commands/Validator/Converter";
-import {InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
 import {integer} from "../Systems/Commands/Validator/Integer";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-
-const counterConverter = onePartConverter("counter name", "counter", true, null, async (part, column, msg) => {
-    const list = await CountersEntity.findByName(part, msg.getChannel());
-    if (list === null)
-        throw new InvalidInputError(await msg.getResponse().translate("counter:unknown", {counter: part}));
-    return list;
-});
+import {entity} from "../Systems/Commands/Validator/Entity";
 
 class CounterCommand extends Command {
     constructor() {
@@ -47,9 +39,14 @@ class CounterCommand extends Command {
 
         const {event, response} = eventArgs;
         const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "list <list name> [item number]",
+            usage: "counter <counter name>",
             arguments: tuple(
-                counterConverter
+                entity({
+                    name: "counter",
+                    entity: CountersEntity,
+                    required: true,
+                    error: {msgKey: "counter:unknown", optionKey: "counter"}
+                })
             ),
             permission: "counter.check"
         }));
@@ -63,8 +60,13 @@ class CounterCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter increment <counter> [amount]",
             arguments: tuple(
-                counterConverter,
-                integer({ name: "amount", required: false, defaultValue: 1 })
+                entity({
+                    name: "counter",
+                    entity: CountersEntity,
+                    required: true,
+                    error: {msgKey: "counter:unknown", optionKey: "counter"}
+                }),
+                integer({name: "amount", required: false, defaultValue: 1})
             ),
             permission: "counter.change"
         }));
@@ -85,8 +87,13 @@ class CounterCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter decrement <counter> [amount]",
             arguments: tuple(
-                counterConverter,
-                integer({ name: "amount", required: false, defaultValue: 1 })
+                entity({
+                    name: "counter",
+                    entity: CountersEntity,
+                    required: true,
+                    error: {msgKey: "counter:unknown", optionKey: "counter"}
+                }),
+                integer({name: "amount", required: false, defaultValue: 1})
             ),
             permission: "counter.change"
         }));
@@ -107,8 +114,13 @@ class CounterCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter set <counter> <amount>",
             arguments: tuple(
-                counterConverter,
-                integer({ name: "amount", required: true })
+                entity({
+                    name: "counter",
+                    entity: CountersEntity,
+                    required: true,
+                    error: {msgKey: "counter:unknown", optionKey: "counter"}
+                }),
+                integer({name: "amount", required: true})
             ),
             permission: "counter.change"
         }));
@@ -129,7 +141,7 @@ class CounterCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter create <counter>",
             arguments: tuple(
-                string({ name: "counter name", required: true })
+                string({name: "counter name", required: true})
             ),
             permission: "counter.create"
         }));
@@ -153,7 +165,12 @@ class CounterCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter delete <counter>",
             arguments: tuple(
-                counterConverter
+                entity({
+                    name: "counter",
+                    entity: CountersEntity,
+                    required: true,
+                    error: {msgKey: "counter:unknown", optionKey: "counter"}
+                })
             ),
             permission: "counter.create"
         }));

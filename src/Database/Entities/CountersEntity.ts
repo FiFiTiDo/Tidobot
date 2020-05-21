@@ -20,4 +20,10 @@ export default class CountersEntity extends ChannelSpecificEntity<CountersEntity
     public static async findByName(name: string, channel: ChannelEntity): Promise<CountersEntity | null> {
         return CountersEntity.retrieve({channel}, where().eq("name", name));
     }
+
+    public static async convert(raw: string, channel: ChannelEntity): Promise<CountersEntity|null> {
+        return this.findByName(raw, channel);
+    }
+
+    public static readonly TYPE = "counter";
 }

@@ -1,6 +1,4 @@
 import AbstractModule from "./AbstractModule";
-import Message from "../Chat/Message";
-import {where} from "../Database/Where";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -13,11 +11,12 @@ import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import {onePartConverter} from "../Systems/Commands/Validator/Converter";
-import {InvalidArgumentError, InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
+import {InvalidArgumentError} from "../Systems/Commands/Validator/ValidationErrors";
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {entity} from "../Systems/Commands/Validator/Entity";
 
 @HandlesEvents()
 export default class PermissionModule extends AbstractModule {
@@ -67,13 +66,6 @@ export default class PermissionModule extends AbstractModule {
         await PermissionSystem.getInstance().resetChannelPermissions(channel);
     }
 }
-
-const permissionConverter = onePartConverter("permission", "permission", true, null, async (part, column, msg) => {
-    const perm = PermissionEntity.retrieve({channel: msg.getChannel()}, where().eq("permission", part));
-    if (perm === null)
-        throw new InvalidInputError(await msg.getResponse().translate("permission:error.unknown", {permission: part}));
-    return perm;
-});
 
 const roleConverter = (name) => onePartConverter(name, "role", true, Role.OWNER, (part, column, message) => {
     const role = parseRole(part);
@@ -132,7 +124,12 @@ class PermissionCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
             arguments: tuple(
-                permissionConverter
+                entity({
+                    name: "permission",
+                    entity: PermissionEntity,
+                    required: true,
+                    error: {msgKey: "permission:error.unknown", optionKey: "permission"}
+                })
             ),
             permission: "permission.delete"
         }));
@@ -154,7 +151,12 @@ class PermissionCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission set <permission> <level>",
             arguments: tuple(
-                permissionConverter,
+                entity({
+                    name: "permission",
+                    entity: PermissionEntity,
+                    required: true,
+                    error: {msgKey: "permission:error.unknown", optionKey: "permission"}
+                }),
                 roleConverter("level")
             ),
             permission: "permission.set"
@@ -180,7 +182,12 @@ class PermissionCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
             arguments: tuple(
-                permissionConverter
+                entity({
+                    name: "permission",
+                    entity: PermissionEntity,
+                    required: true,
+                    error: {msgKey: "permission:error.unknown", optionKey: "permission"}
+                })
             ),
             permission: "permission.reset"
         }));

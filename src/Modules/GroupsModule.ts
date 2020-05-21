@@ -15,19 +15,11 @@ import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
-import {onePartConverter} from "../Systems/Commands/Validator/Converter";
-import {InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-
-const groupConverter = onePartConverter("group name", "group", true, null, async (part, column, msg) => {
-    const group = await GroupsEntity.findByName(part, msg.getChannel());
-    if (group === null)
-        throw new InvalidInputError(await msg.getResponse().translate("groups:error.unknown", {group: part}));
-    return group;
-});
+import {entity} from "../Systems/Commands/Validator/Entity";
 
 @HandlesEvents()
 export default class GroupsModule extends AbstractModule {
@@ -73,7 +65,12 @@ class GroupCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group add <group> <user>",
             arguments: tuple(
-                groupConverter,
+                entity({
+                    name: "group",
+                    entity: GroupsEntity,
+                    required: true,
+                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
+                }),
                 chatterConverter({ name: "user", required: true })
             ),
             permission: "permission.group.add"
@@ -95,7 +92,12 @@ class GroupCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group remove <group> <user>",
             arguments: tuple(
-                groupConverter,
+                entity({
+                    name: "group",
+                    entity: GroupsEntity,
+                    required: true,
+                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
+                }),
                 chatterConverter({ name: "user", required: true })
             ),
             permission: "permission.group.remove"
@@ -139,7 +141,12 @@ class GroupCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group delete <group>",
             arguments: tuple(
-                groupConverter
+                entity({
+                    name: "group",
+                    entity: GroupsEntity,
+                    required: true,
+                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
+                })
             ),
             permission: "permission.group.delete"
         }));
@@ -165,7 +172,12 @@ class GroupCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group grant <group> <permission>",
             arguments: tuple(
-                groupConverter,
+                entity({
+                    name: "group",
+                    entity: GroupsEntity,
+                    required: true,
+                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
+                }),
                 string({ name: "permission", required: true })
             ),
             permission: "permission.grant"
@@ -185,7 +197,12 @@ class GroupCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group deny <group> <permission>",
             arguments: tuple(
-                groupConverter,
+                entity({
+                    name: "group",
+                    entity: GroupsEntity,
+                    required: true,
+                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
+                }),
                 string({ name: "permission", required: true })
             ),
             permission: "permission.deny"
@@ -205,7 +222,12 @@ class GroupCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
             arguments: tuple(
-                groupConverter,
+                entity({
+                    name: "group",
+                    entity: GroupsEntity,
+                    required: true,
+                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
+                }),
                 string({ name: "permission", required: false, defaultValue: undefined })
             ),
             permission: "permission.reset"

@@ -9,6 +9,7 @@ import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
+import c from "args";
 
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_groups`)
@@ -62,4 +63,10 @@ export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
         await GroupMembersEntity.removeEntries({channel: this.getChannel()}, where().eq("group_id", this.id));
         await GroupPermissionsEntity.removeEntries({channel: this.getChannel()}, where().eq("group_id", this.id));
     }
+
+    static async convert(raw: string, channel: ChannelEntity): Promise<GroupsEntity|null> {
+        return this.findByName(raw, channel);
+    }
+
+    static readonly TYPE = "group";
 }

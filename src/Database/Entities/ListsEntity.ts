@@ -49,4 +49,10 @@ export default class ListsEntity extends ChannelSpecificEntity<ListsEntity> {
         await super.delete();
         await ListEntity.dropTable({channel: this.getChannel(), optionalParam: this.name});
     }
+
+    public static async convert(raw: string, channel: ChannelEntity): Promise<ListsEntity|null> {
+        return this.findByName(raw, channel);
+    }
+
+    public static readonly TYPE = "list";
 }

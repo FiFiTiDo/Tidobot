@@ -1,6 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import Message from "../Chat/Message";
@@ -15,7 +15,8 @@ import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {string} from "../Systems/Commands/Validator/String";
-import {ValidatorStatus} from "../Systems/Commands/Validator/CommandEventValidator";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 
 enum RaffleState {
     OPEN = 1,
@@ -101,15 +102,15 @@ class RaffleCommand extends Command {
     }
 
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle open [keyword]",
-            arguments: [
+            arguments: tuple(
                 string({ name: "entry phrase", required: true, greedy: true})
-            ],
+            ),
             permission: "raffle.open"
-        });
+        }));
          if (status !== ValidatorStatus.OK) return;
-        const [keyword] = args as [string];
+        const [keyword] = args;
 
         if (this.raffles.hasChannel(msg.getChannel())) {
             if (this.raffles.getChannel(msg.getChannel()).isOpen()) {
@@ -128,36 +129,36 @@ class RaffleCommand extends Command {
     }
 
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle close",
             permission: "raffle.close"
-        });
+        }));
         const raffle = await this.getRaffle(msg, RaffleState.OPEN);
-        if (args === null || raffle === null) return;
+        if (status !== ValidatorStatus.OK || raffle === null) return;
 
         raffle.close();
         await response.message("raffle:closed");
     }
 
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle reset",
             permission: "raffle.reset"
-        });
+        }));
         const raffle = await this.getRaffle(msg);
-        if (args === null || raffle === null) return;
+        if (status !== ValidatorStatus.OK || raffle === null) return;
 
         raffle.reset();
         await response.message("raffle:reset");
     }
 
     async pull({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const args = await event.validate({
+        const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle pull",
             permission: "raffle.pull"
-        });
+        }));
         const raffle = await this.getRaffle(msg);
-        if (args === null || raffle === null) return;
+        if (status !== ValidatorStatus.OK || raffle === null) return;
 
         const winner = raffle.pullWinner();
         if (winner === null) {

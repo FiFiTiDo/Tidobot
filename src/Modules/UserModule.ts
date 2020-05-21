@@ -14,6 +14,7 @@ import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 class UserCommand extends Command {
     constructor(private confirmationFactory: ConfirmationFactory) {
@@ -27,14 +28,14 @@ class UserCommand extends Command {
     async grant({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "user grant <group> <permission>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 string({ name: "permission", required: true})
-            ],
+            ),
             permission: "permission.grant"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [user, permission] = args as [ChatterEntity, string];
+        const [user, permission] = args;
 
         await UserPermissionsEntity.update(user, permission, true, msg.getChannel())
             .then(() => response.message("user:permission.granted", {permission, username: user.name}))
@@ -47,14 +48,14 @@ class UserCommand extends Command {
     async deny({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "user deny <group> <permission>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 string({ name: "permission", required: true})
-            ],
+            ),
             permission: "permission.deny"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [user, permission] = args as [ChatterEntity, string];
+        const [user, permission] = args;
 
         await UserPermissionsEntity.update(user, permission, false, msg.getChannel())
             .then(() => response.message("user:permission.denied", {username: user.name, permission}))
@@ -67,14 +68,14 @@ class UserCommand extends Command {
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 string({ name: "permission", required: false, defaultValue: undefined })
-            ],
+            ),
             permission: "permission.reset"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [user, permission] = args as [ChatterEntity, string | undefined];
+        const [user, permission] = args;
 
         if (permission) {
             await UserPermissionsEntity.delete(user, permission)

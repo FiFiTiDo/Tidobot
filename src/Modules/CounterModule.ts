@@ -16,6 +16,7 @@ import {integer} from "../Systems/Commands/Validator/Integer";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 const counterConverter = onePartConverter("counter name", "counter", true, null, async (part, column, msg) => {
     const list = await CountersEntity.findByName(part, msg.getChannel());
@@ -47,13 +48,13 @@ class CounterCommand extends Command {
         const {event, response} = eventArgs;
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "list <list name> [item number]",
-            arguments: [
+            arguments: tuple(
                 counterConverter
-            ],
+            ),
             permission: "counter.check"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [counter] = args as [CountersEntity];
+        const [counter] = args;
 
         await response.message("counter:value", {counter: counter.name, value: counter.value});
     }
@@ -61,14 +62,14 @@ class CounterCommand extends Command {
     async increment({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter increment <counter> [amount]",
-            arguments: [
+            arguments: tuple(
                 counterConverter,
                 integer({ name: "amount", required: false, defaultValue: 1 })
-            ],
+            ),
             permission: "counter.change"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [counter, amount] = args as [CountersEntity, number];
+        const [counter, amount] = args;
 
         try {
             counter.value += amount;
@@ -83,14 +84,14 @@ class CounterCommand extends Command {
     async decrement({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter decrement <counter> [amount]",
-            arguments: [
+            arguments: tuple(
                 counterConverter,
                 integer({ name: "amount", required: false, defaultValue: 1 })
-            ],
+            ),
             permission: "counter.change"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [counter, amount] = args as [CountersEntity, number];
+        const [counter, amount] = args;
 
         try {
             counter.value -= amount;
@@ -105,14 +106,14 @@ class CounterCommand extends Command {
     async set({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter set <counter> <amount>",
-            arguments: [
+            arguments: tuple(
                 counterConverter,
                 integer({ name: "amount", required: true })
-            ],
+            ),
             permission: "counter.change"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [counter, amount] = args as [CountersEntity, number];
+        const [counter, amount] = args;
 
         try {
             counter.value = amount;
@@ -127,13 +128,13 @@ class CounterCommand extends Command {
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter create <counter>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "counter name", required: true })
-            ],
+            ),
             permission: "counter.create"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [name] = args as [string];
+        const [name] = args;
 
         try {
             const counter = await CountersEntity.make({channel: msg.getChannel()}, {name, value: 0});
@@ -151,9 +152,9 @@ class CounterCommand extends Command {
     async delete({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter delete <counter>",
-            arguments: [
+            arguments: tuple(
                 counterConverter
-            ],
+            ),
             permission: "counter.create"
         }));
         if (status !== ValidatorStatus.OK) return;

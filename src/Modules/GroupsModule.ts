@@ -3,7 +3,6 @@ import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import GroupsEntity from "../Database/Entities/GroupsEntity";
 import GroupMembersEntity from "../Database/Entities/GroupMembersEntity";
 import GroupPermissionsEntity from "../Database/Entities/GroupPermissionsEntity";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -21,6 +20,7 @@ import {InvalidInputError} from "../Systems/Commands/Validator/ValidationErrors"
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 const groupConverter = onePartConverter("group name", "group", true, null, async (part, column, msg) => {
     const group = await GroupsEntity.findByName(part, msg.getChannel());
@@ -72,14 +72,14 @@ class GroupCommand extends Command {
     async addMember({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group add <group> <user>",
-            arguments: [
+            arguments: tuple(
                 groupConverter,
                 chatterConverter({ name: "user", required: true })
-            ],
+            ),
             permission: "permission.group.add"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [group, chatter] = args as [GroupsEntity, ChatterEntity];
+        const [group, chatter] = args;
 
         GroupMembersEntity.create(chatter.userId, group)
             .then(added => response.message(added ? "groups:user.added" : "groups:user.already", {
@@ -94,14 +94,14 @@ class GroupCommand extends Command {
     async removeMember({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group remove <group> <user>",
-            arguments: [
+            arguments: tuple(
                 groupConverter,
                 chatterConverter({ name: "user", required: true })
-            ],
+            ),
             permission: "permission.group.remove"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [group, chatter] = args as [GroupsEntity, ChatterEntity];
+        const [group, chatter] = args;
 
         try {
             const member = await GroupMembersEntity.findByUser(chatter, group);
@@ -118,9 +118,9 @@ class GroupCommand extends Command {
     async createGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group create <group>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "group name", required: true })
-            ],
+            ),
             permission: "permission.group.create"
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -138,13 +138,13 @@ class GroupCommand extends Command {
     async deleteGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group delete <group>",
-            arguments: [
+            arguments: tuple(
                 groupConverter
-            ],
+            ),
             permission: "permission.group.delete"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [group] = args as [GroupsEntity];
+        const [group] = args;
 
         const confirmation = await this.confirmationFactory(msg, await response.translate("groups:delete-confirm", {
             group: group.name
@@ -164,14 +164,14 @@ class GroupCommand extends Command {
     async grantPerm({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group grant <group> <permission>",
-            arguments: [
+            arguments: tuple(
                 groupConverter,
                 string({ name: "permission", required: true })
-            ],
+            ),
             permission: "permission.grant"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [group, permission] = args as [GroupsEntity, string];
+        const [group, permission] = args;
 
         await GroupPermissionsEntity.update(group, permission, true)
             .then(() => response.message("groups.permission.granted", {permission, group: group.name}))
@@ -184,14 +184,14 @@ class GroupCommand extends Command {
     async denyPerm({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group deny <group> <permission>",
-            arguments: [
+            arguments: tuple(
                 groupConverter,
                 string({ name: "permission", required: true })
-            ],
+            ),
             permission: "permission.deny"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [group, permission] = args as [GroupsEntity, string];
+        const [group, permission] = args;
 
         await GroupPermissionsEntity.update(group, permission, false)
             .then(() => response.message("groups.permission.denied", {group: group.name, permission}))
@@ -204,14 +204,14 @@ class GroupCommand extends Command {
     async resetPerms({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
-            arguments: [
+            arguments: tuple(
                 groupConverter,
                 string({ name: "permission", required: false, defaultValue: undefined })
-            ],
+            ),
             permission: "permission.reset"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [group, permission] = args as [GroupsEntity, string | undefined];
+        const [group, permission] = args;
 
         if (permission) {
             await GroupPermissionsEntity.delete(group, permission)

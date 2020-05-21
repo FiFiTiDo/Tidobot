@@ -18,6 +18,7 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import CliArgsValidationStrategy from "../Systems/Commands/Validator/Strategies/CliArgsValidationStrategy";
 import {boolean} from "../Systems/Commands/Validator/Boolean";
 import axios from "axios";
+import {tuple} from "../Utilities/ArrayUtils";
 
 interface StrawpollGetResponse {
     id: number;
@@ -59,9 +60,9 @@ class StrawpollCommand extends Command {
     async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "strawpoll check [poll id]",
-            arguments: [
+            arguments: tuple(
                 integer({ name: "poll id", required: true })
-            ]
+            )
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -193,9 +194,9 @@ class VoteCommand extends Command {
         const announce = await msg.getChannel().getSettings().get("polls.announceVotes");
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "vote <option #>",
-            arguments: [
+            arguments: tuple(
                 integer({ name: "option number", required: true })
-            ],
+            ),
             permission: "polls.vote",
             silent: !announce
         }));
@@ -203,7 +204,7 @@ class VoteCommand extends Command {
 
         if (!this.runningPolls.hasChannel(msg.getChannel())) return;
         const poll = this.runningPolls.getChannel(msg.getChannel());
-        const [optionNum] = args as [number];
+        const [optionNum] = args;
 
         const option = poll.getOption(optionNum);
         if (option === null) {
@@ -231,13 +232,13 @@ class PollCommand extends Command {
     async run({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "!poll run <option 1> <option 2> ... <option n>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "poll options", required: true, quoted: true, array: true })
-            ],
+            ),
             permission: "polls.run"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [options] = args as [string[]];
+        const [options] = args;
         const prefix = await CommandSystem.getPrefix(msg.getChannel());
 
         if (this.runningPolls.hasChannel(msg.getChannel())) {

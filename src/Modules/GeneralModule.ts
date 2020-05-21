@@ -1,6 +1,6 @@
 import AbstractModule from "./AbstractModule";
 import moment from "moment-timezone";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -39,9 +39,9 @@ class RawCommand extends Command {
     async execute({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "raw <text>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "text", required: true, greedy: true })
-            ],
+            ),
             permission: "general.raw"
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -59,9 +59,9 @@ class EchoCommand extends Command {
     async execute({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "echo <message>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "message", required: true, greedy: true })
-            ],
+            ),
             permission: "general.echo"
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -79,9 +79,9 @@ class EvalCommand extends Command {
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "eval <expression>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "expression", required: true, greedy: true })
-            ],
+            ),
             permission: "general.eval"
         }));
          if (status !== ValidatorStatus.OK) return;

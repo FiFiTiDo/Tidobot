@@ -18,6 +18,7 @@ import CommandSystem from "../Systems/Commands/CommandSystem";
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 class SetCommand extends Command {
     constructor() {
@@ -27,10 +28,10 @@ class SetCommand extends Command {
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "set <setting> <value>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "setting", required: true }),
                 string({ name: "value", required: true, greedy: true })
-            ],
+            ),
             permission: "settings.set"
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -53,9 +54,9 @@ class UnsetCommand extends Command {
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "unset <setting>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "setting", required: true })
-            ],
+            ),
             permission: "settings.reset"
         }));
          if (status !== ValidatorStatus.OK) return;

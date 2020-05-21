@@ -15,6 +15,7 @@ import {string} from "../Systems/Commands/Validator/String";
 import {float} from "../Systems/Commands/Validator/Float";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 enum PlaceBetResponse {
     INVALID_OPTION, LOW_BALANCE, TOO_LOW, TOO_HIGH, BET_PLACED
@@ -108,14 +109,14 @@ class BetCommand extends Command {
     async place({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet place <option> <amount>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "option", required: true }),
                 float({ name: "amount", required: true })
-            ],
+            ),
             permission: "bet.place"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [option, amount] = args as [string, number];
+        const [option, amount] = args;
 
         if (!this.betInstances.hasChannel(msg.getChannel())) return;
         const game = this.betInstances.getChannel(msg.getChannel());
@@ -153,14 +154,14 @@ class BetCommand extends Command {
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet open \"<title>\" <option 1> <option 2> ... <option n>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "title", required: true, quoted: true }),
                 string({ name: "option", required: true, quoted: true, array: true })
-            ],
+            ),
             permission: "bet.open"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [title, options] = args as [string, string[]];
+        const [title, options] = args;
 
         if (this.betInstances.hasChannel(msg.getChannel()) && this.betInstances.getChannel(msg.getChannel()).isOpen())
             return response.message("bet:error.already-open");
@@ -176,9 +177,9 @@ class BetCommand extends Command {
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet close <winning option>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "winning option", required: true })
-            ],
+            ),
             permission: "bet.close"
         }));
         if (status !== ValidatorStatus.OK) return;

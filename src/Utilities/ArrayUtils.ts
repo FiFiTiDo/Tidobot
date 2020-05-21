@@ -22,3 +22,7 @@ export function array_remove<T>(value: T, arr: T[]): boolean {
     arr.splice(i, 1);
     return true;
 }
+
+export function tuple<T extends any[]>(...arr: T): T {
+    return arr;
+}

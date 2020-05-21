@@ -14,6 +14,7 @@ import Setting, {SettingType} from "../Systems/Settings/Setting";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 class Queue {
     private chatters: ChatterEntity[] = [];
@@ -111,9 +112,9 @@ class QueueCommand extends Command {
     async check({ event, message, response }: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "queue check [user]",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: false })
-            ],
+            ),
             permission: "queue.check"
         }));
          if (status !== ValidatorStatus.OK) return;

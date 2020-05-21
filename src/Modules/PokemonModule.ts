@@ -11,7 +11,7 @@ import TrainerEntity from "../Database/Entities/TrainerEntity";
 import PokemonEntity, {formatStats} from "../Database/Entities/PokemonEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {randomChance} from "../Utilities/RandomUtils";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import Logger from "../Utilities/Logger";
 import {Response} from "../Chat/Response";
 import ChannelManager from "../Chat/ChannelManager";
@@ -97,9 +97,9 @@ class PokemonCommand extends Command {
     async throw({ event, sender, channel, response }: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon throw [user]",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true })
-            ],
+            ),
             permission: "pokemon.play"
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -148,9 +148,9 @@ class PokemonCommand extends Command {
     async release({ event, response, sender}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release [pokemon]",
-            arguments: [
+            arguments: tuple(
                 string({ name: "pokemon name", required: false, defaultValue: undefined })
-            ],
+            ),
             permission: "pokemon.play"
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -216,13 +216,13 @@ class PokemonCommand extends Command {
     async fight({ event, sender, response, channel}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon fight <trainer>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "trainer", required: true, active: true })
-            ],
+            ),
             permission: "pokemon.play"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args as [ChatterEntity];
+        const [chatter] = args;
 
         if (sender.is(chatter)) return response.message("pokemon:error.self");
 

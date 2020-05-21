@@ -25,6 +25,7 @@ import {string} from "../Systems/Commands/Validator/String";
 import {integer} from "../Systems/Commands/Validator/Integer";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 interface LastMessage {
     item: NewsEntity;
@@ -45,9 +46,9 @@ class NewsCommand extends Command {
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news add <message>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "message", required: true, greedy: true })
-            ],
+            ),
             permission: "news.add"
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -65,13 +66,13 @@ class NewsCommand extends Command {
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news remove <index>",
-            arguments: [
+            arguments: tuple(
                 integer({ name: "item id", required: true })
-            ],
+            ),
             permission: "news.remove"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [id] = args as [number];
+        const [id] = args;
 
         const item = await NewsEntity.get(id, {channel: msg.getChannel()});
         if (item === null) {

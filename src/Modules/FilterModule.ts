@@ -3,7 +3,7 @@ import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import FiltersEntity from "../Database/Entities/FiltersEntity";
-import {array_add, array_remove} from "../Utilities/ArrayUtils";
+import {array_add, array_remove, tuple} from "../Utilities/ArrayUtils";
 import Bot from "../Application/Bot";
 import {Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -32,13 +32,13 @@ class PermitCommand extends Command {
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permit <user>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
-            ],
+            ),
             permission: "filter.permit"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args as [ChatterEntity];
+        const [chatter] = args;
 
         FilterSystem.getInstance().permitUser(chatter);
         this.filterModule.permits.setChatter(chatter, moment());
@@ -57,13 +57,13 @@ class PardonCommand extends Command {
     async execute({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pardon <user>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true })
-            ],
+            ),
             permission: "filter.pardon"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args as [ChatterEntity];
+        const [chatter] = args;
 
         FilterSystem.getInstance().pardonUser(chatter);
         await response.message("filter:strikes-cleared", {username: chatter.name});
@@ -78,13 +78,13 @@ class PurgeCommand extends Command {
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "purge <user>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true })
-            ],
+            ),
             permission: "filter.purge"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args as [ChatterEntity];
+        const [chatter] = args;
         await this.bot.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"),
             await response.translate("filter:purge-reason", {username: msg.getChatter().name}));
         await response.message("filter:purged", {username: chatter.name});
@@ -104,14 +104,14 @@ class FilterCommand extends Command {
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter add <list> <item>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
                 string({ name: "item", required: true, greedy: true })
-            ],
+            ),
             permission: "filter.list.add"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [list, item] = args as ["domains" | "badWords" | "emotes", string];
+        const [list, item] = args;
         const lists = await msg.getChannel().getFilters();
 
         if (array_add(item, lists[list])) {
@@ -128,14 +128,14 @@ class FilterCommand extends Command {
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter remove <list> <item>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
                 string({ name: "item", required: true, greedy: true })
-            ],
+            ),
             permission: "filter.list.remove"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [list, item] = args as ["domains" | "bad_words" | "emotes", string];
+        const [list, item] = args;
         const lists = await msg.getChannel().getFilters();
 
         if (array_remove(item, lists[list])) {
@@ -152,13 +152,13 @@ class FilterCommand extends Command {
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter reset [list]",
-            arguments: [
+            arguments: tuple(
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]})
-            ],
+            ),
             permission: "filter.list.add"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [list] = args as ["domains" | "bad_words" | "emotes"];
+        const [list] = args;
         const lists = await msg.getChannel().getFilters();
 
         const confirmation = await this.makeConfirmation(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);

@@ -20,6 +20,7 @@ import {float} from "../Systems/Commands/Validator/Float";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 
 class BankCommand extends Command {
@@ -39,14 +40,14 @@ class BankCommand extends Command {
     async give({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank give <user> <amount>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 float({ name: "amount", required: true })
-            ],
+            ),
             permission: "currency.bank.give"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [chatter, amount] = args as [ChatterEntity, number];
+        const [chatter, amount] = args;
 
         try {
             await chatter.deposit(amount);
@@ -63,13 +64,13 @@ class BankCommand extends Command {
     async giveAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank give-all <amount>",
-            arguments: [
+            arguments: tuple(
                 float({ name: "amount", required: true })
-            ],
+            ),
             permission: "currency.bank.give-all"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [amount] = args as [number];
+        const [amount] = args;
 
         const onlyActive = msg.getChannel().getSettings().get("currency.only-active-all");
         const chatters: ChatterEntity[] = onlyActive ? msg.getChannel().getChatters() : await ChatterEntity.getAll({channel: msg.getChannel()});
@@ -92,14 +93,14 @@ class BankCommand extends Command {
     async take({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank take <user> <amount>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 float({ name: "amount", required: true })
-            ],
+            ),
             permission: "currency.bank.take"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter, amount] = args as [ChatterEntity, number];
+        const [chatter, amount] = args;
 
         try {
             await chatter.withdraw(amount);
@@ -116,13 +117,13 @@ class BankCommand extends Command {
     async takeAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank take-all <amount>",
-            arguments: [
+            arguments: tuple(
                 float({ name: "amount", required: true })
-            ],
+            ),
             permission: "currency.bank.take-all"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [amount] = args as [number];
+        const [amount] = args;
 
         const onlyActive = msg.getChannel().getSettings().get("currency.only-active-all");
         const chatters: ChatterEntity[] = onlyActive ? msg.getChannel().getChatters() : await msg.getChannel().chatters();
@@ -145,13 +146,13 @@ class BankCommand extends Command {
     async balance({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank balance <user>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true })
-            ],
+            ),
             permission: "currency.bank.balance"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args as [ChatterEntity];
+        const [chatter] = args;
 
         await response.message("currency:balance-other", {
             username: chatter.name,
@@ -162,13 +163,13 @@ class BankCommand extends Command {
     async reset({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank reset <user>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true })
-            ],
+            ),
             permission: "currency.bank.reset"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args as [ChatterEntity];
+        const [chatter] = args;
 
         try {
             chatter.balance = 0;
@@ -237,14 +238,14 @@ class PayCommand extends Command {
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pay <user> <amount>",
-            arguments: [
+            arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 float({ name: "amount", required: true })
-            ],
+            ),
             permission: "currency.pay"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [chatter, amount] = args as [ChatterEntity, number];
+        const [chatter, amount] = args;
 
         const successful = await msg.getChatter().charge(amount);
         if (successful === false) {

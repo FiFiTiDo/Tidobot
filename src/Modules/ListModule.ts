@@ -1,8 +1,7 @@
 import AbstractModule from "./AbstractModule";
-import Message from "../Chat/Message";
 import ListsEntity from "../Database/Entities/ListsEntity";
 import ListEntity from "../Database/Entities/ListEntity";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -112,10 +111,10 @@ class ListCommand extends Command {
 
         const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, number]>({
             usage: "list <list name> [item number]",
-            arguments: [
+            arguments: tuple(
                 listConverter,
                 integer({name: "item number", required: false})
-            ],
+            ),
             permission: args => args.length > 1 ? "list.view.specific" : "list.view.random"
         }));
         if (status !== ValidatorStatus.OK) return;
@@ -147,9 +146,9 @@ class ListCommand extends Command {
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list create <list name>",
-            arguments: [
+            arguments: tuple(
                 string({name: "list name", required: true})
-            ],
+            ),
             permission: "list.create"
         }));
         if (status !== ValidatorStatus.OK) return;
@@ -166,9 +165,9 @@ class ListCommand extends Command {
     async delete({event, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list delete <list name>",
-            arguments: [
+            arguments: tuple(
                 listConverter
-            ],
+            ),
             permission: "list.delete"
         }));
         if (status !== ValidatorStatus.OK) return;
@@ -185,10 +184,10 @@ class ListCommand extends Command {
     async add({event, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, string]>({
             usage: "list add <list name> <item>",
-            arguments: [
+            arguments: tuple(
                 listConverter,
                 string({name: "value", required: true, greedy: true})
-            ],
+            ),
             permission: "list.delete"
         }));
         if (status !== ValidatorStatus.OK) return;
@@ -204,11 +203,11 @@ class ListCommand extends Command {
     async edit({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy<[ListsEntity, number, string]>({
             usage: "list edit <list name> <item number> <new value>",
-            arguments: [
+            arguments: tuple(
                 listConverter,
                 integer({name: "item number", required: true}),
                 string({name: "new value", required: true, greedy: true})
-            ],
+            ),
             permission: "list.edit"
         }));
         if (status !== ValidatorStatus.OK) return;
@@ -230,14 +229,14 @@ class ListCommand extends Command {
     async remove({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "list remove <list name> <item number>",
-            arguments: [
+            arguments: tuple(
                 listConverter,
                 integer({name: "item number", required: true})
-            ],
+            ),
             permission: "list.add"
         }));
         if (status !== ValidatorStatus.OK) return;
-        const [list, itemNum] = args as [ListsEntity, number];
+        const [list, itemNum] = args;
         const item = await list.getItem(itemNum);
         if (item === null) {
             await response.message("lists:item.unknown", {number: itemNum});

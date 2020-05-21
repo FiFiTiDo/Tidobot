@@ -17,6 +17,7 @@ import {InvalidArgumentError, InvalidInputError} from "../Systems/Commands/Valid
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {tuple} from "../Utilities/ArrayUtils";
 
 @HandlesEvents()
 export default class PermissionModule extends AbstractModule {
@@ -95,14 +96,14 @@ class PermissionCommand extends Command {
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission create <permission> <default-level>",
-            arguments: [
+            arguments: tuple(
                 string({ name: "permission", required: true }),
                 roleConverter("default role")
-            ],
+            ),
             permission: "permission.create"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [perm_str, role] = args as [string, Role];
+        const [perm_str, role] = args;
 
         if (!await msg.checkPermission(perm_str)) {
             await response.message("permission:error.not-permitted");
@@ -130,13 +131,13 @@ class PermissionCommand extends Command {
     async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
-            arguments: [
+            arguments: tuple(
                 permissionConverter
-            ],
+            ),
             permission: "permission.delete"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [permission] = args as [PermissionEntity];
+        const [permission] = args;
 
         if (permission.moduleDefined)
             return response.message("permission:error.module-defined", {permission: permission.permission});
@@ -152,14 +153,14 @@ class PermissionCommand extends Command {
     async set({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission set <permission> <level>",
-            arguments: [
+            arguments: tuple(
                 permissionConverter,
                 roleConverter("level")
-            ],
+            ),
             permission: "permission.set"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [permission, role] = args as [PermissionEntity, Role];
+        const [permission, role] = args;
 
         if (!await msg.checkPermission(permission.permission)) {
             await response.message("permission:error.not-permitted");
@@ -178,13 +179,13 @@ class PermissionCommand extends Command {
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
-            arguments: [
+            arguments: tuple(
                 permissionConverter
-            ],
+            ),
             permission: "permission.reset"
         }));
          if (status !== ValidatorStatus.OK) return;
-        const [permission] = args as [PermissionEntity | undefined];
+        const [permission] = args;
 
         if (permission) {
             if (!(await msg.checkPermission(permission.permission)))

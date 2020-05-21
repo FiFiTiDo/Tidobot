@@ -10,13 +10,14 @@ import JoinEvent from "../../Chat/Events/JoinEvent";
 import LeaveEvent from "../../Chat/Events/LeaveEvent";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import Config from "../../Utilities/Config";
+import Config from "../../Systems/Config/Config";
 import {inject, injectable} from "inversify";
 import symbols from "../../symbols";
 import Logger from "../../Utilities/Logger";
 import EventSystem from "../../Systems/Event/EventSystem";
 import ChannelManager from "../../Chat/ChannelManager";
 import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
+import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
@@ -25,19 +26,19 @@ export default class TwitchAdapter extends Adapter {
     public oldApi: kraken.Api;
 
     constructor(
-        @inject(ChannelManager) private channelManager: ChannelManager, @inject(symbols.Config) private config: Config,
+        @inject(ChannelManager) private channelManager: ChannelManager,
         @inject(symbols.TwitchMessageFactory) private messageFactory: TwitchMessageFactory
     ) {
         super();
-
-        this.api = new helix.Api(config.get("twitch.api.clientId"), config.get("twitch.api.clientSecret"));
-        this.oldApi = new kraken.Api(config.get("twitch.api.clientId"));
     }
 
     async run(options: AdapterOptions): Promise<void> {
+        const config = await Config.getInstance().getConfig(TwitchConfig);
+        this.api = new helix.Api(config.api.clientId, config.api.clientSecret);
+        this.oldApi = new kraken.Api(config.api.clientId);
         this.client = tmi.Client({
-            identity: this.config.get("twitch.identities." + options.identity, this.config.get("twitch.identities.default")),
-            channels: options.channels[0] == Application.DEFAULT_CHANNEL ? this.config.get("twitch.defaultChannels") : options.channels
+            identity: config.identities[options.identity] || config.identities["default"],
+            channels: options.channels[0] == Application.DEFAULT_CHANNEL ? config.defaultChannels : options.channels
         });
 
         this.client.on("message", async (channelName: string, userstate: tmi.ChatUserstate, message: string, self: boolean) => {

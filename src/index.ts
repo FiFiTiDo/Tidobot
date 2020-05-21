@@ -1,6 +1,5 @@
 import "reflect-metadata";
 
-require("dotenv").config();
 require("source-map-support").install({
     hookRequire: true
 });

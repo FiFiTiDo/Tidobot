@@ -1,21 +1,18 @@
 import {RedisClient} from "redis";
 import {Deserializer, Serializable} from "../../Utilities/Patterns/Serializable";
 import {promisify} from "util";
+import Config from "../Config/Config";
+import CacheConfig from "../Config/ConfigModels/CacheConfig";
 
 export default class Cache {
     private static instance: Cache = null;
-    private readonly client: RedisClient;
 
-    constructor() {
-        this.client = new RedisClient({
-            host: process.env.REDIS_HOST,
-            port: parseInt(process.env.REDIS_PORT)
-        });
+    constructor(private readonly client: RedisClient) {
     }
 
-    public static getInstance(): Cache {
+    public static async getInstance(): Promise<Cache> {
         if (this.instance === null)
-            this.instance = new Cache();
+            this.instance = await Cache.create();
 
         return this.instance;
     }
@@ -125,6 +122,11 @@ export default class Cache {
             for (const key of keySet)
                 ops.push(this.del(key));
         return Promise.all(ops);
+    }
+
+    static async create() {
+        const config = await Config.getInstance().getConfig(CacheConfig);
+        return new Cache(new RedisClient(config.redis));
     }
 }
 

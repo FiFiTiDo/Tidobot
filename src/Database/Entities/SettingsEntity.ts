@@ -42,7 +42,7 @@ export class ChannelSettings {
 
         let value: string | null;
         try {
-            value = await Cache.getInstance().retrieve("channel." + this.channel.channelId + ".setting." + key, 30, async () => {
+            value = await (await Cache.getInstance()).retrieve("channel." + this.channel.channelId + ".setting." + key, 30, async () => {
                 const setting = await SettingsEntity.findByKey(key, this.channel);
                 if (setting === null) Logger.get().error("Tried to get non-existent setting: " + key);
                 return setting === null ? defaultValue : setting.value;

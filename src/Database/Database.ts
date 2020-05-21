@@ -3,12 +3,15 @@ import * as path from "path";
 import ChannelEntity from "./Entities/ChannelEntity";
 import IgnoredEntity from "./Entities/IgnoredEntity";
 import FiltersEntity from "./Entities/FiltersEntity";
+import Config from "../Systems/Config/Config";
+import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
 
 export default class Database {
     private static instance: sqlite3.Database = null;
 
     public static async initialize(): Promise<void> {
-        const service = process.env.SERVICE;
+        const config = await Config.getInstance().getConfig(GeneralConfig);
+        const service = config.service;
         this.instance = new sqlite3.Database(path.join(process.cwd(), "data", "database.db"), sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
         try {
             await ChannelEntity.createTable({service});

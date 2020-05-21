@@ -12,6 +12,9 @@ import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {config} from "winston";
+import Config from "../Systems/Config/Config";
+import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
 
 class TidobotCommand extends Command {
     constructor() {
@@ -33,7 +36,9 @@ class TidobotCommand extends Command {
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        await response.message("Tidobot v" + process.env.BOT_VERSION);
+         const config = await Config.getInstance().getConfig(GeneralConfig);
+
+        await response.message("Tidobot v" + config.version);
     }
 
     async about({event, message: msg, response}: CommandEventArgs): Promise<void> {

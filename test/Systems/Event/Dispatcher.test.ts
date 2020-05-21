@@ -1,5 +1,6 @@
-import Dispatcher from "../../src/Systems/Event/Dispatcher";
-import Event from "../../src/Systems/Event/Event";
+import "reflect-metadata"
+import Dispatcher from "../../../src/Systems/Event/Dispatcher";
+import Event from "../../../src/Systems/Event/Event";
 import chai = require("chai");
 import sinon = require("sinon");
 import sinonChai = require("sinon-chai");
@@ -78,7 +79,7 @@ describe('Dispatcher', function() {
             spy1.should.have.been.called;
             spy2.should.have.been.called;
             spy3.should.have.been.called;
-        })
+        });
 
 
         it('should call the listeners with the right events', function() {

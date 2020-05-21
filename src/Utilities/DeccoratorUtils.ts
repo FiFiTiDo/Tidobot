@@ -29,3 +29,11 @@ export function addMetadata<T>(metaKey: string, target: any, value: T | KeyValue
     }
     setMetadata(metaKey, target, data);
 }
+
+export type TYPE_CONSTRUCTORS = NumberConstructor|StringConstructor|ArrayBufferConstructor|ArrayConstructor|
+    BooleanConstructor|DateConstructor|ErrorConstructor|FunctionConstructor|GeneratorFunctionConstructor|MapConstructor|
+    ObjectConstructor|PromiseConstructor|RegExpConstructor|SetConstructor|SymbolConstructor;
+
+export function getPropertyType(target: any, property: string): TYPE_CONSTRUCTORS {
+    return Reflect.getMetadata("design:type", target, property);
+}

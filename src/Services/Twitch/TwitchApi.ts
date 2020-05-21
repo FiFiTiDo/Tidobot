@@ -3,8 +3,13 @@ import {parse_duration} from "../../Utilities/functions";
 import Logger from "../../Utilities/Logger";
 import {AccessToken} from "./ApiAuthentication";
 import axios, {Method, AxiosRequestConfig, AxiosInstance, AxiosPromise} from "axios";
+import Config from "../../Systems/Config/Config";
+import CacheConfig from "../../Systems/Config/ConfigModels/CacheConfig";
 
-const CACHE_EXPIRY = parse_duration(process.env.CACHE_LENGTH);
+const CACHE_EXPIRY = async () => {
+    const config = await Config.getInstance().getConfig(CacheConfig);
+    return parse_duration(config.length);
+};
 
 /**
  * The new twitch api
@@ -129,20 +134,6 @@ export namespace helix {
         to_id?: string;
     }
 
-    /** @ignore */
-    type values = { [key: string]: any };
-
-    /**
-     * Internal use for the private [[Api.makeRequest]] function
-     */
-    interface RequestOptions {
-        method?: Method;
-        endpoint: string;
-        query?: values;
-        body?: values;
-        headers?: values;
-    }
-
     /**
      * The Api class handling the api requests for the new helix api
      */
@@ -171,7 +162,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getGames(params: GameParams): Promise<Response<Game>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.games." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
+            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.games." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Game>({
                     url: "/games", params
                 }));
@@ -186,7 +177,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getStreams(params: StreamParams): Promise<Response<Stream>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.streams." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
+            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.streams." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Stream>({
                     url: "/streams", params
                 }));
@@ -201,7 +192,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUsers(params: UserParams): Promise<Response<User>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.users." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
+            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.users." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<User>({
                     url: "/users", params
                 }));
@@ -216,7 +207,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUserFollow(params: UserFollowParams): Promise<Response<UserFollow>> {
-            return JSON.parse(await Cache.getInstance().retrieve("twitch.users.follow." + JSON.stringify(params), CACHE_EXPIRY.asSeconds(), async () => {
+            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.users.follow." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<UserFollow>({
                     url: "/users/follows", params
                 }));
@@ -354,9 +345,6 @@ export namespace kraken {
         _total: number;
         users: User[];
     }
-
-    /** @ignore */
-    type values = { [key: string]: any };
 
     export class Api {
         readonly BASE_URL = "https://api.twitch.tv/kraken/";

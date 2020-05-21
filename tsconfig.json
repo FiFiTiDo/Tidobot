@@ -9,7 +9,7 @@
     "moduleResolution": "node",
     "target": "ES6",
     "types": [
-      "node", "reflect-metadata"
+      "node", "reflect-metadata", "mocha"
     ],
     "lib": [
       "es6", "dom"

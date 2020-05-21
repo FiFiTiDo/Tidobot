@@ -14,16 +14,18 @@ import {Response, ResponseFactory} from "./Chat/Response";
 import i18next, {TFunction} from "i18next";
 import Backend from "i18next-fs-backend";
 import {join} from "path";
+import Config from "./Systems/Config/Config";
+import GeneralConfig from "./Systems/Config/ConfigModels/GeneralConfig";
 
 require("winston-daily-rotate-file");
 
 const container = new Container({defaultScope: "Singleton"});
 
 container.bind<winston.Logger>(symbols.Logger).toConstantValue(Logger.get());
-container.bind<Dictionary>(symbols.Config).toConstantValue(FileDictionaryParser.parseSync("config", JSON.parse));
 container.bind<TwitchAdapter>(TwitchAdapter).toSelf();
-container.bind<Adapter>(Adapter).toDynamicValue(ctx => {
-    const service = process.env.SERVICE;
+container.bind<Adapter>(Adapter).toProvider(ctx => async () => {
+    const config = await Config.getInstance().getConfig(GeneralConfig);
+    const service = config.service;
     switch (service) {
         case "twitch":
             return ctx.container.get<TwitchAdapter>(TwitchAdapter);

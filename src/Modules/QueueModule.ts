@@ -115,13 +115,13 @@ class QueueCommand extends Command {
             arguments: tuple(
                 chatterConverter({ name: "user", required: false })
             ),
-            permission: "queue.check"
+            permission: args => args.length > 0 ? "queue.check.other" : "queue.check"
         }));
          if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
-        const index = queue.find(queue[0] || message.getChatter());
+        const index = queue.find(args[0] || message.getChatter());
         if (index < 0) return response.message("queue:error.not-in");
         const position = appendOrdinal(index);
         await response.message("queue:check", { username: message.getChatter().name, position });
@@ -207,7 +207,7 @@ export default class QueueModule extends AbstractModule {
         const perm = PermissionSystem.getInstance();
         perm.registerPermission(new Permission("queue.join", Role.NORMAL));
         perm.registerPermission(new Permission("queue.check", Role.NORMAL));
-        perm.registerPermission(new Permission("queue.check.others", Role.MODERATOR));
+        perm.registerPermission(new Permission("queue.check.other", Role.MODERATOR));
         perm.registerPermission(new Permission("queue.pop", Role.MODERATOR));
         perm.registerPermission(new Permission("queue.peak", Role.MODERATOR));
         perm.registerPermission(new Permission("queue.clear", Role.MODERATOR));

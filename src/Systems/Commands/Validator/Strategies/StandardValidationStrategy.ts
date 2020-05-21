@@ -29,7 +29,7 @@ export default class StandardValidationStrategy<T extends unknown[]> implements 
             let currIndex = 0;
             for (const arg of this.opts.arguments) {
                 try {
-                    const { newIndex, converted } = await resolve(arg(rawArgs, currIndex, message));
+                    const { newIndex, converted } = await resolve(arg.converter(rawArgs, currIndex, message));
                     currIndex = newIndex;
                     args.push(converted);
                 } catch (err) {

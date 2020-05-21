@@ -115,13 +115,13 @@ class QueueCommand extends Command {
             arguments: tuple(
                 chatterConverter({ name: "user", required: false })
             ),
-            permission: args => args.length > 0 ? "queue.check.other" : "queue.check"
+            permission: args => args[0] !== null ? "queue.check.other" : "queue.check"
         }));
          if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
-        const index = queue.find(args[0] || message.getChatter());
+        const index = queue.find(args[0] !== null ? args[0] : message.getChatter());
         if (index < 0) return response.message("queue:error.not-in");
         const position = appendOrdinal(index);
         await response.message("queue:check", { username: message.getChatter().name, position });

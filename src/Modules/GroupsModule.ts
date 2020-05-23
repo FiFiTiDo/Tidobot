@@ -173,7 +173,7 @@ class GroupCommand extends Command {
         const [group, permission] = args;
 
         await GroupPermissionsEntity.update(group, permission, true)
-            .then(() => response.message("groups.permission.granted", {permission, group: group.name}))
+            .then(() => response.message("groups:permission.granted", {permission, group: group.name}))
             .catch(e => {
                 logger.error("Unable to grant permission to group");
                 logger.error("Caused by: " + e.message);
@@ -200,11 +200,11 @@ class GroupCommand extends Command {
         const [group, permission] = args;
 
         await GroupPermissionsEntity.update(group, permission, false)
-            .then(() => response.message("groups.permission.denied", {group: group.name, permission}))
+            .then(() => response.message("groups:permission.denied", {group: group.name, permission}))
             .catch(e => {
                 logger.error("Unable to deny permission for group");
                 logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
+                logger.error(e.stack);
                 return response.genericError();
             });
     }

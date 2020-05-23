@@ -18,6 +18,7 @@ export default class SymbolFilter extends Filter {
         const settings = SettingsSystem.getInstance();
         settings.registerSetting(new Setting("filter.symbols.enabled", "true", SettingType.BOOLEAN));
         settings.registerSetting(new Setting("filter.symbols.length", "20", SettingType.INTEGER));
+        settings.registerSetting(new Setting("filter.symbols.min-length", "10", SettingType.INTEGER));
         settings.registerSetting(new Setting("filter.symbols.percent", "50", SettingType.INTEGER));
 
         const perm = PermissionSystem.getInstance();
@@ -30,6 +31,9 @@ export default class SymbolFilter extends Filter {
         if (!enabled) return false;
 
         const stripped = message.getStripped();
+
+        const minLength = await channel.getSetting<number>("filter.symbols.min-length");
+        if (stripped.length < minLength) return false;
 
         const sequences = NON_ALPHA_SEQ_PATTERN.exec(stripped) || [];
         if (sequences.length > 0) {

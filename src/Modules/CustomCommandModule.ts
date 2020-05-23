@@ -150,35 +150,6 @@ export default class CustomCommandModule extends AbstractModule {
         super(CustomCommandModule.name);
     }
 
-    @EventHandler(MessageEvent)
-    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
-        const msg = event.getMessage();
-
-        if (this.isDisabled(msg.getChannel())) return;
-        if (msg.getParts().length < 1) return;
-
-        const trigger = msg.getPart(0);
-        const commands = await CommandEntity.findByTrigger(trigger, msg.getChannel());
-        if (commands.length < 1) return;
-
-        const defCommands = [];
-        let doDefault = true;
-        for (const command of commands) {
-            const res = await command.checkCondition(msg);
-            if (res === CommandConditionResponse.RUN_NOW) {
-                await msg.getResponse().message(await command.getResponse(msg));
-                doDefault = false;
-            } else if (res === CommandConditionResponse.RUN_DEFAULT) {
-                defCommands.push(command);
-            }
-        }
-
-        if (doDefault) {
-            for (const command of defCommands)
-                await msg.getResponse().message(await command.getResponse(msg));
-        }
-    }
-
     initialize({ command, permission, expression }): ModuleInfo {
         command.registerCommand(new CommandCommand(), this);
         permission.registerPermission(new Permission("command.add", Role.MODERATOR));
@@ -204,5 +175,38 @@ export default class CustomCommandModule extends AbstractModule {
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
         await CommandEntity.createTable({channel});
+    }
+
+    @EventHandler(MessageEvent)
+    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
+        const msg = event.getMessage();
+
+        if (this.isDisabled(msg.getChannel())) return;
+        if (msg.getParts().length < 1) return;
+
+        const trigger = msg.getPart(0);
+        const commands = await CommandEntity.findByTrigger(trigger, msg.getChannel());
+        if (commands.length < 1) return;
+
+        let executed = 0;
+        const defCommands = [];
+        for (const command of commands) {
+            const res = await command.checkCondition(msg);
+            if (res === CommandConditionResponse.RUN_NOW) {
+                executed++;
+                await msg.getResponse().rawMessage(await command.getResponse(msg));
+            } else if (res === CommandConditionResponse.RUN_DEFAULT) {
+                defCommands.push(command);
+            }
+        }
+
+        if (executed === 0) {
+            for (const command of defCommands) {
+                executed++;
+                await msg.getResponse().rawMessage(await command.getResponse(msg));
+            }
+        }
+
+        msg.getChannel().logger.debug(`Custom command ${trigger} triggered by ${msg.getChatter().name} triggering ${executed} commands.`);
     }
 }

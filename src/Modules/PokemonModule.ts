@@ -15,7 +15,9 @@ import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
+import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 
 export const MODULE_INFO = {
     name: "Pokemon",
@@ -82,7 +84,8 @@ class PokemonCommand extends Command {
             return {trainer, team};
         } catch (e) {
             logger.error("Unable to retrieve user's team");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             await response.genericError();
             return {trainer: null, team: []};
         }
@@ -140,7 +143,8 @@ class PokemonCommand extends Command {
             pokemon = await PokemonEntity.fromStats(trainer, stats);
         } catch (e) {
             logger.error("Failed to generate pokemon entity from stats");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
 
@@ -189,7 +193,8 @@ class PokemonCommand extends Command {
             })
         } catch (e) {
             logger.error("Unable to delete pokemon from database");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
     }
@@ -218,7 +223,8 @@ class PokemonCommand extends Command {
             });
         } catch (e) {
             logger.error("Unable to delete all pokemon from a team");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             await response.genericError();
         }
     }
@@ -278,7 +284,8 @@ class PokemonCommand extends Command {
             await target.trainer.save();
         } catch (e) {
             logger.error("Unable to save trainer data");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
 
@@ -296,7 +303,8 @@ class PokemonCommand extends Command {
                 result += " " + await response.translate("pokemon:battle.level-up", {pokemon: levelUp.join(", ")});
         } catch (e) {
             logger.error("Unable to save pokemon data");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
 
@@ -346,7 +354,8 @@ class PokemonCommand extends Command {
             }
         } catch (e) {
             logger.error("Unable to get all trainer data");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
 
@@ -358,6 +367,7 @@ class PokemonCommand extends Command {
     }
 }
 
+@HandlesEvents()
 export default class PokemonModule extends AbstractModule {
     constructor(channelManager: ChannelManager) {
         super(PokemonModule.name);
@@ -379,5 +389,11 @@ export default class PokemonModule extends AbstractModule {
         settings.registerSetting(new Setting("pokemon.level.max", "100", SettingType.INTEGER));
 
         return MODULE_INFO;
+    }
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({ channel }: NewChannelEventArgs) {
+        await PokemonEntity.createTable({ channel });
+        await TrainerEntity.createTable({ channel });
     }
 }

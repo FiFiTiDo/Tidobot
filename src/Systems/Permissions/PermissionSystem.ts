@@ -46,7 +46,8 @@ export default class PermissionSystem extends System {
             return Role.OWNER;
         } catch (e) {
             this.logger.error("Unable to find permission in database");
-            this.logger.trace("Caused by: " + e.message);
+            this.logger.error("Caused by: " + e.message);
+            this.logger.error(e.stack);
             return Role.OWNER;
         }
     }
@@ -68,7 +69,8 @@ export default class PermissionSystem extends System {
             return getMaxRole(roles) >= role;
         } catch (e) {
             this.logger.error("Unable to check permission");
-            this.logger.trace("Caused by: " + e.message);
+            this.logger.error("Caused by: " + e.message);
+            this.logger.error(e.stack);
         }
 
         return false;

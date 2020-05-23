@@ -19,7 +19,7 @@ import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import Adapter from "../Services/Adapter";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Filter",

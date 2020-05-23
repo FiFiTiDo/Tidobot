@@ -17,7 +17,7 @@ import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Currency",
@@ -62,7 +62,8 @@ class BankCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to give money to chatter's bank account");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -92,7 +93,8 @@ class BankCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to give amount to all chatter's accounts");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -117,7 +119,8 @@ class BankCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to take money from chatter's bank account");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -147,7 +150,8 @@ class BankCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to take amount out of all chatter's accounts");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -188,7 +192,8 @@ class BankCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to reset chatter's bank account");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -213,7 +218,8 @@ class BankCommand extends Command {
             } catch (e) {
                 await response.genericError();
                 logger.error("Unable to reset currency module");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             }
         });
         confirmation.run();

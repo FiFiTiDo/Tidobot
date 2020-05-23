@@ -11,7 +11,7 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {tuple} from "../Utilities/ArrayUtils";
 import Config from "../Systems/Config/Config";
 import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Tidobot",
@@ -70,7 +70,8 @@ class TidobotCommand extends Command {
             .then(ignored => response.message(ignored ? "user:ignore.added" : "user:ignore.already", {username: chatter.name}))
             .catch(e => {
                 logger.error("Failed to set a user as ignored");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }
@@ -89,7 +90,8 @@ class TidobotCommand extends Command {
             .then(ignored => response.message(ignored ? "user:ignore.removed" : "user:ignore.not", {username: chatter.name}))
             .catch(e => {
                 logger.error("Failed to set a user as not ignored");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }
@@ -110,7 +112,8 @@ class TidobotCommand extends Command {
             .then(() => response.message("user:ban.added", {username: user.name}))
             .catch(e => {
                 logger.error("Failed to set a user as banned");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }
@@ -131,7 +134,8 @@ class TidobotCommand extends Command {
             .then(() => response.message("user:ban.removed", {username: user.name}))
             .catch(e => {
                 logger.error("Failed to unset a user as unbanned");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }
@@ -162,7 +166,8 @@ class RegularCommand extends Command {
             .then(() => response.message("user:regular.added", {username: user.name}))
             .catch(e => {
                 logger.error("Failed to set a user as regular");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }
@@ -183,7 +188,8 @@ class RegularCommand extends Command {
             .then(() => response.message("user:regular.removed", {username: user.name}))
             .catch(e => {
                 logger.error("Failed to unset a user as regular");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }

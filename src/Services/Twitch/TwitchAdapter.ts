@@ -17,7 +17,7 @@ import EventSystem from "../../Systems/Event/EventSystem";
 import ChannelManager from "../../Chat/ChannelManager";
 import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
-import {getLogger} from "log4js";
+import getLogger from "../../Utilities/Logger";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
@@ -53,7 +53,10 @@ export default class TwitchAdapter extends Adapter {
         });
 
         this.client.on("join", async (channelName: string, username: string, self: boolean) => {
-            if (self) return;
+            if (self) {
+                await this.getChannelByName(channelName.substring(1));
+                return;
+            }
 
             const channel = await this.getChannelByName(channelName.substring(1));
             const chatter = await this.getChatter(username, channel);
@@ -114,7 +117,8 @@ export default class TwitchAdapter extends Adapter {
                     name = user;
                 } catch (e) {
                     TwitchAdapter.LOGGER.fatal("Unable to retrieve user from the API");
-                    TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                    TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                    TwitchAdapter.LOGGER.error(e.stack);
                     process.exit(1);
                 }
             } else {
@@ -145,7 +149,8 @@ export default class TwitchAdapter extends Adapter {
                 resp = await this.api.getUsers({login: channelName});
             } catch (e) {
                 TwitchAdapter.LOGGER.fatal("Unable to retrieve user from the API");
-                TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                TwitchAdapter.LOGGER.error(e.stack);
                 process.exit(1);
             }
             const {id, login: name} = resp.data[0];

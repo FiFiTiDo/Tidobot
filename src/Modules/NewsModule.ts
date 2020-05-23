@@ -22,7 +22,7 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import Adapter from "../Services/Adapter";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "News",
@@ -65,7 +65,8 @@ class NewsCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to add news item");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -92,7 +93,8 @@ class NewsCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to remove news item");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -111,7 +113,8 @@ class NewsCommand extends Command {
             } catch (e) {
                 await response.genericError();
                 logger.error("Failed to clear news items");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             }
         });
         confirmation.run();

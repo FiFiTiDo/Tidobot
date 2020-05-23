@@ -27,7 +27,7 @@ function getExpForLevel(level: number): number {
 }
 
 @Id
-@Table(({ service, channel }) => `${service}_${channel}_pokemon`)
+@Table(({ service, channel }) => `${service}_${channel.name}_pokemon`)
 export default class PokemonEntity extends ChannelSpecificEntity<PokemonEntity> {
     constructor(id: number, params: EntityParameters) {
         super(PokemonEntity, id, params);

@@ -52,7 +52,8 @@ export default class StrikeManager extends System {
             }
         } catch (e) {
             this.logger.error("Unable to ban user while issuing strike");
-            this.logger.trace("Caused by: " + e.message);
+            this.logger.error("Caused by: " + e.message);
+            this.logger.error(e.stack);
         }
     }
 

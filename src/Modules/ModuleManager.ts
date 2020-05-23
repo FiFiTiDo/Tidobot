@@ -2,7 +2,7 @@ import {inject, injectable} from "inversify";
 import {ALL_MODULES_KEY} from "./index";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import AbstractModule from "./AbstractModule";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
@@ -33,7 +33,8 @@ export default class ModuleManager {
                 ModuleManager.LOGGER.info(`Initialized module ${info.name} v${info.version}`);
             } catch (e) {
                 ModuleManager.LOGGER.fatal("An error occurred while initializing the module " + module.getName());
-                ModuleManager.LOGGER.trace("Caused by: " + e.message);
+                ModuleManager.LOGGER.fatal("Caused by: " + e.message);
+                ModuleManager.LOGGER.fatal(e.stack);
             }
         }
     }

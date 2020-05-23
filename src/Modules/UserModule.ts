@@ -13,7 +13,7 @@ import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "User",
@@ -49,7 +49,8 @@ class UserCommand extends Command {
             .catch(e => {
                 response.genericError();
                 logger.error("Unable to grant permission to user");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             });
     }
 
@@ -70,7 +71,8 @@ class UserCommand extends Command {
             .catch(e => {
                 response.genericError();
                 logger.error("Unable to deny permission for user");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             });
     }
 
@@ -92,7 +94,8 @@ class UserCommand extends Command {
                 .catch(e => {
                     response.genericError();
                     logger.error("Unable to deny permission for user");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 });
         } else {
             const confirmation = await this.confirmationFactory(msg, await response.translate("user:permission.delete.confirm", {username: user.name}), 30);
@@ -102,7 +105,8 @@ class UserCommand extends Command {
                     .catch(e => {
                         response.genericError();
                         logger.error("Unable to deny permission for user");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                     });
             });
             confirmation.run();

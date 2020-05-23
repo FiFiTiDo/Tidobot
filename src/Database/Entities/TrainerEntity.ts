@@ -14,7 +14,7 @@ interface TrainerData {
 }
 
 @Id
-@Table(({ service, channel }) => `${service}_${channel}_trainer`)
+@Table(({ service, channel }) => `${service}_${channel.name}_trainer`)
 export default class TrainerEntity extends ChannelSpecificEntity<TrainerEntity> {
     constructor(id: number, params: EntityParameters) {
         super(TrainerEntity, id, params);

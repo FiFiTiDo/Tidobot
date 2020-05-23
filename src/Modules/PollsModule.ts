@@ -16,7 +16,7 @@ import CliArgsValidationStrategy from "../Systems/Commands/Validator/Strategies/
 import {boolean} from "../Systems/Commands/Validator/Boolean";
 import axios from "axios";
 import {tuple} from "../Utilities/ArrayUtils";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 import request = require("request-promise-native");
 
 export const MODULE_INFO = {

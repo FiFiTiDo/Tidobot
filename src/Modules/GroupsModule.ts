@@ -17,7 +17,7 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Group",
@@ -63,7 +63,8 @@ class GroupCommand extends Command {
                 group: group.name
             })).catch((e) => {
             logger.error("Unable to add user to group");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         });
     }
@@ -93,7 +94,8 @@ class GroupCommand extends Command {
             return response.message("groups:user.removed", {username: chatter.name, group: group.name});
         } catch (e) {
             logger.error("Unable to remove user from the group");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
     }
@@ -114,7 +116,8 @@ class GroupCommand extends Command {
             return response.message(group === null ? "groups:error.exists" : "groups:created", {group: name});
         } catch (e) {
             logger.error("Unable to create the group");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
     }
@@ -144,7 +147,8 @@ class GroupCommand extends Command {
                 return response.message("groups:deleted", {group: group.name});
             } catch (e) {
                 logger.error("Unable to delete the group");
-                logger.trace("Caused by: " + e.message);
+                logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             }
         });
@@ -172,7 +176,8 @@ class GroupCommand extends Command {
             .then(() => response.message("groups.permission.granted", {permission, group: group.name}))
             .catch(e => {
                 logger.error("Unable to grant permission to group");
-                logger.trace("Caused by: " + e.message);
+                logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }
@@ -198,7 +203,8 @@ class GroupCommand extends Command {
             .then(() => response.message("groups.permission.denied", {group: group.name, permission}))
             .catch(e => {
                 logger.error("Unable to deny permission for group");
-                logger.trace("Caused by: " + e.message);
+                logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 return response.genericError();
             });
     }
@@ -225,7 +231,8 @@ class GroupCommand extends Command {
                 .then(() => response.message("groups:permission.delete.specific", {group: group.name, permission}))
                 .catch(e => {
                     logger.error("Unable to deny permission for group");
-                    logger.trace("Caused by: " + e.message);
+                    logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                     return response.genericError();
                 });
         } else {
@@ -235,7 +242,8 @@ class GroupCommand extends Command {
                     .then(() => response.message("groups:permission.delete.all", {group: group.name}))
                     .catch(e => {
                         logger.error("Unable to deny permission for group");
-                        logger.trace("Caused by: " + e.message);
+                        logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                         return response.genericError();
                     });
             });

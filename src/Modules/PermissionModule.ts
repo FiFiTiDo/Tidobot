@@ -14,7 +14,7 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Permission",
@@ -73,7 +73,8 @@ class PermissionCommand extends Command {
                 await response.message("permission:created", {permission: perm_str, role: Role[role]});
         } catch (e) {
             logger.error("Unable to create new permission");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             return response.genericError();
         }
     }
@@ -102,7 +103,8 @@ class PermissionCommand extends Command {
             .catch(e => {
                 response.genericError();
                 logger.error("Unable to delete custom permission");
-                logger.trace("Caused by: " + e.message);
+                logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             });
     }
 
@@ -134,7 +136,8 @@ class PermissionCommand extends Command {
             .catch(e => {
                 response.genericError();
                 logger.error("Unable to set permission level");
-                logger.trace("Caused by: " + e.message);
+                logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             });
     }
 
@@ -164,7 +167,8 @@ class PermissionCommand extends Command {
                 .catch(e => {
                     response.genericError();
                     logger.error("Unable to reset permission");
-                    logger.trace("Caused by: " + e.message);
+                    logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 });
         } else {
             if (!(await msg.checkPermission("permission.reset.all")))
@@ -175,7 +179,8 @@ class PermissionCommand extends Command {
                 .catch(e => {
                     response.genericError();
                     logger.error("Unable to reset all permissions");
-                    logger.trace("Caused by: " + e.message);
+                    logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 });
         }
     }
@@ -212,7 +217,8 @@ export default class PermissionModule extends AbstractModule {
                         return await msg.checkPermission(permStr);
                     } catch (e) {
                         logger.error("Unable to check permission");
-                        logger.trace("Caused by: " + e.message);
+                        logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                         return false;
                     }
                 }

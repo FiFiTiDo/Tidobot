@@ -15,7 +15,7 @@ import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Raffle",

@@ -15,7 +15,7 @@ import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Settings",
@@ -47,7 +47,8 @@ class SetCommand extends Command {
             .catch(e => {
                 response.genericError();
                 logger.error("Unable to set setting");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             });
     }
 }
@@ -72,7 +73,8 @@ class UnsetCommand extends Command {
             .catch(e => {
                 response.genericError();
                 logger.error("Unable to unset setting");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
             });
     }
 }
@@ -96,7 +98,8 @@ class ResetCommand extends Command {
                 .catch((e) => {
                     response.genericError();
                     logger.error("Unable to reset the channel's settings");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
                 });
         });
         confirmation.run();

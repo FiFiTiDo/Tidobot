@@ -1,4 +1,5 @@
-import {getLogger, Logger} from "log4js";
+import {Logger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export default abstract class System {
     protected logger: Logger;

@@ -227,7 +227,8 @@ export namespace helix {
                     this.accessToken = await AccessToken.retrieve(this.clientId, this.clientSecret);
                 } catch (e) {
                     TwitchAdapter.LOGGER.fatal("Unable to retrieve the access token");
-                    TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                    TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                    TwitchAdapter.LOGGER.error(e.stack);
                     process.exit(1);
                 }
             }
@@ -236,7 +237,8 @@ export namespace helix {
                 await this.accessToken.validate();
             } catch (e) {
                 TwitchAdapter.LOGGER.fatal("Unable to validate access token");
-                TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                TwitchAdapter.LOGGER.error(e.stack);
                 process.exit(1);
             }
 

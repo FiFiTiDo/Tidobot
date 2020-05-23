@@ -8,7 +8,7 @@ import GeneralConfig from "./Systems/Config/ConfigModels/GeneralConfig";
 import Config from "./Systems/Config/Config";
 import symbols from "./symbols";
 import LastFMSystem from "./Systems/LastFM/LastFMSystem";
-import {configure, getLogger} from "log4js";
+import getLogger from "./Utilities/Logger";
 import CommandSystem from "./Systems/Commands/CommandSystem";
 import Cache from "./Systems/Cache/Cache";
 import EventSystem from "./Systems/Event/EventSystem";
@@ -20,21 +20,10 @@ require("source-map-support").install({
     hookRequire: true
 });
 
-configure({
-    appenders: {
-        everything: {type: "file", filename: "logs/application.log", maxLogSize: 10485760, backups: 3, compress: true},
-        console: {type: "console"},
-        consoleNoDebug: {type: "logLevelFilter", appender: "console", level: "info"}
-    },
-    categories: {
-        default: {appenders: ["everything", process.env.DEBUG ? "console" : "consoleNoDebug"], level: "debug"}
-    }
-});
-
 container.load(buildProviderModule());
 
 async function initialize() {
-    const logger = getLogger("bot");
+    const logger = getLogger("Bot");
     logger.info("Initializing systems");
 
     await Cache.getInstance();

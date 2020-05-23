@@ -66,7 +66,8 @@ export class TwitchMessage extends Message {
                 }
             } catch (e) {
                 TwitchAdapter.LOGGER.error("Twitch API error");
-                TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                TwitchAdapter.LOGGER.error(e.stack);
                 return "<<An error has occurred with the Twitch API.>>";
             }
         };
@@ -88,7 +89,8 @@ export class TwitchMessage extends Message {
                         }
                     } catch (e) {
                         TwitchAdapter.LOGGER.error("Twitch API error");
-                        TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                        TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                        TwitchAdapter.LOGGER.error(e.stack);
                         return "<<An error has occurred with the Twitch API.>>";
                     }
                 },
@@ -105,7 +107,8 @@ export class TwitchMessage extends Message {
                         return moment.parseZone(resp.data[0].followed_at, timezone.name).format(format ? format : "Y-m-d h:i:s");
                     }).catch(e => {
                         TwitchAdapter.LOGGER.error("Unable to determine follow age");
-                        TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                        TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                        TwitchAdapter.LOGGER.error(e.stack);
                         return "Cannot determine follow age.";
                     });
                 },
@@ -115,7 +118,8 @@ export class TwitchMessage extends Message {
                         to_id: this.getChannel().channelId
                     }).then(async resp => resp.total > 0).catch(e => {
                         TwitchAdapter.LOGGER.error("Unable to determine if the user is following");
-                        TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
+                        TwitchAdapter.LOGGER.error("Caused by: " + e.message);
+                        TwitchAdapter.LOGGER.error(e.stack);
                         return false;
                     });
                 }

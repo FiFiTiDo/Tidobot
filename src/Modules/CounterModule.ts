@@ -12,7 +12,7 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
-import {getLogger} from "log4js";
+import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Counter",
@@ -85,7 +85,8 @@ class CounterCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to increment counter");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -113,7 +114,8 @@ class CounterCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to decrement from counter");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -141,7 +143,8 @@ class CounterCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to set counter");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -166,7 +169,8 @@ class CounterCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to create counter");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 
@@ -192,7 +196,8 @@ class CounterCommand extends Command {
         } catch (e) {
             await response.genericError();
             logger.error("Failed to delete counter");
-            logger.trace("Caused by: " + e.message);
+            logger.error("Caused by: " + e.message);
+            logger.error(e.stack);
         }
     }
 }

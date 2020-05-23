@@ -1,21 +1,26 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo} from "./AbstractModule";
 import CountersEntity from "../Database/Entities/CountersEntity";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import Logger from "../Utilities/Logger";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {integer} from "../Systems/Commands/Validator/Integer";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "Counter",
+    version: "1.0.0",
+    description: "Add counters for anything that needs to be counted, add and subtract from them as you wish"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class CounterCommand extends Command {
     constructor() {
@@ -79,7 +84,8 @@ class CounterCommand extends Command {
             await response.message("counter:incremented", {counter: counter.name, amount});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to increment counter", {cause: e});
+            logger.error("Failed to increment counter");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -106,7 +112,8 @@ class CounterCommand extends Command {
             await response.message("counter:decremented", {counter: counter.name, amount});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to decrement from counter", {cause: e});
+            logger.error("Failed to decrement from counter");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -133,7 +140,8 @@ class CounterCommand extends Command {
             await response.message("counter:set", {counter: counter.name, amount});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to set counter", {cause: e});
+            logger.error("Failed to set counter");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -157,7 +165,8 @@ class CounterCommand extends Command {
             await response.message("counter:created", {counter: counter.name});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to create counter", {cause: e});
+            logger.error("Failed to create counter");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -182,7 +191,8 @@ class CounterCommand extends Command {
             await response.message("counter.deleted", {counter: counter.name});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to delete counter", {cause: e});
+            logger.error("Failed to delete counter");
+            logger.trace("Caused by: " + e.message);
         }
     }
 }
@@ -193,17 +203,13 @@ export default class CounterModule extends AbstractModule {
         super(CounterModule.name);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new CounterCommand(), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("counter.check", Role.NORMAL));
-        perm.registerPermission(new Permission("counter.change", Role.MODERATOR));
-        perm.registerPermission(new Permission("counter.create", Role.MODERATOR));
-        perm.registerPermission(new Permission("counter.delete", Role.MODERATOR));
-
-        ExpressionSystem.getInstance().registerResolver(msg => ({
+    initialize({ command, permission, expression }): ModuleInfo {
+        command.registerCommand(new CounterCommand(), this);
+        permission.registerPermission(new Permission("counter.check", Role.NORMAL));
+        permission.registerPermission(new Permission("counter.change", Role.MODERATOR));
+        permission.registerPermission(new Permission("counter.create", Role.MODERATOR));
+        permission.registerPermission(new Permission("counter.delete", Role.MODERATOR));
+        expression.registerResolver(msg => ({
             counters: {
                 get: async (name: unknown): Promise<object | string> => {
                     if (typeof name !== "string") return "Expected a string for argument 1";
@@ -240,6 +246,8 @@ export default class CounterModule extends AbstractModule {
                 }
             }
         }));
+
+        return MODULE_INFO;
     }
 
     @EventHandler(NewChannelEvent)

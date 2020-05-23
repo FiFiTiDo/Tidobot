@@ -1,20 +1,25 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import Logger from "../Utilities/Logger";
 import IgnoredEntity from "../Database/Entities/IgnoredEntity";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import {config} from "winston";
 import Config from "../Systems/Config/Config";
 import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "Tidobot",
+    version: "1.0.0",
+    description: "Used to manage core bot functionality other than settings and get more info"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class TidobotCommand extends Command {
     constructor() {
@@ -64,7 +69,8 @@ class TidobotCommand extends Command {
         IgnoredEntity.add(chatter.getService(), chatter.userId)
             .then(ignored => response.message(ignored ? "user:ignore.added" : "user:ignore.already", {username: chatter.name}))
             .catch(e => {
-                Logger.get().error("Failed to set a user as ignored", {cause: e});
+                logger.error("Failed to set a user as ignored");
+            logger.trace("Caused by: " + e.message);
                 return response.genericError();
             });
     }
@@ -82,7 +88,8 @@ class TidobotCommand extends Command {
         IgnoredEntity.remove(chatter.getService(), chatter.userId)
             .then(ignored => response.message(ignored ? "user:ignore.removed" : "user:ignore.not", {username: chatter.name}))
             .catch(e => {
-                Logger.get().error("Failed to set a user as not ignored", {cause: e});
+                logger.error("Failed to set a user as not ignored");
+            logger.trace("Caused by: " + e.message);
                 return response.genericError();
             });
     }
@@ -102,7 +109,8 @@ class TidobotCommand extends Command {
         user.save()
             .then(() => response.message("user:ban.added", {username: user.name}))
             .catch(e => {
-                Logger.get().error("Failed to set a user as banned", {cause: e});
+                logger.error("Failed to set a user as banned");
+            logger.trace("Caused by: " + e.message);
                 return response.genericError();
             });
     }
@@ -122,7 +130,8 @@ class TidobotCommand extends Command {
         user.save()
             .then(() => response.message("user:ban.removed", {username: user.name}))
             .catch(e => {
-                Logger.get().error("Failed to unset a user as unbanned", {cause: e});
+                logger.error("Failed to unset a user as unbanned");
+            logger.trace("Caused by: " + e.message);
                 return response.genericError();
             });
     }
@@ -152,7 +161,8 @@ class RegularCommand extends Command {
         user.save()
             .then(() => response.message("user:regular.added", {username: user.name}))
             .catch(e => {
-                Logger.get().error("Failed to set a user as regular", {cause: e});
+                logger.error("Failed to set a user as regular");
+            logger.trace("Caused by: " + e.message);
                 return response.genericError();
             });
     }
@@ -172,7 +182,8 @@ class RegularCommand extends Command {
         user.save()
             .then(() => response.message("user:regular.removed", {username: user.name}))
             .catch(e => {
-                Logger.get().error("Failed to unset a user as regular", {cause: e});
+                logger.error("Failed to unset a user as regular");
+            logger.trace("Caused by: " + e.message);
                 return response.genericError();
             });
     }
@@ -185,20 +196,18 @@ export default class TidobotModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    initialize(): void {
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("bot.version", Role.NORMAL));
-        perm.registerPermission(new Permission("bot.about", Role.NORMAL));
-        perm.registerPermission(new Permission("bot.ignore.add", Role.OWNER));
-        perm.registerPermission(new Permission("bot.ignore.remove", Role.OWNER));
-        perm.registerPermission(new Permission("bot.ban", Role.BROADCASTER));
-        perm.registerPermission(new Permission("bot.unban", Role.BROADCASTER));
+    initialize({ command, permission }: Systems): ModuleInfo {
+        command.registerCommand(new TidobotCommand(), this);
+        command.registerCommand(new RegularCommand(), this);
+        permission.registerPermission(new Permission("bot.version", Role.NORMAL));
+        permission.registerPermission(new Permission("bot.about", Role.NORMAL));
+        permission.registerPermission(new Permission("bot.ignore.add", Role.OWNER));
+        permission.registerPermission(new Permission("bot.ignore.remove", Role.OWNER));
+        permission.registerPermission(new Permission("bot.ban", Role.BROADCASTER));
+        permission.registerPermission(new Permission("bot.unban", Role.BROADCASTER));
+        permission.registerPermission(new Permission("regular.add", Role.MODERATOR));
+        permission.registerPermission(new Permission("regular.remove", Role.MODERATOR));
 
-        perm.registerPermission(new Permission("regular.add", Role.MODERATOR));
-        perm.registerPermission(new Permission("regular.remove", Role.MODERATOR));
-
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new TidobotCommand(), this);
-        cmd.registerCommand(new RegularCommand(), this);
+        return MODULE_INFO;
     }
 }

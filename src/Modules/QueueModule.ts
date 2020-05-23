@@ -1,20 +1,27 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import EntityStateList from "../Database/EntityStateList";
 import {appendOrdinal} from "../Utilities/NumberUtils";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "Queue",
+    version: "1.0.0",
+    description: "Users can enter a queue to be selected for some purpose"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class Queue {
     private chatters: ChatterEntity[] = [];
@@ -200,21 +207,18 @@ export default class QueueModule extends AbstractModule {
         super(QueueModule.name);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new QueueCommand(), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("queue.join", Role.NORMAL));
-        perm.registerPermission(new Permission("queue.check", Role.NORMAL));
-        perm.registerPermission(new Permission("queue.check.other", Role.MODERATOR));
-        perm.registerPermission(new Permission("queue.pop", Role.MODERATOR));
-        perm.registerPermission(new Permission("queue.peak", Role.MODERATOR));
-        perm.registerPermission(new Permission("queue.clear", Role.MODERATOR));
-        perm.registerPermission(new Permission("queue.open", Role.MODERATOR));
-        perm.registerPermission(new Permission("queue.close", Role.MODERATOR));
-
-        const settings = SettingsSystem.getInstance();
+    initialize({ command, permission, settings }: Systems): ModuleInfo {
+        command.registerCommand(new QueueCommand(), this);
+        permission.registerPermission(new Permission("queue.join", Role.NORMAL));
+        permission.registerPermission(new Permission("queue.check", Role.NORMAL));
+        permission.registerPermission(new Permission("queue.check.other", Role.MODERATOR));
+        permission.registerPermission(new Permission("queue.pop", Role.MODERATOR));
+        permission.registerPermission(new Permission("queue.peak", Role.MODERATOR));
+        permission.registerPermission(new Permission("queue.clear", Role.MODERATOR));
+        permission.registerPermission(new Permission("queue.open", Role.MODERATOR));
+        permission.registerPermission(new Permission("queue.close", Role.MODERATOR));
         settings.registerSetting(new Setting("queue.max-size", "30", SettingType.INTEGER));
+
+        return MODULE_INFO;
     }
 }

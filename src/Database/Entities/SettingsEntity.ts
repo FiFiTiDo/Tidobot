@@ -4,7 +4,6 @@ import {Column, DataTypes, Id} from "../Decorators/Columns";
 import ChannelEntity from "./ChannelEntity";
 import {where} from "../Where";
 import StringLike from "../../Utilities/Interfaces/StringLike";
-import Logger from "../../Utilities/Logger";
 import SettingsSystem from "../../Systems/Settings/SettingsSystem";
 import Cache from "../../Systems/Cache/Cache";
 import {ConvertedSetting, SettingType} from "../../Systems/Settings/Setting";
@@ -44,11 +43,11 @@ export class ChannelSettings {
         try {
             value = await (await Cache.getInstance()).retrieve("channel." + this.channel.channelId + ".setting." + key, 30, async () => {
                 const setting = await SettingsEntity.findByKey(key, this.channel);
-                if (setting === null) Logger.get().error("Tried to get non-existent setting: " + key);
+                if (setting === null) settings.getLogger().error("Tried to get non-existent setting: " + key);
                 return setting === null ? defaultValue : setting.value;
             });
         } catch (e) {
-            Logger.get().error("Unable to retrieve setting", {cause: e});
+            settings.getLogger().error("Unable to retrieve setting", {cause: e});
             value = defaultValue;
         }
 

@@ -1,19 +1,15 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import {pluralize} from "../Utilities/functions";
 import * as util from "util";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
-import Logger from "../Utilities/Logger";
 import {inject} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import {float} from "../Systems/Commands/Validator/Float";
@@ -21,7 +17,15 @@ import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {getLogger} from "log4js";
 
+export const MODULE_INFO = {
+    name: "Currency",
+    version: "1.0.0",
+    description: "A points system used for granting the use of certain bot features"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class BankCommand extends Command {
     constructor(private confirmationFactory: ConfirmationFactory) {
@@ -57,7 +61,8 @@ class BankCommand extends Command {
             });
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to give money to chatter's bank account", {cause: e});
+            logger.error("Failed to give money to chatter's bank account");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -86,7 +91,8 @@ class BankCommand extends Command {
             });
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to give amount to all chatter's accounts", {cause: e});
+            logger.error("Failed to give amount to all chatter's accounts");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -110,7 +116,8 @@ class BankCommand extends Command {
             });
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to take money from chatter's bank account", {cause: e});
+            logger.error("Failed to take money from chatter's bank account");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -139,7 +146,8 @@ class BankCommand extends Command {
             });
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to take amount out of all chatter's accounts", {cause: e});
+            logger.error("Failed to take amount out of all chatter's accounts");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -179,7 +187,8 @@ class BankCommand extends Command {
             });
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to reset chatter's bank account", {cause: e});
+            logger.error("Failed to reset chatter's bank account");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -203,7 +212,8 @@ class BankCommand extends Command {
                 await response.message("currency:reset.all");
             } catch (e) {
                 await response.genericError();
-                Logger.get().error("Unable to reset currency module", {cause: e});
+                logger.error("Unable to reset currency module");
+            logger.trace("Caused by: " + e.message);
             }
         });
         confirmation.run();
@@ -285,24 +295,19 @@ export default class CurrencyModule extends AbstractModule {
         return util.format("%d %s", amount, pluralize(amount, singular, plural));
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new BankCommand(this.makeConfirmation), this);
-        cmd.registerCommand(new BalanceCommand(), this);
-        cmd.registerCommand(new PayCommand(), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("currency.pay", Role.NORMAL));
-        perm.registerPermission(new Permission("currency.balance", Role.NORMAL));
-        perm.registerPermission(new Permission("currency.bank.give", Role.MODERATOR));
-        perm.registerPermission(new Permission("currency.bank.give-all", Role.MODERATOR));
-        perm.registerPermission(new Permission("currency.bank.take", Role.MODERATOR));
-        perm.registerPermission(new Permission("currency.bank.take-all", Role.MODERATOR));
-        perm.registerPermission(new Permission("currency.bank.balance", Role.MODERATOR));
-        perm.registerPermission(new Permission("currency.bank.reset", Role.MODERATOR));
-        perm.registerPermission(new Permission("currency.bank.reset-all", Role.BROADCASTER));
-
-        const settings = SettingsSystem.getInstance();
+    initialize({ command, permission, settings}: Systems): ModuleInfo {
+        command.registerCommand(new BankCommand(this.makeConfirmation), this);
+        command.registerCommand(new BalanceCommand(), this);
+        command.registerCommand(new PayCommand(), this);
+        permission.registerPermission(new Permission("currency.pay", Role.NORMAL));
+        permission.registerPermission(new Permission("currency.balance", Role.NORMAL));
+        permission.registerPermission(new Permission("currency.bank.give", Role.MODERATOR));
+        permission.registerPermission(new Permission("currency.bank.give-all", Role.MODERATOR));
+        permission.registerPermission(new Permission("currency.bank.take", Role.MODERATOR));
+        permission.registerPermission(new Permission("currency.bank.take-all", Role.MODERATOR));
+        permission.registerPermission(new Permission("currency.bank.balance", Role.MODERATOR));
+        permission.registerPermission(new Permission("currency.bank.reset", Role.MODERATOR));
+        permission.registerPermission(new Permission("currency.bank.reset-all", Role.BROADCASTER));
         settings.registerSetting(new Setting("currency.name.singular", "point", SettingType.STRING));
         settings.registerSetting(new Setting("currency.name.plural", "points", SettingType.STRING));
         settings.registerSetting(new Setting("currency.gain.online", "10", SettingType.FLOAT));
@@ -310,6 +315,8 @@ export default class CurrencyModule extends AbstractModule {
         settings.registerSetting(new Setting("currency.only-active-all", "true", SettingType.BOOLEAN));
 
         setInterval(this.tickHandler, 5 * 60 * 1000);
+
+        return MODULE_INFO;
     }
 
     tickHandler = async (): Promise<void[]> => {

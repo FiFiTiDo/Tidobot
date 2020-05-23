@@ -1,16 +1,13 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import Message from "../Chat/Message";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import request = require("request-promise-native");
 import {integer} from "../Systems/Commands/Validator/Integer";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
@@ -19,6 +16,16 @@ import CliArgsValidationStrategy from "../Systems/Commands/Validator/Strategies/
 import {boolean} from "../Systems/Commands/Validator/Boolean";
 import axios from "axios";
 import {tuple} from "../Utilities/ArrayUtils";
+import {getLogger} from "log4js";
+import request = require("request-promise-native");
+
+export const MODULE_INFO = {
+    name: "Poll",
+    version: "1.0.0",
+    description: "Run polls to get user input on a question"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 interface StrawpollGetResponse {
     id: number;
@@ -305,22 +312,19 @@ export default class PollsModule extends AbstractModule {
         this.runningPolls = new ChannelStateList<Poll>(null);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new PollCommand(this.runningPolls), this);
-        cmd.registerCommand(new VoteCommand(this.runningPolls), this);
-        cmd.registerCommand(new StrawpollCommand(), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("polls.vote", Role.NORMAL));
-        perm.registerPermission(new Permission("polls.run", Role.MODERATOR));
-        perm.registerPermission(new Permission("polls.stop", Role.MODERATOR));
-        perm.registerPermission(new Permission("polls.results", Role.MODERATOR));
-        perm.registerPermission(new Permission("polls.strawpoll.check", Role.MODERATOR));
-        perm.registerPermission(new Permission("polls.strawpoll.create", Role.MODERATOR));
-
-        const settings = SettingsSystem.getInstance();
+    initialize({ command, permission, settings }: Systems): ModuleInfo {
+        command.registerCommand(new PollCommand(this.runningPolls), this);
+        command.registerCommand(new VoteCommand(this.runningPolls), this);
+        command.registerCommand(new StrawpollCommand(), this);
+        permission.registerPermission(new Permission("polls.vote", Role.NORMAL));
+        permission.registerPermission(new Permission("polls.run", Role.MODERATOR));
+        permission.registerPermission(new Permission("polls.stop", Role.MODERATOR));
+        permission.registerPermission(new Permission("polls.results", Role.MODERATOR));
+        permission.registerPermission(new Permission("polls.strawpoll.check", Role.MODERATOR));
+        permission.registerPermission(new Permission("polls.strawpoll.create", Role.MODERATOR));
         settings.registerSetting(new Setting("polls.announceVotes", "true", SettingType.BOOLEAN));
         settings.registerSetting(new Setting("polls.spamStrawpollLink", "5", SettingType.INTEGER));
+
+        return MODULE_INFO;
     }
 }

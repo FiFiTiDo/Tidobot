@@ -1,8 +1,7 @@
-import Dictionary from "../../Utilities/Structures/Dictionary";
-import * as fs from "fs";
 import ConfigModel, {ConfigModelConstructor} from "./ConfigModels/ConfigModel";
+import System from "../System";
 
-export default class Config {
+export default class Config extends System {
     private static instance: Config = null;
 
     public static getInstance(): Config {
@@ -15,6 +14,7 @@ export default class Config {
     private models: Map<ConfigModelConstructor<any>, ConfigModel>;
 
     constructor() {
+        super("Config");
         this.models = new Map();
     }
 

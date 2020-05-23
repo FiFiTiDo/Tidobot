@@ -1,31 +1,23 @@
 import {Container} from "inversify";
 import Adapter from "./Services/Adapter";
-import Dictionary, {FileDictionaryParser} from "./Utilities/Structures/Dictionary";
 import symbols, {TranslationProvider} from "./symbols";
 import TwitchAdapter from "./Services/Twitch/TwitchAdapter";
-import {default as winston} from "winston";
 import ChannelManager from "./Chat/ChannelManager";
 import * as Modules from "./Modules";
 import {TwitchMessage, TwitchMessageFactory} from "./Services/Twitch/TwitchMessage";
-import Logger from "./Utilities/Logger";
 import {Database} from "sqlite3";
 import ModuleManager from "./Modules/ModuleManager";
 import {Response, ResponseFactory} from "./Chat/Response";
 import i18next, {TFunction} from "i18next";
 import Backend from "i18next-fs-backend";
 import {join} from "path";
-import Config from "./Systems/Config/Config";
-import GeneralConfig from "./Systems/Config/ConfigModels/GeneralConfig";
 
 require("winston-daily-rotate-file");
 
 const container = new Container({defaultScope: "Singleton"});
-
-container.bind<winston.Logger>(symbols.Logger).toConstantValue(Logger.get());
 container.bind<TwitchAdapter>(TwitchAdapter).toSelf();
-container.bind<Adapter>(Adapter).toProvider(ctx => async () => {
-    const config = await Config.getInstance().getConfig(GeneralConfig);
-    const service = config.service;
+container.bind<Adapter>(Adapter).toDynamicValue(ctx => {
+    const service = ctx.container.get<string>(symbols.ServiceName);
     switch (service) {
         case "twitch":
             return ctx.container.get<TwitchAdapter>(TwitchAdapter);

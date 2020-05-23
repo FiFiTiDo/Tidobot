@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosPromise } from "axios";
+import axios, {AxiosInstance, AxiosPromise} from "axios";
 
 export default class LastFMApi {
     private readonly axios: AxiosInstance;

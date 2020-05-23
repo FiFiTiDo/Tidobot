@@ -1,10 +1,10 @@
 import Cache from "../../Systems/Cache/Cache";
 import {parse_duration} from "../../Utilities/functions";
-import Logger from "../../Utilities/Logger";
 import {AccessToken} from "./ApiAuthentication";
-import axios, {Method, AxiosRequestConfig, AxiosInstance, AxiosPromise} from "axios";
+import axios, {AxiosInstance, AxiosPromise, AxiosRequestConfig} from "axios";
 import Config from "../../Systems/Config/Config";
 import CacheConfig from "../../Systems/Config/ConfigModels/CacheConfig";
+import TwitchAdapter from "./TwitchAdapter";
 
 const CACHE_EXPIRY = async () => {
     const config = await Config.getInstance().getConfig(CacheConfig);
@@ -225,16 +225,18 @@ export namespace helix {
             if (this.accessToken === null) { // Has not been retrieved yet
                 try {
                     this.accessToken = await AccessToken.retrieve(this.clientId, this.clientSecret);
-                } catch (error) {
-                    Logger.get().emerg("Unable to retrieve the access token", {cause: error});
+                } catch (e) {
+                    TwitchAdapter.LOGGER.fatal("Unable to retrieve the access token");
+                    TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                     process.exit(1);
                 }
             }
 
             try {
                 await this.accessToken.validate();
-            } catch (error) {
-                Logger.get().emerg("Unable to validate access token", {cause: error});
+            } catch (e) {
+                TwitchAdapter.LOGGER.fatal("Unable to validate access token");
+                TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                 process.exit(1);
             }
 

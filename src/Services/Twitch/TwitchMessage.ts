@@ -7,7 +7,6 @@ import moment from "moment-timezone";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import {Role} from "../../Systems/Permissions/Role";
-import Logger from "../../Utilities/Logger";
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
 import {ResponseFactory} from "../../Chat/Response";
 import IStream = helix.Stream;
@@ -66,7 +65,8 @@ export class TwitchMessage extends Message {
                     return "Channel is not live.";
                 }
             } catch (e) {
-                Logger.get().error("Twitch API error", {cause: e});
+                TwitchAdapter.LOGGER.error("Twitch API error");
+                TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                 return "<<An error has occurred with the Twitch API.>>";
             }
         };
@@ -87,7 +87,8 @@ export class TwitchMessage extends Message {
                             return "Channel is not live.";
                         }
                     } catch (e) {
-                        Logger.get().error("Twitch API error", {cause: e});
+                        TwitchAdapter.LOGGER.error("Twitch API error");
+                        TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                         return "<<An error has occurred with the Twitch API.>>";
                     }
                 },
@@ -103,7 +104,8 @@ export class TwitchMessage extends Message {
                         const timezone = await this.getChannel().getSetting<moment.MomentZone>("timezone");
                         return moment.parseZone(resp.data[0].followed_at, timezone.name).format(format ? format : "Y-m-d h:i:s");
                     }).catch(e => {
-                        Logger.get().error("Unable to determine follow age", {cause: e});
+                        TwitchAdapter.LOGGER.error("Unable to determine follow age");
+                        TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                         return "Cannot determine follow age.";
                     });
                 },
@@ -112,7 +114,8 @@ export class TwitchMessage extends Message {
                         from_id: this.getChatter().userId,
                         to_id: this.getChannel().channelId
                     }).then(async resp => resp.total > 0).catch(e => {
-                        Logger.get().error("Unable to determine if the user is following", {cause: e});
+                        TwitchAdapter.LOGGER.error("Unable to determine if the user is following");
+                        TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                         return false;
                     });
                 }

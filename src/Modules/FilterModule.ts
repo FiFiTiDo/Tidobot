@@ -1,28 +1,33 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
-import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
+import {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import FiltersEntity from "../Database/Entities/FiltersEntity";
 import {array_add, array_remove, tuple} from "../Utilities/ArrayUtils";
-import Bot from "../Application/Bot";
 import {Role} from "../Systems/Permissions/Role";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import FilterSystem from "../Systems/Filter/FilterSystem";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import Adapter from "../Services/Adapter";
+import {getLogger} from "log4js";
 
+export const MODULE_INFO = {
+    name: "Filter",
+    version: "1.0.0",
+    description: "Manage the filtering system used to filter out unwanted messages automatically"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class PermitCommand extends Command {
     constructor(private filterModule: FilterModule) {
@@ -71,7 +76,7 @@ class PardonCommand extends Command {
 }
 
 class PurgeCommand extends Command {
-    constructor(private bot: Bot) {
+    constructor(private adapter: Adapter) {
         super("purge", "<user>");
     }
 
@@ -85,7 +90,7 @@ class PurgeCommand extends Command {
         }));
          if (status !== ValidatorStatus.OK) return;
         const [chatter] = args;
-        await this.bot.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"),
+        await this.adapter.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"),
             await response.translate("filter:purge-reason", {username: msg.getChatter().name}));
         await response.message("filter:purged", {username: chatter.name});
     }
@@ -188,32 +193,29 @@ export default class FilterModule extends AbstractModule {
     permits: ChatterStateList<moment.Moment>;
     strikes: ChatterStateList<number>;
 
-    constructor(@inject(Bot) private bot: Bot, @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
+    constructor(@inject(Adapter) private adapter: Adapter, @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
         super(FilterModule.name);
 
         this.permits = new ChatterStateList(null);
         this.strikes = new ChatterStateList(0);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new PermitCommand(this), this);
-        cmd.registerCommand(new PardonCommand(), this);
-        cmd.registerCommand(new PurgeCommand(this.bot), this);
-        cmd.registerCommand(new FilterCommand(this.makeConfirmation), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("filter.ignore", Role.MODERATOR));
-        perm.registerPermission(new Permission("filter.permit", Role.MODERATOR));
-        perm.registerPermission(new Permission("filter.list.add", Role.MODERATOR));
-        perm.registerPermission(new Permission("filter.list.remove", Role.MODERATOR));
-        perm.registerPermission(new Permission("filter.list.reset", Role.MODERATOR));
-        perm.registerPermission(new Permission("filter.pardon", Role.MODERATOR));
-        perm.registerPermission(new Permission("filter.purge", Role.MODERATOR));
-
-        const settings = SettingsSystem.getInstance();
+    initialize({ command, permission, settings }: Systems): ModuleInfo {
+        command.registerCommand(new PermitCommand(this), this);
+        command.registerCommand(new PardonCommand(), this);
+        command.registerCommand(new PurgeCommand(this.adapter), this);
+        command.registerCommand(new FilterCommand(this.makeConfirmation), this);
+        permission.registerPermission(new Permission("filter.ignore", Role.MODERATOR));
+        permission.registerPermission(new Permission("filter.permit", Role.MODERATOR));
+        permission.registerPermission(new Permission("filter.list.add", Role.MODERATOR));
+        permission.registerPermission(new Permission("filter.list.remove", Role.MODERATOR));
+        permission.registerPermission(new Permission("filter.list.reset", Role.MODERATOR));
+        permission.registerPermission(new Permission("filter.pardon", Role.MODERATOR));
+        permission.registerPermission(new Permission("filter.purge", Role.MODERATOR));
         settings.registerSetting(new Setting("filter.permit-length", "30", SettingType.INTEGER));
         settings.registerSetting(new Setting("filter.purge-length", "1", SettingType.INTEGER));
+
+        return MODULE_INFO;
     }
 
     @EventHandler(NewChannelEvent)

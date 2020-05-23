@@ -1,10 +1,12 @@
 import Setting from "./Setting";
+import System from "../System";
 
-export default class SettingsSystem {
+export default class SettingsSystem extends System {
     private static instance: SettingsSystem = null;
     private readonly settings: Map<string, Setting>;
 
     constructor() {
+        super("Settings");
         this.settings = new Map();
     }
 

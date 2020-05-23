@@ -1,11 +1,11 @@
 import Permission from "./Permission";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import {getMaxRole, Role} from "./Role";
-import Logger from "../../Utilities/Logger";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import PermissionEntity from "../../Database/Entities/PermissionEntity";
+import System from "../System";
 
-export default class PermissionSystem {
+export default class PermissionSystem extends System {
     private static instance: PermissionSystem = null;
     private permissions: Permission[] = [];
 
@@ -14,6 +14,12 @@ export default class PermissionSystem {
             this.instance = new PermissionSystem();
 
         return this.instance;
+    }
+
+    constructor() {
+        super("Permission");
+
+        this.logger.info("System initialized");
     }
 
     public registerPermission(permission: Permission): void {
@@ -39,7 +45,8 @@ export default class PermissionSystem {
                     return perm.role;
             return Role.OWNER;
         } catch (e) {
-            Logger.get().error("Unable to find permission in database", {cause: e});
+            this.logger.error("Unable to find permission in database");
+            this.logger.trace("Caused by: " + e.message);
             return Role.OWNER;
         }
     }
@@ -49,8 +56,7 @@ export default class PermissionSystem {
             const permStr = permission;
             permission = this.findPermission(permission);
             if (permission === null) {
-                Logger.get().error(`Unable to find the permission with the string ${permStr}.`);
-                console.trace();
+                this.logger.trace(`Unable to find the permission with the string ${permStr}.`);
                 return false;
             }
         }
@@ -61,8 +67,8 @@ export default class PermissionSystem {
             const role = await this.getPermissionRole(permission, chatter.getChannel());
             return getMaxRole(roles) >= role;
         } catch (e) {
-            Logger.get().error("Unable to check permission", {cause: e});
-            console.trace();
+            this.logger.error("Unable to check permission");
+            this.logger.trace("Caused by: " + e.message);
         }
 
         return false;

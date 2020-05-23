@@ -1,6 +1,23 @@
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {array_contains, array_remove} from "../Utilities/ArrayUtils";
 import {injectable, unmanaged} from "inversify";
+import CommandSystem from "../Systems/Commands/CommandSystem";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import SettingsSystem from "../Systems/Settings/SettingsSystem";
+import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
+
+export interface ModuleInfo {
+    name: string;
+    version: string;
+    description: string;
+}
+
+export interface Systems {
+    command: CommandSystem;
+    permission: PermissionSystem;
+    settings: SettingsSystem;
+    expression: ExpressionSystem;
+}
 
 @injectable()
 export default abstract class AbstractModule {
@@ -11,9 +28,7 @@ export default abstract class AbstractModule {
         this.name = name;
     }
 
-    public initialize(): void {
-        // Not implemented
-    }
+    public abstract initialize(systems: Systems): ModuleInfo;
 
     getName(): string {
         return this.name;

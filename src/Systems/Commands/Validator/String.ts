@@ -5,7 +5,7 @@ import {
     MissingRequiredArgumentError
 } from "./ValidationErrors";
 import {array_find} from "../../../Utilities/ArrayUtils";
-import {getStartingColumn, ValueConverter, ValueConverterInfo} from "./Converter";
+import {getStartingColumn, ValueConverterInfo} from "./Converter";
 
 interface StringOptions {
     accepted?: string[];

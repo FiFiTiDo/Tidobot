@@ -3,9 +3,9 @@ import args from "args";
 import moment from "moment";
 import {inject} from "inversify";
 import Bot from "./Bot";
-import Logger from "../Utilities/Logger";
 import {provide} from "inversify-binding-decorators";
 import Database from "../Database/Database";
+import {getLogger} from "log4js";
 
 @provide(Application)
 export default class Application {
@@ -21,15 +21,17 @@ export default class Application {
     }
 
     public async start(argv: string[]): Promise<void> {
-        Logger.get().info("Initializing database");
+        const logger = getLogger("app");
+
+        logger.info("Initializing database");
         try {
             await Database.initialize();
         } catch (e) {
-            Logger.get().emerg("Unable to initialize the database", {cause: e});
+            logger.fatal("Unable to initialize the database", {cause: e});
             process.exit(1);
         }
-        Logger.get().info("Database initialized successfully");
-        Logger.get().info("Application started.");
+        logger.info("Database initialized successfully");
+        logger.info("Application started.");
 
         const options = args
             .option("service", "The service the bot will run.", "twitch")
@@ -38,7 +40,6 @@ export default class Application {
             .option("channels", "The channels where the bot will enter.", [Application.DEFAULT_CHANNEL])
             .parse(argv);
 
-        Logger.get().debug("Application#runCommand executed.");
-        this.bot.start(options as AdapterOptions);
+        return this.bot.start(options as AdapterOptions);
     }
 }

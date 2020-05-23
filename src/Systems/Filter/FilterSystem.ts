@@ -15,9 +15,10 @@ import Permission from "../Permissions/Permission";
 import {Role} from "../Permissions/Role";
 import ChatterEntity, {ChatterStateList} from "../../Database/Entities/ChatterEntity";
 import moment from "moment";
+import System from "../System";
 
 @HandlesEvents()
-export default class FilterSystem {
+export default class FilterSystem extends System {
     private static instance: FilterSystem = null;
 
     public static getInstance(): FilterSystem {
@@ -32,6 +33,8 @@ export default class FilterSystem {
     private readonly filters: Filter[];
 
     constructor() {
+        super("Filter");
+
         this.filters = [
             new BadWordFilter(this.strikeManager),
             new CapsFilter(this.strikeManager),

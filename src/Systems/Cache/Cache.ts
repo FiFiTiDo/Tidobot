@@ -3,11 +3,14 @@ import {Deserializer, Serializable} from "../../Utilities/Patterns/Serializable"
 import {promisify} from "util";
 import Config from "../Config/Config";
 import CacheConfig from "../Config/ConfigModels/CacheConfig";
+import System from "../System";
 
-export default class Cache {
+export default class Cache extends System {
     private static instance: Cache = null;
 
     constructor(private readonly client: RedisClient) {
+        super("Cache");
+        this.getLogger().info("[Cache] System initialized.");
     }
 
     public static async getInstance(): Promise<Cache> {

@@ -1,24 +1,29 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import Logger from "../Utilities/Logger";
 import SettingsEntity from "../Database/Entities/SettingsEntity";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {ConvertedSetting, SettingType} from "../Systems/Settings/Setting";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "Settings",
+    version: "1.0.0",
+    description: "Manage the channel's settings to change the functionality of the bot"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class SetCommand extends Command {
     constructor() {
@@ -41,7 +46,8 @@ class SetCommand extends Command {
             .then(() => response.message("setting:set", {setting: key, value}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to set setting", {cause: e});
+                logger.error("Unable to set setting");
+            logger.trace("Caused by: " + e.message);
             });
     }
 }
@@ -65,7 +71,8 @@ class UnsetCommand extends Command {
             .then(() => response.message("setting:unset", {setting: key}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to unset setting", {cause: e});
+                logger.error("Unable to unset setting");
+            logger.trace("Caused by: " + e.message);
             });
     }
 }
@@ -88,7 +95,8 @@ class ResetCommand extends Command {
                 .then(() => response.message("setting:reset"))
                 .catch((e) => {
                     response.genericError();
-                    Logger.get().error("Unable to reset the channel's settings", {cause: e});
+                    logger.error("Unable to reset the channel's settings");
+            logger.trace("Caused by: " + e.message);
                 });
         });
         confirmation.run();
@@ -103,19 +111,14 @@ export default class SettingsModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        const perm = PermissionSystem.getInstance();
-
-        perm.registerPermission(new Permission("settings.set", Role.MODERATOR));
-        perm.registerPermission(new Permission("settings.reset", Role.BROADCASTER));
-        perm.registerPermission(new Permission("settings.reset.all", Role.BROADCASTER));
-
-        cmd.registerCommand(new SetCommand(), this);
-        cmd.registerCommand(new UnsetCommand(), this);
-        cmd.registerCommand(new ResetCommand(this.makeConfirmation), this);
-
-        ExpressionSystem.getInstance().registerResolver(msg => ({
+    initialize({ command, permission, expression }: Systems): ModuleInfo {
+        command.registerCommand(new SetCommand(), this);
+        command.registerCommand(new UnsetCommand(), this);
+        command.registerCommand(new ResetCommand(this.makeConfirmation), this);
+        permission.registerPermission(new Permission("settings.set", Role.MODERATOR));
+        permission.registerPermission(new Permission("settings.reset", Role.BROADCASTER));
+        permission.registerPermission(new Permission("settings.reset.all", Role.BROADCASTER));
+        expression.registerResolver(msg => ({
             settings: {
                 get: async <T>(key: string, defVal?: T): Promise<ConvertedSetting | T | null> => {
                     if (defVal === undefined) defVal = null;
@@ -124,6 +127,8 @@ export default class SettingsModule extends AbstractModule {
                 }
             }
         }));
+
+        return MODULE_INFO;
     }
 
     @EventHandler(NewChannelEvent)

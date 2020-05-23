@@ -9,7 +9,6 @@ import {where} from "../Where";
 import ChannelEntity from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
-import c from "args";
 
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_groups`)

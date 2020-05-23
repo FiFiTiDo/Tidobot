@@ -1,13 +1,11 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo} from "./AbstractModule";
 import ListsEntity from "../Database/Entities/ListsEntity";
 import ListEntity from "../Database/Entities/ListEntity";
-import {array_rand, tuple} from "../Utilities/ArrayUtils";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import {tuple} from "../Utilities/ArrayUtils";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEvent, CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
@@ -16,72 +14,15 @@ import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {entity} from "../Systems/Commands/Validator/Entity";
+import {getLogger} from "log4js";
 
-@HandlesEvents()
-export default class ListModule extends AbstractModule {
-    constructor() {
-        super(ListModule.name);
-    }
+export const MODULE_INFO = {
+    name: "List",
+    version: "1.0.0",
+    description: "Keep lists of different things like quotes or gifs"
+};
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        const listCommand = new ListCommand();
-        cmd.registerCommand(listCommand, this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("list.create", Role.MODERATOR));
-        perm.registerPermission(new Permission("list.delete", Role.MODERATOR));
-        perm.registerPermission(new Permission("list.add", Role.MODERATOR));
-        perm.registerPermission(new Permission("list.edit", Role.MODERATOR));
-        perm.registerPermission(new Permission("list.remove", Role.MODERATOR));
-        perm.registerPermission(new Permission("list.view", Role.NORMAL));
-        perm.registerPermission(new Permission("list.view.specific", Role.NORMAL));
-        perm.registerPermission(new Permission("list.view.random", Role.NORMAL));
-
-        ExpressionSystem.getInstance().registerResolver(msg => ({
-            list: {
-                command: async (listName: unknown): Promise<string> => {
-                    if (typeof listName !== "string") return "Invalid parameter, expected a string";
-                    const prefix = await CommandSystem.getPrefix(msg.getChannel());
-                    const origArgs = msg.getParts().slice(1);
-                    return new Promise((resolve) => {
-                        let args = [];
-                        if (origArgs.length < 1) {
-                            args.push(listName);
-                        } else {
-                            const subcmd = origArgs[0];
-                            switch (subcmd.toLowerCase()) {
-                                case "create":
-                                case "delete":
-                                    resolve("Cannot create or delete list using alias");
-                                    return;
-                                case "add":
-                                case "edit":
-                                case "remove":
-                                    args.push(subcmd);
-                                    args.push(listName);
-                                    args = args.concat(origArgs.slice(1));
-                                    break;
-                                default:
-                                    args.push(listName);
-                                    args = args.concat(origArgs);
-                            }
-                        }
-                        const command = `${prefix}list`;
-                        const raw = `${command} ${args.join(" ")}`;
-                        const event = new CommandEvent(command, args, msg.extend(raw, resolve));
-                        listCommand.execute(event.getEventArgs());
-                    });
-                }
-            }
-        }));
-    }
-
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
-        await ListsEntity.createTable({channel});
-    }
-}
+const logger = getLogger(MODULE_INFO.name);
 
 class ListCommand extends Command {
     constructor() {
@@ -263,5 +204,69 @@ class ListCommand extends Command {
                 await response.genericError();
             }
         }
+    }
+}
+
+@HandlesEvents()
+export default class ListModule extends AbstractModule {
+    constructor() {
+        super(ListModule.name);
+    }
+
+    initialize({ command, permission, expression }): ModuleInfo {
+        const listCommand = new ListCommand(); // DO NOT REMOVE, USED IN EXPRESSION RESOLVER
+        command.registerCommand(listCommand, this);
+        permission.registerPermission(new Permission("list.create", Role.MODERATOR));
+        permission.registerPermission(new Permission("list.delete", Role.MODERATOR));
+        permission.registerPermission(new Permission("list.add", Role.MODERATOR));
+        permission.registerPermission(new Permission("list.edit", Role.MODERATOR));
+        permission.registerPermission(new Permission("list.remove", Role.MODERATOR));
+        permission.registerPermission(new Permission("list.view", Role.NORMAL));
+        permission.registerPermission(new Permission("list.view.specific", Role.NORMAL));
+        permission.registerPermission(new Permission("list.view.random", Role.NORMAL));
+        expression.registerResolver(msg => ({
+            list: {
+                command: async (listName: unknown): Promise<string> => {
+                    if (typeof listName !== "string") return "Invalid parameter, expected a string";
+                    const prefix = await CommandSystem.getPrefix(msg.getChannel());
+                    const origArgs = msg.getParts().slice(1);
+                    return new Promise((resolve) => {
+                        let args = [];
+                        if (origArgs.length < 1) {
+                            args.push(listName);
+                        } else {
+                            const subcmd = origArgs[0];
+                            switch (subcmd.toLowerCase()) {
+                                case "create":
+                                case "delete":
+                                    resolve("Cannot create or delete list using alias");
+                                    return;
+                                case "add":
+                                case "edit":
+                                case "remove":
+                                    args.push(subcmd);
+                                    args.push(listName);
+                                    args = args.concat(origArgs.slice(1));
+                                    break;
+                                default:
+                                    args.push(listName);
+                                    args = args.concat(origArgs);
+                            }
+                        }
+                        const command = `${prefix}list`;
+                        const raw = `${command} ${args.join(" ")}`;
+                        const event = new CommandEvent(command, args, msg.extend(raw, resolve));
+                        listCommand.execute(event.getEventArgs());
+                    });
+                }
+            }
+        }));
+
+        return MODULE_INFO;
+    }
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await ListsEntity.createTable({channel});
     }
 }

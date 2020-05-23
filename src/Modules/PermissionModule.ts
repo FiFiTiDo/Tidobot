@@ -1,13 +1,10 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
-import Logger from "../Utilities/Logger";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import {onePartConverter} from "../Systems/Commands/Validator/Converter";
@@ -17,55 +14,15 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
+import {getLogger} from "log4js";
 
-@HandlesEvents()
-export default class PermissionModule extends AbstractModule {
-    constructor() {
-        super(PermissionModule.name);
+export const MODULE_INFO = {
+    name: "Permission",
+    version: "1.0.0",
+    description: "Change the minimum role required for predefined permissions or make your own"
+};
 
-        this.coreModule = true;
-    }
-
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new PermissionCommand(), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("permission.set", Role.MODERATOR));
-        perm.registerPermission(new Permission("permission.grant", Role.MODERATOR));
-        perm.registerPermission(new Permission("permission.deny", Role.MODERATOR));
-        perm.registerPermission(new Permission("permission.reset", Role.MODERATOR));
-        perm.registerPermission(new Permission("permission.reset.all", Role.BROADCASTER));
-
-        ExpressionSystem.getInstance().registerResolver(msg => ({
-            sender: {
-                isA: async (input: string): Promise<boolean> => {
-                    const role = parseRole(input);
-                    if (role === null) {
-                        Logger.get().warning("User input an invalid role: " + input);
-                        return false;
-                    }
-                    return await getMaxRole(await msg.getUserRoles()) >= role;
-                },
-                can: async (permStr: string): Promise<boolean> => {
-                    if (!permStr) return false;
-                    try {
-                        return await msg.checkPermission(permStr);
-                    } catch (e) {
-                        Logger.get().error("Unable to check permission", {cause: e});
-                        return false;
-                    }
-                }
-            }
-        }));
-    }
-
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
-        await PermissionEntity.createTable({channel});
-        await PermissionSystem.getInstance().resetChannelPermissions(channel);
-    }
-}
+const logger = getLogger(MODULE_INFO.name);
 
 const roleConverter = (name) => onePartConverter(name, "role", true, Role.OWNER, (part, column, message) => {
     const role = parseRole(part);
@@ -89,12 +46,12 @@ class PermissionCommand extends Command {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission create <permission> <default-level>",
             arguments: tuple(
-                string({ name: "permission", required: true }),
+                string({name: "permission", required: true}),
                 roleConverter("default role")
             ),
             permission: "permission.create"
         }));
-         if (status !== ValidatorStatus.OK) return;
+        if (status !== ValidatorStatus.OK) return;
         const [perm_str, role] = args;
 
         if (!await msg.checkPermission(perm_str)) {
@@ -114,8 +71,9 @@ class PermissionCommand extends Command {
                 await response.message("permission:error.already-exists");
             else
                 await response.message("permission:created", {permission: perm_str, role: Role[role]});
-        } catch (err) {
-            Logger.get().error("Unable to create new permission", {cause: err});
+        } catch (e) {
+            logger.error("Unable to create new permission");
+            logger.trace("Caused by: " + e.message);
             return response.genericError();
         }
     }
@@ -133,7 +91,7 @@ class PermissionCommand extends Command {
             ),
             permission: "permission.delete"
         }));
-         if (status !== ValidatorStatus.OK) return;
+        if (status !== ValidatorStatus.OK) return;
         const [permission] = args;
 
         if (permission.moduleDefined)
@@ -143,7 +101,8 @@ class PermissionCommand extends Command {
             .then(() => response.message("permission:deleted", {permission: permission.permission}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to delete custom permission", {cause: e});
+                logger.error("Unable to delete custom permission");
+                logger.trace("Caused by: " + e.message);
             });
     }
 
@@ -161,7 +120,7 @@ class PermissionCommand extends Command {
             ),
             permission: "permission.set"
         }));
-         if (status !== ValidatorStatus.OK) return;
+        if (status !== ValidatorStatus.OK) return;
         const [permission, role] = args;
 
         if (!await msg.checkPermission(permission.permission)) {
@@ -174,7 +133,8 @@ class PermissionCommand extends Command {
             .then(() => response.message("permission:set", {permission: permission.permission, role: Role[role]}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to set permission level", {cause: e});
+                logger.error("Unable to set permission level");
+                logger.trace("Caused by: " + e.message);
             });
     }
 
@@ -191,7 +151,7 @@ class PermissionCommand extends Command {
             ),
             permission: "permission.reset"
         }));
-         if (status !== ValidatorStatus.OK) return;
+        if (status !== ValidatorStatus.OK) return;
         const [permission] = args;
 
         if (permission) {
@@ -203,7 +163,8 @@ class PermissionCommand extends Command {
                 .then(() => response.message("permissions:reset", {permission: permission.permission}))
                 .catch(e => {
                     response.genericError();
-                    Logger.get().error("Unable to reset permission", {cause: e});
+                    logger.error("Unable to reset permission");
+                    logger.trace("Caused by: " + e.message);
                 });
         } else {
             if (!(await msg.checkPermission("permission.reset.all")))
@@ -213,8 +174,57 @@ class PermissionCommand extends Command {
                 .then(() => response.message("permission:reset-all"))
                 .catch(e => {
                     response.genericError();
-                    Logger.get().error("Unable to reset all permissions", {cause: e});
+                    logger.error("Unable to reset all permissions");
+                    logger.trace("Caused by: " + e.message);
                 });
         }
+    }
+}
+
+@HandlesEvents()
+export default class PermissionModule extends AbstractModule {
+    constructor() {
+        super(PermissionModule.name);
+
+        this.coreModule = true;
+    }
+
+    initialize({ command, permission, expression }: Systems): ModuleInfo {
+        command.registerCommand(new PermissionCommand(), this);
+        permission.registerPermission(new Permission("permission.set", Role.MODERATOR));
+        permission.registerPermission(new Permission("permission.grant", Role.MODERATOR));
+        permission.registerPermission(new Permission("permission.deny", Role.MODERATOR));
+        permission.registerPermission(new Permission("permission.reset", Role.MODERATOR));
+        permission.registerPermission(new Permission("permission.reset.all", Role.BROADCASTER));
+        expression.registerResolver(msg => ({
+            sender: {
+                isA: async (input: string): Promise<boolean> => {
+                    const role = parseRole(input);
+                    if (role === null) {
+                        logger.warn("User input an invalid role: " + input);
+                        return false;
+                    }
+                    return await getMaxRole(await msg.getUserRoles()) >= role;
+                },
+                can: async (permStr: string): Promise<boolean> => {
+                    if (!permStr) return false;
+                    try {
+                        return await msg.checkPermission(permStr);
+                    } catch (e) {
+                        logger.error("Unable to check permission");
+                        logger.trace("Caused by: " + e.message);
+                        return false;
+                    }
+                }
+            }
+        }));
+
+        return MODULE_INFO;
+    }
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+        await PermissionEntity.createTable({channel});
+        await PermissionSystem.getInstance().resetChannelPermissions(channel);
     }
 }

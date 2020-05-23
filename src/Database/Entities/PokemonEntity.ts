@@ -1,4 +1,4 @@
-import Entity, {EntityParameters} from "./Entity";
+import {EntityParameters} from "./Entity";
 import {Column, DataTypes, Id} from "../Decorators/Columns";
 import {Table} from "../Decorators/Table";
 import TrainerEntity from "./TrainerEntity";

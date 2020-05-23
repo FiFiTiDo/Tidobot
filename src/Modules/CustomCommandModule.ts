@@ -1,14 +1,11 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import Logger from "../Utilities/Logger";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
@@ -17,7 +14,15 @@ import {integer} from "../Systems/Commands/Validator/Integer";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {getLogger} from "log4js";
 
+export const MODULE_INFO = {
+    name: "CustomCommand",
+    version: "1.0.0",
+    description: "Create your own commands with the powerful expression engine."
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class CommandCommand extends Command {
     constructor() {
@@ -46,7 +51,8 @@ class CommandCommand extends Command {
             await response.message("command:added", {id: command.id});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Unable to add custom command", {cause: e});
+            logger.error("Unable to add custom command");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -109,7 +115,8 @@ class CommandCommand extends Command {
             .then(() => response.message(`command:edit.${type}`, {id, value}))
             .catch(async (e) => {
                 await response.genericError();
-                Logger.get().error("Failed to save changes to custom command", {cause: e});
+                logger.error("Failed to save changes to custom command");
+            logger.trace("Caused by: " + e.message);
             });
     }
 
@@ -128,7 +135,8 @@ class CommandCommand extends Command {
             .then(() => response.message("command:deleted", {id}))
             .catch(async (e) => {
                 await response.genericError();
-                Logger.get().error("Failed to delete the custom command", {cause: e});
+                logger.error("Failed to delete the custom command");
+            logger.trace("Caused by: " + e.message);
             });
     }
 }
@@ -168,18 +176,14 @@ export default class CustomCommandModule extends AbstractModule {
         }
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new CommandCommand(), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("command.add", Role.MODERATOR));
-        perm.registerPermission(new Permission("command.edit", Role.MODERATOR));
-        perm.registerPermission(new Permission("command.delete", Role.MODERATOR));
-        perm.registerPermission(new Permission("command.free", Role.MODERATOR));
-        perm.registerPermission(new Permission("command.ignore-cooldown", Role.MODERATOR));
-
-        ExpressionSystem.getInstance().registerResolver(msg => ({
+    initialize({ command, permission, expression }): ModuleInfo {
+        command.registerCommand(new CommandCommand(), this);
+        permission.registerPermission(new Permission("command.add", Role.MODERATOR));
+        permission.registerPermission(new Permission("command.edit", Role.MODERATOR));
+        permission.registerPermission(new Permission("command.delete", Role.MODERATOR));
+        permission.registerPermission(new Permission("command.free", Role.MODERATOR));
+        permission.registerPermission(new Permission("command.ignore-cooldown", Role.MODERATOR));
+        expression.registerResolver(msg => ({
             alias: async (command: unknown): Promise<string> => new Promise(resolve => {
                 if (typeof command !== "string") return msg.getResponse().translate("expression:error.argument", {
                     expected: msg.getResponse().translate("expression:types.string")
@@ -190,6 +194,8 @@ export default class CustomCommandModule extends AbstractModule {
                 this.handleMessage({event: new MessageEvent(newMsg)});
             })
         }));
+
+        return MODULE_INFO;
     }
 
     @EventHandler(NewChannelEvent)

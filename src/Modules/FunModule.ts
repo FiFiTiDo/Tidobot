@@ -1,19 +1,25 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import {array_rand} from "../Utilities/ArrayUtils";
-import Bot from "../Application/Bot";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import {inject} from "inversify";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
-import Logger from "../Utilities/Logger";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import Adapter from "../Services/Adapter";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "Fun",
+    version: "1.0.0",
+    description: "Just a bunch of fun things that don't fit in their own module"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class RouletteCommand extends Command {
-    constructor(private bot: Bot) {
+    constructor(private adapter: Adapter) {
         super("roulette", null);
     }
 
@@ -37,9 +43,9 @@ class RouletteCommand extends Command {
                     username: msg.getChatter().name
                 });
                 try {
-                    await this.bot.tempbanChatter(msg.getChatter(), 60, await response.translate("fun:roulette.reason"));
+                    await this.adapter.tempbanChatter(msg.getChatter(), 60, await response.translate("fun:roulette.reason"));
                 } catch (e) {
-                    Logger.get().warning(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", {cause: e});
+                    logger.warn(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", {cause: e});
                     return response.message("error.bot-not-permitted");
                 }
             }
@@ -48,7 +54,7 @@ class RouletteCommand extends Command {
 }
 
 class SeppukuCommand extends Command {
-    constructor(private bot: Bot) {
+    constructor(private adapter: Adapter) {
         super("seppuku", null);
     }
 
@@ -60,9 +66,9 @@ class SeppukuCommand extends Command {
          if (status !== ValidatorStatus.OK) return;
 
         try {
-            return this.bot.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
+            return this.adapter.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
         } catch (e) {
-            Logger.get().warning(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", {cause: e});
+            logger.warn(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", {cause: e});
             return response.message("error.bot-not-permitted");
         }
     }
@@ -86,19 +92,18 @@ class Magic8BallCommand extends Command {
 }
 
 export default class FunModule extends AbstractModule {
-    constructor(@inject(Bot) private bot: Bot) {
+    constructor(@inject(Adapter) private adapter: Adapter) {
         super(FunModule.name);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new RouletteCommand(this.bot), this);
-        cmd.registerCommand(new SeppukuCommand(this.bot), this);
-        cmd.registerCommand(new Magic8BallCommand(), this);
+    initialize({ command, permission}: Systems): ModuleInfo {
+        command.registerCommand(new RouletteCommand(this.adapter), this);
+        command.registerCommand(new SeppukuCommand(this.adapter), this);
+        command.registerCommand(new Magic8BallCommand(), this);
+        permission.registerPermission(new Permission("fun.roulette", Role.NORMAL));
+        permission.registerPermission(new Permission("fun.seppuku", Role.NORMAL));
+        permission.registerPermission(new Permission("fun.8ball", Role.NORMAL));
 
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("fun.roulette", Role.NORMAL));
-        perm.registerPermission(new Permission("fun.seppuku", Role.NORMAL));
-        perm.registerPermission(new Permission("fun.8ball", Role.NORMAL));
+        return MODULE_INFO;
     }
 }

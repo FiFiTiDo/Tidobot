@@ -1,4 +1,4 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import Dispatcher from "../Systems/Event/Dispatcher";
 import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
@@ -7,6 +7,12 @@ import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {generateRandomCode} from "../Utilities/RandomUtils";
+
+export const MODULE_INFO = {
+    name: "Confirmation",
+    version: "1.0.0",
+    description: "An added confirmation layer to actions that cannot be undone and are of great magnitude"
+};
 
 export class ConfirmedEvent extends Event<ConfirmedEvent> {
     public static readonly NAME = "confirmed";
@@ -94,9 +100,10 @@ export default class ConfirmationModule extends AbstractModule {
         this.confirmations = new ChatterStateList<Confirmation>(null);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new ConfirmCommand(this.confirmations), this);
+    initialize({ command}: Systems): ModuleInfo {
+        command.registerCommand(new ConfirmCommand(this.confirmations), this);
+
+        return MODULE_INFO;
     }
 
     async make(message: Message, prompt: string, seconds: number): Promise<Confirmation> {

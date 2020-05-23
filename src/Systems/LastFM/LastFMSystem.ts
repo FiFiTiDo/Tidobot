@@ -4,8 +4,9 @@ import LastFMApi from "./LastFMApi";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../Config/Config";
 import LastFMConfig from "../Config/ConfigModels/LastFMConfig";
+import System from "../System";
 
-export default class LastFMSystem {
+export default class LastFMSystem extends System {
     private static instance: LastFMSystem;
 
     public static async getInstance(): Promise<LastFMSystem> {
@@ -18,8 +19,11 @@ export default class LastFMSystem {
     }
 
     constructor(private readonly api: LastFMApi) {
+        super("LastFM");
         const settings = SettingsSystem.getInstance();
         settings.registerSetting(new Setting("lastfm.username", "", SettingType.STRING));
+
+        this.logger.info("System initialized");
     }
 
     public getUsername(channel: ChannelEntity): Promise<string> {

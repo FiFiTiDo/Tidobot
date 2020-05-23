@@ -10,6 +10,7 @@ import Command from "./Command";
 import {CommandEvent, CommandEventArgs} from "./CommandEvent";
 import SettingsSystem from "../Settings/SettingsSystem";
 import Setting, {SettingType} from "../Settings/Setting";
+import System from "../System";
 
 export interface CommandListener {
     (event: CommandEventArgs): void;
@@ -21,13 +22,16 @@ export interface CommandGroup {
 }
 
 @HandlesEvents()
-export default class CommandSystem {
+export default class CommandSystem extends System {
     private static instance: CommandSystem = null;
     private readonly commandListeners: { [key: string]: CommandGroup[] };
 
     constructor() {
+        super("Command");
         this.commandListeners = {};
         SettingsSystem.getInstance().registerSetting(new Setting("command.prefix", "!", SettingType.STRING));
+
+        this.logger.info("System initialized");
     }
 
     public static getInstance(): CommandSystem {

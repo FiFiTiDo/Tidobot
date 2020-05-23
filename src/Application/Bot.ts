@@ -9,42 +9,53 @@ import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelManager from "../Chat/ChannelManager";
-import Logger from "../Utilities/Logger";
 import EventSystem from "../Systems/Event/EventSystem";
 import {provide} from "inversify-binding-decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {NewChatterEvent, NewChatterEventArgs} from "../Chat/Events/NewChatterEvent";
-import FilterSystem from "../Systems/Filter/FilterSystem";
+import {getLogger} from "log4js";
 
 @provide(Bot)
 export default class Bot {
+    public static readonly LOGGER = getLogger("bot");
+
     constructor(private adapter: Adapter, private channelManager: ChannelManager) {
     }
 
-    start(options: AdapterOptions): void {
-        Logger.get().info("Starting the service " + this.adapter.getName() + "...");
+    async start(options: AdapterOptions): Promise<void> {
+        Bot.LOGGER.info("Starting the service " + this.adapter.getName() + "...");
         const dispatcher = EventSystem.getInstance();
         dispatcher.addListener(MessageEvent, async ({event}) => {
             const msg = event.getMessage();
-            Logger.get().info(util.format("[%s] %s: %s", msg.getChannel().name, msg.getChatter().name, msg.getRaw()));
+            const logger = getLogger("channel");
+            logger.addContext("channel-id", msg.getChannel().channelId);
+            logger.info(util.format("[%s] %s: %s", msg.getChannel().name, msg.getChatter().name, msg.getRaw()));
             if (await msg.getChatter().isIgnored()) event.stopPropagation();
             if (msg.getChatter().banned) event.stopPropagation();
         }, EventPriority.HIGHEST);
         dispatcher.addListener(JoinEvent, ({event}) => {
-            Logger.get().info(util.format("%s has joined %s", event.getChatter().name, event.getChannel().name));
+            const logger = getLogger("channel");
+            logger.addContext("channel-id", event.getChannel().channelId);
+            logger.info(util.format("%s has joined %s", event.getChatter().name, event.getChannel().name));
         });
         dispatcher.addListener(LeaveEvent, ({event}) => {
-            Logger.get().info(util.format("%s has left %s", event.getChatter().name, event.getChannel().name));
+            const logger = getLogger("channel");
+            logger.addContext("channel-id", event.getChannel().channelId);
+            logger.info(util.format("%s has left %s", event.getChatter().name, event.getChannel().name));
         });
         dispatcher.addListener(ConnectedEvent, () => {
-            Logger.get().info("Connected to the service.");
+            Bot.LOGGER.info("Connected to the service.");
         }, EventPriority.MONITOR);
         dispatcher.addListener(DisconnectedEvent, ({event}) => {
-            Logger.get().info("Disconnected from the service.", {reason: event.getMetadata("reason", "Unknown reason")});
+            Bot.LOGGER.info("Disconnected from the service.", {reason: event.getMetadata("reason", "Unknown reason")});
         }, EventPriority.MONITOR);
         dispatcher.addListener(NewChannelEvent, async ({channel}: NewChannelEventArgs) => {
+            Bot.LOGGER.info("Connected to a new channel: ", channel.name);
         });
         dispatcher.addListener(NewChatterEvent, async ({chatter}: NewChatterEventArgs) => {
+            const logger = getLogger("channel");
+            logger.addContext("channel-id", chatter.getChannel().channelId);
+            logger.info(`New chatter joined the channel: ${chatter.name}`);
         });
         this.adapter.run(options);
     }

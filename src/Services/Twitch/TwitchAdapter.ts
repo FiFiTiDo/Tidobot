@@ -13,14 +13,16 @@ import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../../Systems/Config/Config";
 import {inject, injectable} from "inversify";
 import symbols from "../../symbols";
-import Logger from "../../Utilities/Logger";
 import EventSystem from "../../Systems/Event/EventSystem";
 import ChannelManager from "../../Chat/ChannelManager";
 import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
+import {getLogger} from "log4js";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
+    public static readonly LOGGER = getLogger("Twitch");
+
     public client: tmi.Client;
     public api: helix.Api;
     public oldApi: kraken.Api;
@@ -111,7 +113,8 @@ export default class TwitchAdapter extends Adapter {
                     id = resp.data[0].id;
                     name = user;
                 } catch (e) {
-                    Logger.get().emerg("Unable to retrieve user from the API", {cause: e});
+                    TwitchAdapter.LOGGER.fatal("Unable to retrieve user from the API");
+                    TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                     process.exit(1);
                 }
             } else {
@@ -141,7 +144,8 @@ export default class TwitchAdapter extends Adapter {
             try {
                 resp = await this.api.getUsers({login: channelName});
             } catch (e) {
-                Logger.get().emerg("Unable to retrieve user from the API", {cause: e});
+                TwitchAdapter.LOGGER.fatal("Unable to retrieve user from the API");
+                TwitchAdapter.LOGGER.trace("Caused by: " + e.message);
                 process.exit(1);
             }
             const {id, login: name} = resp.data[0];

@@ -1,21 +1,26 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import CurrencyModule from "./CurrencyModule";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import Logger from "../Utilities/Logger";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {string} from "../Systems/Commands/Validator/String";
 import {float} from "../Systems/Commands/Validator/Float";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "Betting",
+    version: "1.0.0",
+    description: "Place bets using points on a specific options, the total points is divided among those who bet for the winning option."
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 enum PlaceBetResponse {
     INVALID_OPTION, LOW_BALANCE, TOO_LOW, TOO_HIGH, BET_PLACED
@@ -147,7 +152,8 @@ class BetCommand extends Command {
             }
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to place the bet", {cause: e});
+            logger.error("Failed to place the bet");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -229,18 +235,15 @@ export default class BettingModule extends AbstractModule {
         super(BettingModule.name);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new BetCommand(), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("bet.place", Role.NORMAL));
-        perm.registerPermission(new Permission("bet.open", Role.MODERATOR));
-        perm.registerPermission(new Permission("bet.close", Role.MODERATOR));
-        perm.registerPermission(new Permission("bet.check", Role.MODERATOR));
-
-        const settings = SettingsSystem.getInstance();
+    initialize({ command, permission, settings }: Systems): ModuleInfo {
+        command.registerCommand(new BetCommand(), this);
+        permission.registerPermission(new Permission("bet.place", Role.NORMAL));
+        permission.registerPermission(new Permission("bet.open", Role.MODERATOR));
+        permission.registerPermission(new Permission("bet.close", Role.MODERATOR));
+        permission.registerPermission(new Permission("bet.check", Role.MODERATOR));
         settings.registerSetting(new Setting("bet.minimum", "1", SettingType.INTEGER));
         settings.registerSetting(new Setting("bet.maximum", "-1", SettingType.INTEGER));
+
+        return MODULE_INFO;
     }
 }

@@ -1,20 +1,27 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo} from "./AbstractModule";
 import UserPermissionsEntity from "../Database/Entities/UserPermissionsEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import Logger from "../Utilities/Logger";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "User",
+    version: "1.0.0",
+    description: "Managing users in your channel including granting/denying permissions"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 class UserCommand extends Command {
     constructor(private confirmationFactory: ConfirmationFactory) {
@@ -41,7 +48,8 @@ class UserCommand extends Command {
             .then(() => response.message("user:permission.granted", {permission, username: user.name}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to grant permission to user", {cause: e});
+                logger.error("Unable to grant permission to user");
+            logger.trace("Caused by: " + e.message);
             });
     }
 
@@ -61,7 +69,8 @@ class UserCommand extends Command {
             .then(() => response.message("user:permission.denied", {username: user.name, permission}))
             .catch(e => {
                 response.genericError();
-                Logger.get().error("Unable to deny permission for user", {cause: e});
+                logger.error("Unable to deny permission for user");
+            logger.trace("Caused by: " + e.message);
             });
     }
 
@@ -82,7 +91,8 @@ class UserCommand extends Command {
                 .then(() => response.message("user:permission.delete.specific", {username: user.name, permission}))
                 .catch(e => {
                     response.genericError();
-                    Logger.get().error("Unable to deny permission for user", {cause: e});
+                    logger.error("Unable to deny permission for user");
+            logger.trace("Caused by: " + e.message);
                 });
         } else {
             const confirmation = await this.confirmationFactory(msg, await response.translate("user:permission.delete.confirm", {username: user.name}), 30);
@@ -91,7 +101,8 @@ class UserCommand extends Command {
                     .then(() => response.message("user:permission.delete.all", {username: user.name}))
                     .catch(e => {
                         response.genericError();
-                        Logger.get().error("Unable to deny permission for user", {cause: e});
+                        logger.error("Unable to deny permission for user");
+            logger.trace("Caused by: " + e.message);
                     });
             });
             confirmation.run();
@@ -107,9 +118,10 @@ export default class UserModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new UserCommand(this.makeConfirmation), this);
+    initialize({ command }): ModuleInfo {
+        command.registerCommand(new UserCommand(this.makeConfirmation), this);
+
+        return MODULE_INFO;
     }
 
     @EventHandler(NewChannelEvent)

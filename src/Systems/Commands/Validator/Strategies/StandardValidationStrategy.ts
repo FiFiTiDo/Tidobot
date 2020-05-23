@@ -4,9 +4,8 @@ import ValidationStrategy, {
     ValidatorStatus
 } from "./ValidationStrategy";
 import {CommandEvent} from "../../CommandEvent";
-import {Resolvable, resolve} from "../../../../Utilities/Interfaces/Resolvable";
+import {resolve} from "../../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError} from "../ValidationErrors";
-import {ValueConverter} from "../Converter";
 
 export default class StandardValidationStrategy<T extends unknown[]> implements ValidationStrategy<T> {
     constructor(private opts: CommandEventValidatorOptions<T>) {

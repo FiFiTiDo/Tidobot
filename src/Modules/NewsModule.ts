@@ -1,31 +1,36 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import TickEvent from "../Application/TickEvent";
 import NewsEntity from "../Database/Entities/NewsEntity";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import Logger from "../Utilities/Logger";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {inject} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
-import Bot from "../Application/Bot";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {string} from "../Systems/Commands/Validator/String";
 import {integer} from "../Systems/Commands/Validator/Integer";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
+import Adapter from "../Services/Adapter";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "News",
+    version: "1.0.0",
+    description: "Automated messages that are sent periodically"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 interface LastMessage {
     item: NewsEntity;
@@ -59,7 +64,8 @@ class NewsCommand extends Command {
             await response.message("news:added", {id: item.id});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to add news item", {cause: e});
+            logger.error("Failed to add news item");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -85,7 +91,8 @@ class NewsCommand extends Command {
             await response.message("news:removed", {id});
         } catch (e) {
             await response.genericError();
-            Logger.get().error("Failed to remove news item", {cause: e});
+            logger.error("Failed to remove news item");
+            logger.trace("Caused by: " + e.message);
         }
     }
 
@@ -103,7 +110,8 @@ class NewsCommand extends Command {
                 await response.message("news:cleared");
             } catch (e) {
                 await response.genericError();
-                Logger.get().error("Failed to clear news items", {cause: e});
+                logger.error("Failed to clear news items");
+            logger.trace("Caused by: " + e.message);
             }
         });
         confirmation.run();
@@ -116,26 +124,23 @@ export default class NewsModule extends AbstractModule {
 
     constructor(
         @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory,
-        @inject(ChannelManager) private channelManager: ChannelManager, @inject(Bot) private bot: Bot
+        @inject(ChannelManager) private channelManager: ChannelManager, @inject(Adapter) private adapter: Adapter
     ) {
         super(NewsModule.name);
 
         this.lastMessage = new Map();
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new NewsCommand(this.makeConfirmation), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("news.add", Role.MODERATOR));
-        perm.registerPermission(new Permission("news.remove", Role.MODERATOR));
-        perm.registerPermission(new Permission("news.clear", Role.MODERATOR));
-        perm.registerPermission(new Permission("news.reload", Role.MODERATOR));
-
-        const settings = SettingsSystem.getInstance();
+    initialize({ command, permission, settings }: Systems): ModuleInfo {
+        command.registerCommand(new NewsCommand(this.makeConfirmation), this);
+        permission.registerPermission(new Permission("news.add", Role.MODERATOR));
+        permission.registerPermission(new Permission("news.remove", Role.MODERATOR));
+        permission.registerPermission(new Permission("news.clear", Role.MODERATOR));
+        permission.registerPermission(new Permission("news.reload", Role.MODERATOR));
         settings.registerSetting(new Setting("news.message-count", "5", SettingType.INTEGER));
         settings.registerSetting(new Setting("news.interval", "30", SettingType.INTEGER));
+
+        return MODULE_INFO;
     }
 
     @EventHandler(NewChannelEvent)
@@ -196,6 +201,6 @@ export default class NewsModule extends AbstractModule {
             timestamp: moment(),
             messageCount: 0
         });
-        await this.bot.send(nextItem.value, channel);
+        await this.adapter.sendMessage(nextItem.value, channel);
     }
 }

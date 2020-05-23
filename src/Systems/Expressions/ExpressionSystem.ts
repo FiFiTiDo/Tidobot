@@ -2,7 +2,6 @@ import ExpressionParser from "./Parser";
 import ExpressionInterpreter from "./Interpreter";
 import Message from "../../Chat/Message";
 import rp from "request-promise-native";
-import Logger from "../../Utilities/Logger";
 import cheerio from "cheerio";
 import moment from "moment";
 import {format_duration} from "../../Utilities/functions";
@@ -13,6 +12,7 @@ import Dictionary from "../../Utilities/Structures/Dictionary";
 import deepmerge from "deepmerge";
 import chrono from "chrono-node";
 import {IllegalStateError, OutOfBoundsError, UnknownKeyError} from "./InterpreterErrors";
+import System from "../System";
 
 export interface ExpressionContext {
     [key: string]: any;
@@ -22,13 +22,14 @@ export interface ExpressionContextResolver {
     (msg: Message): ExpressionContext;
 }
 
-export default class ExpressionSystem {
+export default class ExpressionSystem extends System {
     private static instance: ExpressionSystem = null;
     private readonly resolvers: ExpressionContextResolver[] = [];
     private parser: ExpressionParser;
     private interpreter: ExpressionInterpreter;
 
     constructor() {
+        super("Expression");
         this.parser = new ExpressionParser();
         this.interpreter = new ExpressionInterpreter();
     }
@@ -64,7 +65,8 @@ export default class ExpressionSystem {
                 try {
                     return await rp(url);
                 } catch (e) {
-                    Logger.get().error("Web request error", {cause: e});
+                    this.logger.error("Web request error");
+            this.logger.trace("Caused by: " + e.message);
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },
@@ -79,7 +81,8 @@ export default class ExpressionSystem {
                         json: true
                     });
                 } catch (e) {
-                    Logger.get().error("Web request error", {cause: e});
+                    this.logger.error("Web request error");
+            this.logger.trace("Caused by: " + e.message);
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },
@@ -98,7 +101,8 @@ export default class ExpressionSystem {
                         return $(selector).text();
                     });
                 } catch (e) {
-                    Logger.get().error("Web request error", {cause: e});
+                    this.logger.error("Web request error");
+            this.logger.trace("Caused by: " + e.message);
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },
@@ -169,7 +173,8 @@ export default class ExpressionSystem {
                 });
             }
 
-            Logger.get().error("An error occurred with the expression parser", {cause: e});
+            this.logger.error("An error occurred with the expression parser");
+            this.logger.trace("Caused by: " + e.message);
             return msg.getResponse().translate("expression:error.generic");
         }
     }

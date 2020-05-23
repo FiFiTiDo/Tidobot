@@ -1,19 +1,21 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import moment from "moment-timezone";
 import {array_rand, tuple} from "../Utilities/ArrayUtils";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import Logger from "../Utilities/Logger";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import Bot from "../Application/Bot";
+
+export const MODULE_INFO = {
+    name: "General",
+    version: "1.0.0",
+    description: "General bot commands that don't fit in other modules"
+};
 
 class PingCommand extends Command {
     constructor() {
@@ -104,7 +106,7 @@ class ShutdownCommand extends Command {
          if (status !== ValidatorStatus.OK) return;
 
         await response.broadcast(array_rand(await response.getTranslation("shutdown")));
-        Logger.get().info("Shutting down...");
+        Bot.LOGGER.info("Shutting down...");
         process.exit();
     }
 }
@@ -116,30 +118,25 @@ export default class GeneralModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        const perm = PermissionSystem.getInstance();
-        const settings = SettingsSystem.getInstance();
-
-        perm.registerPermission(new Permission("general.ping", Role.MODERATOR));
-        perm.registerPermission(new Permission("general.raw", Role.OWNER));
-        perm.registerPermission(new Permission("general.echo", Role.MODERATOR));
-        perm.registerPermission(new Permission("general.eval", Role.MODERATOR));
-        perm.registerPermission(new Permission("general.shutdown", Role.OWNER));
-
-        cmd.registerCommand(new PingCommand(), this);
-        cmd.registerCommand(new RawCommand(), this);
-        cmd.registerCommand(new EchoCommand(), this);
-        cmd.registerCommand(new EvalCommand(), this);
-        cmd.registerCommand(new ShutdownCommand(), this);
-
+    initialize({ command, permission, settings, expression }: Systems): ModuleInfo {
+        command.registerCommand(new PingCommand(), this);
+        command.registerCommand(new RawCommand(), this);
+        command.registerCommand(new EchoCommand(), this);
+        command.registerCommand(new EvalCommand(), this);
+        command.registerCommand(new ShutdownCommand(), this);
+        permission.registerPermission(new Permission("general.ping", Role.MODERATOR));
+        permission.registerPermission(new Permission("general.raw", Role.OWNER));
+        permission.registerPermission(new Permission("general.echo", Role.MODERATOR));
+        permission.registerPermission(new Permission("general.eval", Role.MODERATOR));
+        permission.registerPermission(new Permission("general.shutdown", Role.OWNER));
         settings.registerSetting(new Setting("timezone", "America/New_York", SettingType.TIMEZONE));
-
-        ExpressionSystem.getInstance().registerResolver(msg => ({
+        expression.registerResolver(msg => ({
             datetime: async (format = "Y-m-d h:i:s"): Promise<string> => {
                 const timezone = await msg.getChannel().getSetting<moment.MomentZone>("timezone");
                 return moment().tz(timezone.name).format(format);
             }
         }));
+
+        return MODULE_INFO;
     }
 }

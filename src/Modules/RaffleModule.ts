@@ -1,4 +1,4 @@
-import AbstractModule from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
@@ -8,15 +8,22 @@ import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
 import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {getLogger} from "log4js";
+
+export const MODULE_INFO = {
+    name: "Raffle",
+    version: "1.0.0",
+    description: "Run a raffle to randomly select users from the chat who entered the specified keyword"
+};
+
+const logger = getLogger(MODULE_INFO.name);
 
 enum RaffleState {
     OPEN = 1,
@@ -200,21 +207,18 @@ export default class RaffleModule extends AbstractModule {
         this.raffles = new ChannelStateList<Raffle>(null);
     }
 
-    initialize(): void {
-        const cmd = CommandSystem.getInstance();
-        cmd.registerCommand(new RaffleCommand(this.raffles), this);
-
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("raffle.open", Role.MODERATOR));
-        perm.registerPermission(new Permission("raffle.close", Role.MODERATOR));
-        perm.registerPermission(new Permission("raffle.reset", Role.MODERATOR));
-        perm.registerPermission(new Permission("raffle.pull", Role.MODERATOR));
-        perm.registerPermission(new Permission("raffle.enter", Role.NORMAL));
-
-        const settings = SettingsSystem.getInstance();
+    initialize({ command, permission, settings }: Systems): ModuleInfo {
+        command.registerCommand(new RaffleCommand(this.raffles), this);
+        permission.registerPermission(new Permission("raffle.open", Role.MODERATOR));
+        permission.registerPermission(new Permission("raffle.close", Role.MODERATOR));
+        permission.registerPermission(new Permission("raffle.reset", Role.MODERATOR));
+        permission.registerPermission(new Permission("raffle.pull", Role.MODERATOR));
+        permission.registerPermission(new Permission("raffle.enter", Role.NORMAL));
         settings.registerSetting(new Setting("raffle.price", "0.0", SettingType.FLOAT));
         settings.registerSetting(new Setting("raffle.max-entries", "1", SettingType.INTEGER));
         settings.registerSetting(new Setting("raffle.duplicate-wins", "false", SettingType.BOOLEAN));
+
+        return MODULE_INFO;
     }
 
     @EventHandler(MessageEvent)

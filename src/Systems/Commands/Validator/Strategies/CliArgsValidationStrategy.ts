@@ -7,6 +7,7 @@ import {CommandEvent} from "../../CommandEvent";
 import {resolve} from "../../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError} from "../ValidationErrors";
 import minimist = require("minimist-string");
+import {getLogger} from "log4js";
 
 interface CliArguments {
     [key: string]: any
@@ -33,7 +34,7 @@ export default class CliArgsValidationStrategy<T extends CliArguments> implement
             for (const [key, arg] of Object.entries(this.opts.arguments)) {
                 try {
                     const parts = rawArgs[key] || [];
-                    const { converted } = await resolve(arg(parts, 0, message));
+                    const { converted } = await resolve(arg.converter(parts, 0, message));
                     args[key] = converted;
                 } catch (err) {
                     if (err instanceof InvalidInputError) {
@@ -41,6 +42,11 @@ export default class CliArgsValidationStrategy<T extends CliArguments> implement
                             await message.getResponse().rawMessage(await err.getMessage(message, this.opts.usage));
                         return { status: ValidatorStatus.INVALID_ARGS, args: null };
                     } else {
+                        const logger = getLogger("Validator");
+                        logger.error("Failed to validate arguments");
+                        logger.error("Caused by: " + err.message);
+                        logger.error(err.stack);
+
                         if (!silent)
                             await message.getResponse().genericError();
                         return { status: ValidatorStatus.ERROR, args: null };

@@ -18,7 +18,7 @@ import getLogger from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Create your own commands with the powerful expression engine."
 };
 

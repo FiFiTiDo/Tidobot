@@ -8,9 +8,9 @@
         "empty": "There is nobody left in the queue",
         "full": "The queue is currently full, try again later!"
     },
-    "joined": "You have joined the queue, you are {{position}} in lineNum",
+    "joined": "You have joined the queue, you are {{position}} in line",
     "left": "You have left the queue",
-    "check": "@{{username}}, You are {{position}} in line in the queue",
+    "check": "@{{username}} is {{position}} in line in the queue",
     "next": "The next person in line is @{{username}}",
     "emptied": "The queue has been emptied",
     "opened": "The queue is now open, to join type {{prefix}}queue join",

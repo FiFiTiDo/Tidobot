@@ -53,7 +53,10 @@ class Queue {
     }
 
     public find(chatter: ChatterEntity): number {
-        return this.chatters.indexOf(chatter);
+        for (let i = 0; i < this.chatters.length; i++)
+            if (chatter.is(this.chatters[i]))
+                return i;
+        return -1;
     }
 
     public remove(chatter: ChatterEntity): void {
@@ -75,12 +78,13 @@ class QueueCommand extends Command {
     private queues: EntityStateList<ChannelEntity, Queue> = new EntityStateList(() => new Queue());
 
     constructor() {
-        super("queue", "<join|leave|check|pop|peak|clear>");
+        super("queue", "<join|leave|check|pop|peek|clear|open|close>");
 
         this.addSubcommand("join", this.join);
         this.addSubcommand("leave", this.leave);
+        this.addSubcommand("check", this.check);
         this.addSubcommand("pop", this.pop);
-        this.addSubcommand("peak", this.peek);
+        this.addSubcommand("peek", this.peek);
         this.addSubcommand("clear", this.clear);
         this.addSubcommand("open", this.open);
         this.addSubcommand("close", this.close);
@@ -98,7 +102,7 @@ class QueueCommand extends Command {
         if (queue.find(message.getChatter()) >= 0) return response.message("queue:error.in");
         const maxSize = await message.getChannel().getSetting<number>("queue.max-size");
         if (queue.size() >= maxSize) return response.message("queue:error.full");
-        const position = appendOrdinal(queue.push(message.getChatter()));
+        const position = appendOrdinal(queue.push(message.getChatter()) + 1);
         await response.message("queue:joined", { position });
     }
 
@@ -127,25 +131,23 @@ class QueueCommand extends Command {
          if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
-        if (!queue.isOpen()) return response.message("queue:error.closed");
-        const index = queue.find(args[0] !== null ? args[0] : message.getChatter());
-        if (index < 0) return response.message("queue:error.not-in");
+        const index = queue.find(args[0] !== null ? args[0] : message.getChatter()) + 1;
+        if (index < 1) return response.message("queue:error.not-in");
         const position = appendOrdinal(index);
         await response.message("queue:check", { username: message.getChatter().name, position });
     }
 
     async pop({event, message, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue pull",
+            usage: "queue pop",
             permission: "queue.pop"
         }));
          if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
-        if (!queue.isOpen()) return response.message("queue:error.closed");
         const chatter = queue.pop();
         if (chatter === undefined) return response.message("queue:error.empty");
-        return response.message("queue.next", { username: chatter.name })
+        return response.message("queue:next", { username: chatter.name })
     }
 
     async peek({event, response, message} : CommandEventArgs): Promise<void> {
@@ -156,10 +158,9 @@ class QueueCommand extends Command {
          if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
-        if (!queue.isOpen()) return response.message("queue:error.closed");
         const chatter = queue.peek();
         if (chatter === undefined) return response.message("queue:error.empty");
-        return response.message("queue.next", { username: chatter.name })
+        return response.message("queue:next", { username: chatter.name })
     }
 
     async clear({event, response, message}: CommandEventArgs): Promise<void> {
@@ -170,7 +171,6 @@ class QueueCommand extends Command {
          if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
-        if (!queue.isOpen()) return response.message("queue:error.closed");
         queue.clear();
         return response.message("queue:emptied");
     }
@@ -213,7 +213,7 @@ export default class QueueModule extends AbstractModule {
         permission.registerPermission(new Permission("queue.check", Role.NORMAL));
         permission.registerPermission(new Permission("queue.check.other", Role.MODERATOR));
         permission.registerPermission(new Permission("queue.pop", Role.MODERATOR));
-        permission.registerPermission(new Permission("queue.peak", Role.MODERATOR));
+        permission.registerPermission(new Permission("queue.peek", Role.MODERATOR));
         permission.registerPermission(new Permission("queue.clear", Role.MODERATOR));
         permission.registerPermission(new Permission("queue.open", Role.MODERATOR));
         permission.registerPermission(new Permission("queue.close", Role.MODERATOR));

@@ -32,6 +32,7 @@ export default class ExpressionSystem extends System {
         super("Expression");
         this.parser = new ExpressionParser();
         this.interpreter = new ExpressionInterpreter();
+        this.logger.info("System initialized");
     }
 
     static getInstance(): ExpressionSystem {

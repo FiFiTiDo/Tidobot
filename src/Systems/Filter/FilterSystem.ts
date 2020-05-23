@@ -48,6 +48,8 @@ export default class FilterSystem extends System {
 
         const perm = PermissionSystem.getInstance();
         perm.registerPermission(new Permission("filter.ignore.all", Role.MODERATOR));
+
+        this.logger.info("System initialized");
     }
 
     @EventHandler(MessageEvent)

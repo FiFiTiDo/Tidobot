@@ -62,8 +62,9 @@ export default class CommandSystem extends System {
 
     @EventHandler(MessageEvent)
     async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
-        const message: Message = event.getMessage();
-        const commandPrefix = await CommandSystem.getPrefix(message.getChannel());
+        const message = event.getMessage();
+        const channel = message.getChannel();
+        const commandPrefix = await CommandSystem.getPrefix(channel);
 
         if (message.getParts().length < 1) return;
         if (message.getPart(0).startsWith(commandPrefix)) {
@@ -71,10 +72,12 @@ export default class CommandSystem extends System {
             const event = new CommandEvent(message.getPart(0), message.getParts().slice(1), message);
 
             EventSystem.getInstance().dispatch(event);
-            if (objectHasProperties(this.commandListeners, commandLabel))
+            if (objectHasProperties(this.commandListeners, commandLabel)) {
+                channel.logger.debug(`Command ${commandLabel} executed by ${message.getChatter().name}`);
                 for (const commandGroup of this.commandListeners[commandLabel])
                     if (!commandGroup.module.isDisabled(event.getMessage().getChannel()))
                         await commandGroup.command.execute(event.getEventArgs());
+            }
         }
     }
 

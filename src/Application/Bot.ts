@@ -17,7 +17,7 @@ import {getLogger} from "log4js";
 
 @provide(Bot)
 export default class Bot {
-    public static readonly LOGGER = getLogger("bot");
+    public static readonly LOGGER = getLogger("Bot");
 
     constructor(private adapter: Adapter, private channelManager: ChannelManager) {
     }
@@ -27,19 +27,19 @@ export default class Bot {
         const dispatcher = EventSystem.getInstance();
         dispatcher.addListener(MessageEvent, async ({event}) => {
             const msg = event.getMessage();
-            const logger = getLogger("channel");
+            const logger = msg.getChannel().logger;
             logger.addContext("channel-id", msg.getChannel().channelId);
             logger.info(util.format("[%s] %s: %s", msg.getChannel().name, msg.getChatter().name, msg.getRaw()));
             if (await msg.getChatter().isIgnored()) event.stopPropagation();
             if (msg.getChatter().banned) event.stopPropagation();
         }, EventPriority.HIGHEST);
         dispatcher.addListener(JoinEvent, ({event}) => {
-            const logger = getLogger("channel");
+            const logger = event.getChannel().logger;
             logger.addContext("channel-id", event.getChannel().channelId);
             logger.info(util.format("%s has joined %s", event.getChatter().name, event.getChannel().name));
         });
         dispatcher.addListener(LeaveEvent, ({event}) => {
-            const logger = getLogger("channel");
+            const logger = event.getChannel().logger;
             logger.addContext("channel-id", event.getChannel().channelId);
             logger.info(util.format("%s has left %s", event.getChatter().name, event.getChannel().name));
         });
@@ -53,7 +53,7 @@ export default class Bot {
             Bot.LOGGER.info("Connected to a new channel: ", channel.name);
         });
         dispatcher.addListener(NewChatterEvent, async ({chatter}: NewChatterEventArgs) => {
-            const logger = getLogger("channel");
+            const logger = chatter.getChannel().logger;
             logger.addContext("channel-id", chatter.getChannel().channelId);
             logger.info(`New chatter joined the channel: ${chatter.name}`);
         });

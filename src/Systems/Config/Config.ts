@@ -16,6 +16,7 @@ export default class Config extends System {
     constructor() {
         super("Config");
         this.models = new Map();
+        this.logger.info("System initialized");
     }
 
     async getConfig<T extends ConfigModel>(constructor: ConfigModelConstructor<T>): Promise<T> {

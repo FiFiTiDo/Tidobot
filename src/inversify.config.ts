@@ -12,8 +12,6 @@ import i18next, {TFunction} from "i18next";
 import Backend from "i18next-fs-backend";
 import {join} from "path";
 
-require("winston-daily-rotate-file");
-
 const container = new Container({defaultScope: "Singleton"});
 container.bind<TwitchAdapter>(TwitchAdapter).toSelf();
 container.bind<Adapter>(Adapter).toDynamicValue(ctx => {

@@ -1,6 +1,8 @@
 import Dispatcher from "./Dispatcher";
+import {getLogger} from "log4js";
 
 export default class EventSystem extends Dispatcher {
+    private static LOGGER = getLogger("EventSystem");
     private static instance: EventSystem = null;
 
     public static getInstance() {
@@ -8,5 +10,10 @@ export default class EventSystem extends Dispatcher {
             this.instance = new EventSystem();
 
         return this.instance;
+    }
+
+    constructor() {
+        super();
+        EventSystem.LOGGER.info("System initialized");
     }
 }

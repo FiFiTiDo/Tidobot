@@ -1,4 +1,4 @@
-import {RedisClient} from "redis";
+import {RedisClient, RedisError} from "redis";
 import {Deserializer, Serializable} from "../../Utilities/Patterns/Serializable";
 import {promisify} from "util";
 import Config from "../Config/Config";
@@ -10,7 +10,18 @@ export default class Cache extends System {
 
     constructor(private readonly client: RedisClient) {
         super("Cache");
-        this.getLogger().info("[Cache] System initialized.");
+        client.on("error", (e: RedisError) => {
+            if (e.message.indexOf("ECONNREFUSED") !== -1) {
+                this.logger.fatal("Unable to connect to Redis server");
+                this.logger.fatal("Caused by: " + e.message);
+                this.logger.fatal(e.stack);
+                process.exit(1);
+            } else {
+                this.logger.error(e.message);
+                this.logger.error(e.stack);
+            }
+        });
+        this.logger.info("System initialized");
     }
 
     public static async getInstance(): Promise<Cache> {
@@ -129,10 +140,7 @@ export default class Cache extends System {
 
     static async create() {
         const config = await Config.getInstance().getConfig(CacheConfig);
-        return new Cache(new RedisClient(config.redis));
+        const client = new RedisClient(config.redis);
+        return new Cache(client);
     }
-}
-
-export enum CacheLevel {
-    API, USERS, SETTINGS
 }

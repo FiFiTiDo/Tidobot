@@ -1,19 +1,4 @@
-import * as winston from "winston";
-import * as util from "util";
 import moment from "moment"
-
-export const error_format = winston.format(info => {
-    if (info.cause && info.cause instanceof Error) {
-        if (info.cause instanceof Error) {
-            info.message = util.format("%s, caused by:\n%s", info.message, info.cause.stack);
-        } else {
-            info.message = util.format("%s, caused by:\n%s", info.message, info.cause);
-        }
-        delete info.cause;
-    }
-
-    return info;
-});
 
 export function parse_duration(duration_str: string): moment.Duration {
     const parts = duration_str.split(/\s/);

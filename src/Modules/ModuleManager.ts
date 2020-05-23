@@ -26,12 +26,14 @@ export default class ModuleManager {
             expression: ExpressionSystem.getInstance()
         };
 
+        ModuleManager.LOGGER.info("Initializing modules");
         for (const module of Object.values(this.modules)) {
             try {
-                module.initialize(systems);
-                ModuleManager.LOGGER.info("Initialized module " + module.getName());
-            } catch (err) {
-                ModuleManager.LOGGER.fatal("An error occurred while initializing the module " + module.getName(), { cause: err });
+                const info = module.initialize(systems);
+                ModuleManager.LOGGER.info(`Initialized module ${info.name} v${info.version}`);
+            } catch (e) {
+                ModuleManager.LOGGER.fatal("An error occurred while initializing the module " + module.getName());
+                ModuleManager.LOGGER.trace("Caused by: " + e.message);
             }
         }
     }

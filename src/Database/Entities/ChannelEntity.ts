@@ -11,6 +11,7 @@ import StringLike from "../../Utilities/Interfaces/StringLike";
 import ChatterList from "../../Chat/ChatterList";
 import {ConvertedSetting} from "../../Systems/Settings/Setting";
 import FiltersEntity from "./FiltersEntity";
+import {getLogger, Logger} from "log4js";
 
 @Id
 @Table(({service}) => `${service}_channels`)
@@ -24,12 +25,15 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
     public online: Observable<boolean> = new Observable<boolean>(false);
     private readonly settingsManager: ChannelSettings;
     private chatterList: ChatterList;
+    public logger: Logger;
 
     constructor(id: number, params: EntityParameters) {
         super(ChannelEntity, id, params);
 
         this.chatterList = new ChatterList();
         this.settingsManager = new ChannelSettings(this);
+        this.logger = getLogger("Channel");
+        this.logger.addContext("id", id);
     }
 
     static async findById(id: string, service: string): Promise<ChannelEntity | null> {

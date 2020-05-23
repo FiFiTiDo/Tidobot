@@ -8,6 +8,7 @@ export default class SettingsSystem extends System {
     constructor() {
         super("Settings");
         this.settings = new Map();
+        this.logger.info("System initialized");
     }
 
     public static getInstance(): SettingsSystem {

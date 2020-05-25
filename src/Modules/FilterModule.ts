@@ -19,7 +19,9 @@ import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import Adapter from "../Services/Adapter";
-import getLogger from "../Utilities/Logger";
+import getLogger, {logError} from "../Utilities/Logger";
+import {removePrefix} from "../Utilities/StringUtils";
+import picomatch from "picomatch";
 
 export const MODULE_INFO = {
     name: "Filter",
@@ -28,6 +30,46 @@ export const MODULE_INFO = {
 };
 
 const logger = getLogger(MODULE_INFO.name);
+
+class NukeCommand extends Command {
+    constructor(private adapter: Adapter) {
+        super("nuke", "[--regex] <match>");
+    }
+
+    async execute({ event, channel, response }: CommandEventArgs): Promise<void> {
+        const {args, status} = await event.validate(new StandardValidationStrategy({
+            usage: "nuke [--regex] <match>",
+            arguments: tuple(
+                string({ name: "match", required: true, greedy: true })
+            ),
+            permission: "filter.nuke"
+        }));
+        if (status !== ValidatorStatus.OK) return;
+        let match: RegExp|string = args[0];
+
+        const { newString, removed } = removePrefix("--regex ", match);
+        const regex = removed ? new RegExp(newString) : picomatch.compileRe(picomatch.parse(newString, {}) as any);
+        const matches = (input: string): boolean => picomatch.test(input, regex).isMatch;
+        const cached = FilterSystem.getInstance().getCachedMessages(channel);
+        let purged = 0;
+
+        for (const message of cached) {
+            if (matches(message.getRaw())) {
+                try {
+                    await this.adapter.tempbanChatter(message.getChatter(),
+                        await message.getChannel().getSetting<number>("filter.purge-length"),
+                        await response.translate("filter:nuke-reason", {username: message.getChatter().name})
+                    );
+                    purged++;
+                } catch (e) {
+                    logError(logger, e, "Unable to purge message");
+                }
+            }
+        }
+
+        await response.message("filter:nuked", { count: purged });
+    }
+}
 
 class PermitCommand extends Command {
     constructor(private filterModule: FilterModule) {
@@ -205,6 +247,7 @@ export default class FilterModule extends AbstractModule {
         command.registerCommand(new PardonCommand(), this);
         command.registerCommand(new PurgeCommand(this.adapter), this);
         command.registerCommand(new FilterCommand(this.makeConfirmation), this);
+        command.registerCommand(new NukeCommand(this.adapter), this);
         permission.registerPermission(new Permission("filter.ignore", Role.MODERATOR));
         permission.registerPermission(new Permission("filter.permit", Role.MODERATOR));
         permission.registerPermission(new Permission("filter.list.add", Role.MODERATOR));
@@ -212,6 +255,7 @@ export default class FilterModule extends AbstractModule {
         permission.registerPermission(new Permission("filter.list.reset", Role.MODERATOR));
         permission.registerPermission(new Permission("filter.pardon", Role.MODERATOR));
         permission.registerPermission(new Permission("filter.purge", Role.MODERATOR));
+        permission.registerPermission(new Permission("filter.nuke", Role.MODERATOR));
         settings.registerSetting(new Setting("filter.permit-length", "30", SettingType.INTEGER));
         settings.registerSetting(new Setting("filter.purge-length", "1", SettingType.INTEGER));
 

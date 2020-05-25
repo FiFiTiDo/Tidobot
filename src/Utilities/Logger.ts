@@ -1,4 +1,4 @@
-import {configure} from "log4js";
+import {configure, Logger} from "log4js";
 
 export default configure({
     appenders: {
@@ -10,3 +10,13 @@ export default configure({
         default: {appenders: ["everything", process.env.DEBUG ? "console" : "consoleNoDebug"], level: "debug"}
     }
 }).getLogger;
+
+export function logError(logger: Logger, error: Error, message?: string) {
+    if (message) {
+        logger.error(message);
+        logger.error("Caused by: " + error.message);
+    } else {
+        logger.error(error.message);
+    }
+    logger.error(error.stack);
+}

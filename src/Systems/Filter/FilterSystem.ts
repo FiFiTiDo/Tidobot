@@ -16,6 +16,8 @@ import {Role} from "../Permissions/Role";
 import ChatterEntity, {ChatterStateList} from "../../Database/Entities/ChatterEntity";
 import moment from "moment";
 import System from "../System";
+import MessageCache from "./MessageCache";
+import ChannelEntity from "../../Database/Entities/ChannelEntity";
 
 @HandlesEvents()
 export default class FilterSystem extends System {
@@ -31,6 +33,7 @@ export default class FilterSystem extends System {
     private readonly strikeManager: StrikeManager = new StrikeManager();
     private readonly permits: ChatterStateList<moment.Moment> = new ChatterStateList<moment.Moment>(null);
     private readonly filters: Filter[];
+    private readonly messageCache: MessageCache = new MessageCache();
 
     constructor() {
         super("Filter");
@@ -41,7 +44,7 @@ export default class FilterSystem extends System {
             new EmoteFilter(this.strikeManager),
             new FakePurgeFilter(this.strikeManager),
             new LongMessageFilter(this.strikeManager),
-            new SpamFilter(this.strikeManager),
+            new SpamFilter(this.strikeManager, this.messageCache),
             new SymbolFilter(this.strikeManager),
             new UrlFilter(this.strikeManager)
         ];
@@ -55,6 +58,7 @@ export default class FilterSystem extends System {
     @EventHandler(MessageEvent)
     async onMessage(eventArgs: MessageEventArgs): Promise<void> {
         const { sender, channel, message } = eventArgs;
+        await this.messageCache.add(message);
         if (await message.checkPermission("filter.ignore.all")) return;
         if (this.permits.hasChatter(sender)) {
             const timestamp = this.permits.getChatter(sender);
@@ -79,5 +83,9 @@ export default class FilterSystem extends System {
 
     permitUser(chatter: ChatterEntity) {
         this.permits.setChatter(chatter, moment());
+    }
+
+    getCachedMessages(channel: ChannelEntity) {
+        return this.messageCache.getAll(channel);
     }
 }

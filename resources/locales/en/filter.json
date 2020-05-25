@@ -15,6 +15,9 @@
     "strikes-cleared": "Cleared all strikes for the user {{username}}",
     "purged": "Purged user {{username}}",
     "purge-reason": "Purged by {{username}}",
+    "nuked": "Successfully nuked {{count}} message",
+    "nuked_plural": "Successfully nuked {{count}} messages",
+    "nuke-reason": "Messaged nuked by {{username}} (Matched the given expression)",
     "strike": "@{{username}}, {{reason}} [Strike #{{number}}]",
     "reasons": {
         "url": "URLs from that domain are not permitted",

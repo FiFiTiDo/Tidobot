@@ -19,13 +19,13 @@ import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import Adapter from "../Services/Adapter";
-import getLogger, {logError} from "../Utilities/Logger";
+import {getLogger, logError} from "../Utilities/Logger";
 import {removePrefix} from "../Utilities/StringUtils";
 import picomatch from "picomatch";
 
 export const MODULE_INFO = {
     name: "Filter",
-    version: "1.0.0",
+    version: "1.1.0",
     description: "Manage the filtering system used to filter out unwanted messages automatically"
 };
 

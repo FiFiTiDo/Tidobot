@@ -11,7 +11,7 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {tuple} from "../Utilities/ArrayUtils";
 import Config from "../Systems/Config/Config";
 import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
-import getLogger from "../Utilities/Logger";
+import {getLogger} from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Tidobot",

@@ -16,8 +16,7 @@ import CliArgsValidationStrategy from "../Systems/Commands/Validator/Strategies/
 import {boolean} from "../Systems/Commands/Validator/Boolean";
 import axios from "axios";
 import {tuple} from "../Utilities/ArrayUtils";
-import getLogger from "../Utilities/Logger";
-import request = require("request-promise-native");
+import {getLogger} from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Poll",
@@ -85,10 +84,10 @@ class StrawpollCommand extends Command {
             pollId = args[0];
         }
 
-        const res: StrawpollGetResponse = await request({
-            uri: "https://www.strawpoll.me/api/v2/polls/" + pollId,
-            json: true
-        }).promise();
+        const res = await axios.request<StrawpollGetResponse>({
+            url: "https://www.strawpoll.me/api/v2/polls/" + pollId,
+            responseType: "json"
+        }).then(resp => resp.data);
 
         const total = res.votes.reduce((prev, next) => prev + next);
         const resp = res.options.map((option, index) => option + ": " + ((res.votes[index] / total) * 100) + "%").join(", ");
@@ -112,7 +111,7 @@ class StrawpollCommand extends Command {
 
         if (options.length < 2) return response.message("poll:strawpoll.error.no-options");
 
-        const resp: StrawpollPostResponse = await axios({
+        const resp = await axios.request<StrawpollPostResponse>({
             url: "https://www.strawpoll.me/api/v2/polls",
             method: "post",
             responseType: "json",

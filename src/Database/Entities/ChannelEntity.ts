@@ -12,7 +12,7 @@ import ChatterList from "../../Chat/ChatterList";
 import {ConvertedSetting} from "../../Systems/Settings/Setting";
 import FiltersEntity from "./FiltersEntity";
 import {Logger} from "log4js";
-import getLogger from "../../Utilities/Logger";
+import {getLogger} from "../../Utilities/Logger";
 
 @Id
 @Table(({service}) => `${service}_channels`)

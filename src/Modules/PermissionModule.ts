@@ -14,7 +14,7 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
-import getLogger from "../Utilities/Logger";
+import {getLogger} from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Permission",

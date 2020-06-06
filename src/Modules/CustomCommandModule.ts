@@ -14,7 +14,7 @@ import {integer} from "../Systems/Commands/Validator/Integer";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import getLogger from "../Utilities/Logger";
+import {getLogger} from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "CustomCommand",

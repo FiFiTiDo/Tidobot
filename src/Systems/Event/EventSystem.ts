@@ -1,5 +1,5 @@
 import Dispatcher from "./Dispatcher";
-import getLogger from "../../Utilities/Logger";
+import {getLogger} from "../../Utilities/Logger";
 
 export default class EventSystem extends Dispatcher {
     private static LOGGER = getLogger("EventSystem");

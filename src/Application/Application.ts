@@ -5,7 +5,7 @@ import {inject} from "inversify";
 import Bot from "./Bot";
 import {provide} from "inversify-binding-decorators";
 import Database from "../Database/Database";
-import getLogger from "../Utilities/Logger";
+import {getLogger} from "../Utilities/Logger";
 
 @provide(Application)
 export default class Application {

@@ -8,7 +8,7 @@ import GeneralConfig from "./Systems/Config/ConfigModels/GeneralConfig";
 import Config from "./Systems/Config/Config";
 import symbols from "./symbols";
 import LastFMSystem from "./Systems/LastFM/LastFMSystem";
-import getLogger from "./Utilities/Logger";
+import {getLogger} from "./Utilities/Logger";
 import CommandSystem from "./Systems/Commands/CommandSystem";
 import Cache from "./Systems/Cache/Cache";
 import EventSystem from "./Systems/Event/EventSystem";

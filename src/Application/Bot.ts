@@ -13,7 +13,7 @@ import EventSystem from "../Systems/Event/EventSystem";
 import {provide} from "inversify-binding-decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {NewChatterEvent, NewChatterEventArgs} from "../Chat/Events/NewChatterEvent";
-import getLogger from "../Utilities/Logger";
+import {getLogger} from "../Utilities/Logger";
 
 @provide(Bot)
 export default class Bot {

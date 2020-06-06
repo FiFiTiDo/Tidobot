@@ -17,7 +17,7 @@ import EventSystem from "../../Systems/Event/EventSystem";
 import ChannelManager from "../../Chat/ChannelManager";
 import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
-import getLogger from "../../Utilities/Logger";
+import {getLogger} from "../../Utilities/Logger";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {

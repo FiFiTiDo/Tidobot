@@ -1,6 +1,6 @@
 import {configure, Logger} from "log4js";
 
-export default configure({
+export const getLogger = configure({
     appenders: {
         everything: {type: "file", filename: "logs/application.log", maxLogSize: 10485760, backups: 3, compress: true},
         console: {type: "console"},

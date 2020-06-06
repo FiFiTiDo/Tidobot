@@ -2,7 +2,7 @@ import {inject, injectable} from "inversify";
 import {ALL_MODULES_KEY} from "./index";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import AbstractModule from "./AbstractModule";
-import getLogger from "../Utilities/Logger";
+import {getLogger} from "../Utilities/Logger";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";

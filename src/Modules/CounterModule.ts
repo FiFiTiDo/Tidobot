@@ -12,7 +12,7 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
-import getLogger from "../Utilities/Logger";
+import {getLogger} from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "Counter",

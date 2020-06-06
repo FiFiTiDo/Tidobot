@@ -1,12 +1,17 @@
 import CommandSystem, {CommandListener} from "./CommandSystem";
 import {CommandEventArgs} from "./CommandEvent";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import {getSubcommands} from "./decorators";
 
 export default class Command {
     private subcommands: Map<string, CommandListener>;
 
     constructor(protected label: string, protected usage: string | null, protected aliases: string[] = []) {
         this.subcommands = new Map();
+
+        for (const [property, labels] of Object.entries(getSubcommands(this)))
+            for (const subLabel of labels)
+                this.addSubcommand(subLabel, this[property]);
     }
 
     getLabel(): string {
@@ -15,10 +20,6 @@ export default class Command {
 
     getAliases(): string[] {
         return this.aliases;
-    }
-
-    getUsage(): string {
-        return this.usage;
     }
 
     async formatUsage(channel: ChannelEntity): Promise<string> {

@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
@@ -7,7 +7,7 @@ import Message from "../Chat/Message";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import Setting, {SettingType} from "../Systems/Settings/Setting";
+import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
@@ -16,6 +16,9 @@ import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {getLogger} from "../Utilities/Logger";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "Raffle",
@@ -99,46 +102,43 @@ class Raffle {
 }
 
 class RaffleCommand extends Command {
-    constructor(private raffles: ChannelStateList<Raffle>) {
+    constructor(private readonly raffleModule: RaffleModule) {
         super("raffle", "<open|close|reset|pull>");
-
-        this.addSubcommand("open", this.open);
-        this.addSubcommand("close", this.close);
-        this.addSubcommand("reset", this.reset);
-        this.addSubcommand("pull", this.pull);
     }
 
+    @Subcommand("open")
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle open [keyword]",
             arguments: tuple(
                 string({ name: "entry phrase", required: true, greedy: true})
             ),
-            permission: "raffle.open"
+            permission: this.raffleModule.openRaffle
         }));
          if (status !== ValidatorStatus.OK) return;
         const [keyword] = args;
 
-        if (this.raffles.hasChannel(msg.getChannel())) {
-            if (this.raffles.getChannel(msg.getChannel()).isOpen()) {
+        if (this.raffleModule.raffles.hasChannel(msg.getChannel())) {
+            if (this.raffleModule.raffles.getChannel(msg.getChannel()).isOpen()) {
                 await response.message("raffle:error.already-open");
                 return;
             }
         }
 
         const raffle = new Raffle(keyword, msg.getChannel(), {
-            price: await msg.getChannel().getSettings().get("raffles.price"),
-            maxEntries: await msg.getChannel().getSettings().get("raffles.max-entries"),
-            duplicateWins: await msg.getChannel().getSettings().get("raffles.max-entries")
+            price: await msg.getChannel().getSetting(this.raffleModule.price),
+            maxEntries: await msg.getChannel().getSetting(this.raffleModule.maxEntries),
+            duplicateWins: await msg.getChannel().getSetting(this.raffleModule.duplicateWins)
         });
         raffle.open();
         await response.message("raffle:opened", {keyword});
     }
 
+    @Subcommand("close")
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle close",
-            permission: "raffle.close"
+            permission: this.raffleModule.closeRaffle
         }));
         const raffle = await this.getRaffle(msg, RaffleState.OPEN);
         if (status !== ValidatorStatus.OK || raffle === null) return;
@@ -147,10 +147,11 @@ class RaffleCommand extends Command {
         await response.message("raffle:closed");
     }
 
+    @Subcommand("reset")
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle reset",
-            permission: "raffle.reset"
+            permission: this.raffleModule.resetRaffle
         }));
         const raffle = await this.getRaffle(msg);
         if (status !== ValidatorStatus.OK || raffle === null) return;
@@ -159,10 +160,11 @@ class RaffleCommand extends Command {
         await response.message("raffle:reset");
     }
 
+    @Subcommand("pull", "draw")
     async pull({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle pull",
-            permission: "raffle.pull"
+            permission: this.raffleModule.pullWinner
         }));
         const raffle = await this.getRaffle(msg);
         if (status !== ValidatorStatus.OK || raffle === null) return;
@@ -178,12 +180,12 @@ class RaffleCommand extends Command {
     }
 
     private async getRaffle(msg: Message, state: RaffleState = RaffleState.OPEN | RaffleState.CLOSED): Promise<Raffle | null> {
-        if (!this.raffles.hasChannel(msg.getChannel())) {
+        if (!this.raffleModule.raffles.hasChannel(msg.getChannel())) {
             await msg.getResponse().message("raffle:error.no-recent");
             return null;
         }
 
-        const raffle = this.raffles.getChannel(msg.getChannel());
+        const raffle = this.raffleModule.raffles.getChannel(msg.getChannel());
         if (raffle.getState() & state) {
             return raffle;
         } else {
@@ -199,27 +201,26 @@ class RaffleCommand extends Command {
 
 @HandlesEvents()
 export default class RaffleModule extends AbstractModule {
-    private readonly raffles: ChannelStateList<Raffle>;
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+    readonly raffles: ChannelStateList<Raffle>;
 
     constructor() {
-        super(RaffleModule.name);
+        super(RaffleModule);
 
         this.raffles = new ChannelStateList<Raffle>(null);
     }
 
-    initialize({ command, permission, settings }: Systems): ModuleInfo {
-        command.registerCommand(new RaffleCommand(this.raffles), this);
-        permission.registerPermission(new Permission("raffle.open", Role.MODERATOR));
-        permission.registerPermission(new Permission("raffle.close", Role.MODERATOR));
-        permission.registerPermission(new Permission("raffle.reset", Role.MODERATOR));
-        permission.registerPermission(new Permission("raffle.pull", Role.MODERATOR));
-        permission.registerPermission(new Permission("raffle.enter", Role.NORMAL));
-        settings.registerSetting(new Setting("raffle.price", "0.0", SettingType.FLOAT));
-        settings.registerSetting(new Setting("raffle.max-entries", "1", SettingType.INTEGER));
-        settings.registerSetting(new Setting("raffle.duplicate-wins", "false", SettingType.BOOLEAN));
+    @command raffleCommand = new RaffleCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission openRaffle = new Permission("raffle.open", Role.MODERATOR);
+    @permission closeRaffle = new Permission("raffle.close", Role.MODERATOR);
+    @permission resetRaffle = new Permission("raffle.reset", Role.MODERATOR);
+    @permission pullWinner = new Permission("raffle.pull", Role.MODERATOR);
+    @permission enterRaffle = new Permission("raffle.enter", Role.NORMAL);
+
+    @setting price = new Setting("raffle.price", 0.0 as Float, SettingType.FLOAT);
+    @setting maxEntries = new Setting("raffle.max-entries", 1 as Integer, SettingType.INTEGER);
+    @setting duplicateWins = new Setting("raffle.duplicate-wins", false, SettingType.BOOLEAN);
 
     @EventHandler(MessageEvent)
     async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {

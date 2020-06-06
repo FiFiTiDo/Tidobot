@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import CountersEntity from "../Database/Entities/CountersEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -13,6 +13,11 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
 import {getLogger} from "../Utilities/Logger";
+import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
+import Message from "../Chat/Message";
+import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
+import {permission} from "../Systems/Permissions/decorators";
+import {command, Subcommand} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "Counter",
@@ -23,20 +28,8 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class CounterCommand extends Command {
-    constructor() {
+    constructor(private counterModule: CounterModule) {
         super("counter", "<increment|decrement|subtract|add|set|create|delete>");
-
-        this.addSubcommand("increment", this.increment);
-        this.addSubcommand("inc", this.increment);
-        this.addSubcommand("add", this.increment);
-        this.addSubcommand("decrement", this.decrement);
-        this.addSubcommand("dec", this.decrement);
-        this.addSubcommand("subtract", this.decrement);
-        this.addSubcommand("sub", this.decrement);
-        this.addSubcommand("set", this.set);
-        this.addSubcommand("create", this.create);
-        this.addSubcommand("delete", this.delete);
-        this.addSubcommand("del", this.delete);
     }
 
     async execute(eventArgs: CommandEventArgs): Promise<void> {
@@ -53,7 +46,7 @@ class CounterCommand extends Command {
                     error: {msgKey: "counter:unknown", optionKey: "counter"}
                 })
             ),
-            permission: "counter.check"
+            permission: this.counterModule.checkCounter
         }));
         if (status !== ValidatorStatus.OK) return;
         const [counter] = args;
@@ -61,6 +54,7 @@ class CounterCommand extends Command {
         await response.message("counter:value", {counter: counter.name, value: counter.value});
     }
 
+    @Subcommand("increment", "inc", "add")
     async increment({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter increment <counter> [amount]",
@@ -73,7 +67,7 @@ class CounterCommand extends Command {
                 }),
                 integer({name: "amount", required: false, defaultValue: 1})
             ),
-            permission: "counter.change"
+            permission: this.counterModule.changeCounter
         }));
         if (status !== ValidatorStatus.OK) return;
         const [counter, amount] = args;
@@ -90,6 +84,7 @@ class CounterCommand extends Command {
         }
     }
 
+    @Subcommand("decrement", "dec", "subtract", "sub")
     async decrement({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter decrement <counter> [amount]",
@@ -102,7 +97,7 @@ class CounterCommand extends Command {
                 }),
                 integer({name: "amount", required: false, defaultValue: 1})
             ),
-            permission: "counter.change"
+            permission: this.counterModule.changeCounter
         }));
         if (status !== ValidatorStatus.OK) return;
         const [counter, amount] = args;
@@ -119,6 +114,7 @@ class CounterCommand extends Command {
         }
     }
 
+    @Subcommand("set")
     async set({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter set <counter> <amount>",
@@ -131,7 +127,7 @@ class CounterCommand extends Command {
                 }),
                 integer({name: "amount", required: true})
             ),
-            permission: "counter.change"
+            permission: this.counterModule.changeCounter
         }));
         if (status !== ValidatorStatus.OK) return;
         const [counter, amount] = args;
@@ -148,13 +144,14 @@ class CounterCommand extends Command {
         }
     }
 
+    @Subcommand("create")
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter create <counter>",
             arguments: tuple(
                 string({name: "counter name", required: true})
             ),
-            permission: "counter.create"
+            permission: this.counterModule.createCounter
         }));
         if (status !== ValidatorStatus.OK) return;
         const [name] = args;
@@ -174,6 +171,7 @@ class CounterCommand extends Command {
         }
     }
 
+    @Subcommand("delete", "del")
     async delete({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter delete <counter>",
@@ -185,7 +183,7 @@ class CounterCommand extends Command {
                     error: {msgKey: "counter:unknown", optionKey: "counter"}
                 })
             ),
-            permission: "counter.create"
+            permission: this.counterModule.deleteCounter
         }));
         if (status !== ValidatorStatus.OK) return;
         const [counter] = args;
@@ -204,17 +202,27 @@ class CounterCommand extends Command {
 
 @HandlesEvents()
 export default class CounterModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(CounterModule.name);
+        super(CounterModule);
     }
 
-    initialize({ command, permission, expression }): ModuleInfo {
-        command.registerCommand(new CounterCommand(), this);
-        permission.registerPermission(new Permission("counter.check", Role.NORMAL));
-        permission.registerPermission(new Permission("counter.change", Role.MODERATOR));
-        permission.registerPermission(new Permission("counter.create", Role.MODERATOR));
-        permission.registerPermission(new Permission("counter.delete", Role.MODERATOR));
-        expression.registerResolver(msg => ({
+    @command counterCommand = new CounterCommand(this);
+
+    @permission checkCounter = new Permission("counter.check", Role.NORMAL);
+    @permission changeCounter = new Permission("counter.change", Role.MODERATOR);
+    @permission createCounter = new Permission("counter.create", Role.MODERATOR);
+    @permission deleteCounter = new Permission("counter.delete", Role.MODERATOR);
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel({channel}: NewChannelEventArgs) {
+        await CountersEntity.createTable({channel});
+    }
+
+    @ExpressionContextResolver
+    resolveExpressionContext(msg: Message): ExpressionContext {
+        return {
             counters: {
                 get: async (name: unknown): Promise<object | string> => {
                     if (typeof name !== "string") return "Expected a string for argument 1";
@@ -250,13 +258,6 @@ export default class CounterModule extends AbstractModule {
                     };
                 }
             }
-        }));
-
-        return MODULE_INFO;
-    }
-
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs) {
-        await CountersEntity.createTable({channel});
+        }
     }
 }

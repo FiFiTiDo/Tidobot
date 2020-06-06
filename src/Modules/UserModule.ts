@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import UserPermissionsEntity from "../Database/Entities/UserPermissionsEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
@@ -14,6 +14,7 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {getLogger} from "../Utilities/Logger";
+import {command} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "User",
@@ -24,7 +25,7 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class UserCommand extends Command {
-    constructor(private confirmationFactory: ConfirmationFactory) {
+    constructor(private readonly userModule: UserModule) {
         super("user", "<grant|deny|reset>", ["u"]);
 
         this.addSubcommand("grant", this.grant);
@@ -98,7 +99,7 @@ class UserCommand extends Command {
             logger.error(e.stack);
                 });
         } else {
-            const confirmation = await this.confirmationFactory(msg, await response.translate("user:permission.delete.confirm", {username: user.name}), 30);
+            const confirmation = await this.userModule.makeConfirmation(msg, await response.translate("user:permission.delete.confirm", {username: user.name}), 30);
             confirmation.addListener(ConfirmedEvent, () => {
                 return UserPermissionsEntity.clear(user)
                     .then(() => response.message("user:permission.delete.all", {username: user.name}))
@@ -116,17 +117,15 @@ class UserCommand extends Command {
 
 @HandlesEvents()
 export default class UserModule extends AbstractModule {
-    constructor(@inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
-        super(UserModule.name);
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
+    constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+        super(UserModule);
 
         this.coreModule = true;
     }
 
-    initialize({ command }): ModuleInfo {
-        command.registerCommand(new UserCommand(this.makeConfirmation), this);
-
-        return MODULE_INFO;
-    }
+    @command userCommand = new UserCommand(this);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {

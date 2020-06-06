@@ -21,11 +21,12 @@ import symbols from "../symbols";
 import {autoProvide} from "inversify-binding-decorators";
 import QueueModule from "./QueueModule";
 import PokemonModule from "./PokemonModule";
+import GamblingModule from "./GamblingModule";
 
 export const ALL_MODULES = [
     ConfirmationModule, PermissionModule, GroupsModule, SettingsModule, GeneralModule, CustomCommandModule, ListModule,
     PollsModule, CounterModule, FunModule, NewsModule, RaffleModule, CurrencyModule, FilterModule, BettingModule,
-    TidobotModule, UserModule, QueueModule, PokemonModule
+    TidobotModule, UserModule, QueueModule, PokemonModule, GamblingModule
 ];
 
 export const ALL_MODULES_KEY = Symbol("All Modules");

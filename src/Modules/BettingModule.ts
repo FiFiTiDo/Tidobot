@@ -1,10 +1,10 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Systems, Symbols} from "./AbstractModule";
 import CurrencyModule from "./CurrencyModule";
 import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import Setting, {SettingType} from "../Systems/Settings/Setting";
+import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import {string} from "../Systems/Commands/Validator/String";
@@ -13,6 +13,9 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {getLogger} from "../Utilities/Logger";
+import {setting} from "../Systems/Settings/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import {command, Subcommand} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "Betting",
@@ -27,11 +30,10 @@ enum PlaceBetResponse {
 }
 
 class BettingGame {
-
     private readonly bets: Map<string, ChatterStateList<number>>;
     private open: boolean;
 
-    constructor(private readonly title: string, private readonly channel: ChannelEntity, options: string[]) {
+    constructor(private bettingModule: BettingModule, private readonly title: string, private readonly channel: ChannelEntity, options: string[]) {
 
         this.bets = new Map();
         this.open = true;
@@ -66,8 +68,8 @@ class BettingGame {
         if (bets.hasChatter(chatter)) value = bets.getChatter(chatter);
         value += amount;
 
-        const min = await chatter.getChannel().getSettings().get("bet.minimum");
-        const max = await chatter.getChannel().getSettings().get("bet.maximum");
+        const min = await chatter.getChannel().getSetting(this.bettingModule.minimumBet);
+        const max = await chatter.getChannel().getSetting(this.bettingModule.maximumBet);
         if (value < min && min >= 0 && min <= max) return PlaceBetResponse.TOO_LOW;
         if (value > max && max > 0) return PlaceBetResponse.TOO_HIGH;
 
@@ -78,7 +80,7 @@ class BettingGame {
         return PlaceBetResponse.BET_PLACED;
     }
 
-    * getTotals(): Generator<[string, number]> {
+    *getTotals(): Generator<[string, number]> {
         for (const [option, bets] of this.bets.entries()) {
             let total = 0;
             for (const [, value] of bets.entries(this.channel)) total += value;
@@ -100,17 +102,13 @@ class BettingGame {
 class BetCommand extends Command {
     private betInstances: ChannelStateList<BettingGame>;
 
-    constructor() {
+    constructor(private bettingModule: BettingModule) {
         super("bet", "<place|open|close|check>");
 
         this.betInstances = new ChannelStateList<BettingGame>(null);
-
-        this.addSubcommand("place", this.place);
-        this.addSubcommand("open", this.open);
-        this.addSubcommand("close", this.close);
-        this.addSubcommand("check", this.check);
     }
 
+    @Subcommand("place")
     async place({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet place <option> <amount>",
@@ -118,7 +116,7 @@ class BetCommand extends Command {
                 string({ name: "option", required: true }),
                 float({ name: "amount", required: true })
             ),
-            permission: "bet.place"
+            permission: this.bettingModule.placeBet
         }));
         if (status !== ValidatorStatus.OK) return;
         const [option, amount] = args;
@@ -158,6 +156,7 @@ class BetCommand extends Command {
         }
     }
 
+    @Subcommand("open")
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet open \"<title>\" <option 1> <option 2> ... <option n>",
@@ -165,7 +164,7 @@ class BetCommand extends Command {
                 string({ name: "title", required: true, quoted: true }),
                 string({ name: "option", required: true, quoted: true, array: true })
             ),
-            permission: "bet.open"
+            permission: this.bettingModule.openBet
         }));
         if (status !== ValidatorStatus.OK) return;
         const [title, options] = args;
@@ -173,7 +172,7 @@ class BetCommand extends Command {
         if (this.betInstances.hasChannel(msg.getChannel()) && this.betInstances.getChannel(msg.getChannel()).isOpen())
             return response.message("bet:error.already-open");
 
-        const game = new BettingGame(title, msg.getChannel(), options);
+        const game = new BettingGame(this.bettingModule, title, msg.getChannel(), options);
         this.betInstances.setChannel(msg.getChannel(), game);
         await response.message("bet:opened", {
             title,
@@ -181,6 +180,7 @@ class BetCommand extends Command {
         });
     }
 
+    @Subcommand("close")
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet close <winning option>",
@@ -208,10 +208,11 @@ class BetCommand extends Command {
             });
     }
 
+    @Subcommand("check")
     async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate(new StandardValidationStrategy({
             usage: "bet check",
-            permission: "bet.check"
+            permission: this.bettingModule.checkBet
         }));
         if (args === null) return;
 
@@ -232,19 +233,19 @@ class BetCommand extends Command {
 }
 
 export default class BettingModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(BettingModule.name);
+        super(BettingModule);
     }
 
-    initialize({ command, permission, settings }: Systems): ModuleInfo {
-        command.registerCommand(new BetCommand(), this);
-        permission.registerPermission(new Permission("bet.place", Role.NORMAL));
-        permission.registerPermission(new Permission("bet.open", Role.MODERATOR));
-        permission.registerPermission(new Permission("bet.close", Role.MODERATOR));
-        permission.registerPermission(new Permission("bet.check", Role.MODERATOR));
-        settings.registerSetting(new Setting("bet.minimum", "1", SettingType.INTEGER));
-        settings.registerSetting(new Setting("bet.maximum", "-1", SettingType.INTEGER));
+    @command betCommand = new BetCommand(this);
 
-        return MODULE_INFO;
-    }
+    @setting minimumBet = new Setting("bet.minimum", 1 as Integer, SettingType.INTEGER);
+    @setting maximumBet = new Setting("bet.maximum", -1 as Integer, SettingType.INTEGER);
+
+    @permission placeBet = new Permission("bet.place", Role.NORMAL);
+    @permission openBet = new Permission("bet.open", Role.MODERATOR);
+    @permission closeBet = new Permission("bet.close", Role.MODERATOR);
+    @permission checkBet = new Permission("bet.check", Role.MODERATOR);
 }

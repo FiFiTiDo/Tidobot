@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import GroupsEntity from "../Database/Entities/GroupsEntity";
 import GroupMembersEntity from "../Database/Entities/GroupMembersEntity";
@@ -18,6 +18,8 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
 import {getLogger} from "../Utilities/Logger";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "Group",
@@ -28,18 +30,15 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class GroupCommand extends Command {
-    constructor(private confirmationFactory: ConfirmationFactory) {
+    private readonly confirmationFactory: ConfirmationFactory;
+
+    constructor(private readonly groupsModule: GroupsModule) {
         super("group", "<add|remove|create|delete|grant|deny|reset>", ["g"]);
 
-        this.addSubcommand("add", this.addMember);
-        this.addSubcommand("remove", this.removeMember);
-        this.addSubcommand("create", this.createGroup);
-        this.addSubcommand("delete", this.deleteGroup);
-        this.addSubcommand("grant", this.grantPerm);
-        this.addSubcommand("deny", this.denyPerm);
-        this.addSubcommand("reset", this.resetPerms);
+        this.confirmationFactory = groupsModule.makeConfirmation;
     }
 
+    @Subcommand("add")
     async addMember({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group add <group> <user>",
@@ -52,7 +51,7 @@ class GroupCommand extends Command {
                 }),
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "permission.group.add"
+            permission: this.groupsModule.addToGroup
         }));
         if (status !== ValidatorStatus.OK) return;
         const [group, chatter] = args;
@@ -69,6 +68,7 @@ class GroupCommand extends Command {
         });
     }
 
+    @Subcommand("remove", "rem")
     async removeMember({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group remove <group> <user>",
@@ -81,7 +81,7 @@ class GroupCommand extends Command {
                 }),
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "permission.group.remove"
+            permission: this.groupsModule.removeFromGroup
         }));
         if (status !== ValidatorStatus.OK) return;
         const [group, chatter] = args;
@@ -100,13 +100,14 @@ class GroupCommand extends Command {
         }
     }
 
+    @Subcommand("create")
     async createGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group create <group>",
             arguments: tuple(
                 string({ name: "group name", required: true })
             ),
-            permission: "permission.group.create"
+            permission: this.groupsModule.createGroup
         }));
         if (status !== ValidatorStatus.OK) return;
         const [name] = args;
@@ -122,6 +123,7 @@ class GroupCommand extends Command {
         }
     }
 
+    @Subcommand("delete", "del")
     async deleteGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group delete <group>",
@@ -133,7 +135,7 @@ class GroupCommand extends Command {
                     error: {msgKey: "groups:error.unknown", optionKey: "group"}
                 })
             ),
-            permission: "permission.group.delete"
+            permission: this.groupsModule.deleteGroup
         }));
         if (status !== ValidatorStatus.OK) return;
         const [group] = args;
@@ -155,6 +157,7 @@ class GroupCommand extends Command {
         confirmation.run();
     }
 
+    @Subcommand("grant")
     async grantPerm({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group grant <group> <permission>",
@@ -182,6 +185,7 @@ class GroupCommand extends Command {
             });
     }
 
+    @Subcommand("deny")
     async denyPerm({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group deny <group> <permission>",
@@ -209,6 +213,7 @@ class GroupCommand extends Command {
             });
     }
 
+    @Subcommand("reset")
     async resetPerms({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
@@ -254,21 +259,20 @@ class GroupCommand extends Command {
 
 @HandlesEvents()
 export default class GroupsModule extends AbstractModule {
-    constructor(@inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
-        super(GroupsModule.name);
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
+    constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+        super(GroupsModule);
 
         this.coreModule = true;
     }
 
-    initialize({ command, permission }: Systems): ModuleInfo {
-        command.registerCommand(new GroupCommand(this.makeConfirmation), this);
-        permission.registerPermission(new Permission("permission.group.add", Role.MODERATOR));
-        permission.registerPermission(new Permission("permission.group.remove", Role.MODERATOR));
-        permission.registerPermission(new Permission("permission.group.create", Role.MODERATOR));
-        permission.registerPermission(new Permission("permission.group.delete", Role.BROADCASTER));
+    @command groupCommand = new GroupCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission addToGroup = new Permission("permission.group.add", Role.MODERATOR);
+    @permission removeFromGroup = new Permission("permission.group.remove", Role.MODERATOR);
+    @permission createGroup = new Permission("permission.group.create", Role.MODERATOR);
+    @permission deleteGroup = new Permission("permission.group.delete", Role.BROADCASTER);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {

@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -12,6 +12,8 @@ import {tuple} from "../Utilities/ArrayUtils";
 import Config from "../Systems/Config/Config";
 import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
 import {getLogger} from "../Utilities/Logger";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "Tidobot",
@@ -22,22 +24,15 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class TidobotCommand extends Command {
-    constructor() {
+    constructor(private readonly tidobotModule: TidobotModule) {
         super("tidobot", "<version|about||ban|unban>");
-
-        this.addSubcommand("version", this.version);
-        this.addSubcommand("ver", this.version);
-        this.addSubcommand("about", this.about);
-        this.addSubcommand("ignore", this.ignore);
-        this.addSubcommand("unignore", this.unignore);
-        this.addSubcommand("ban", this.ban);
-        this.addSubcommand("unban", this.unban);
     }
 
+    @Subcommand("version")
     async version({event, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot version",
-            permission: "bot.version"
+            permission: this.tidobotModule.viewBotVersion
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -46,23 +41,25 @@ class TidobotCommand extends Command {
         await response.message("Tidobot v" + config.version);
     }
 
+    @Subcommand("about")
     async about({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot about",
-            permission: "bot.about"
+            permission: this.tidobotModule.viewBotInfo
         }));
          if (status !== ValidatorStatus.OK) return;
 
         await response.message("Hi, " + msg.getChatter().name + "! My name is tidobot, I'm your friendly neighborhood robot here to enhance your chatting experience! To learn more visit https://www.fifitido.net/tidobot/");
     }
 
+    @Subcommand("ignore")
     async ignore({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot ignore <user>",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "bot.ignore.add"
+            permission: this.tidobotModule.addIgnored
         }));
          if (status !== ValidatorStatus.OK) return;
         const chatter = args[0] as ChatterEntity;
@@ -76,13 +73,14 @@ class TidobotCommand extends Command {
             });
     }
 
+    @Subcommand("unignore")
     async unignore({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot unignore <user>",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "bot.ignore.remove"
+            permission: this.tidobotModule.removeIgnored
         }));
          if (status !== ValidatorStatus.OK) return;
         const chatter = args[0] as ChatterEntity;
@@ -96,13 +94,14 @@ class TidobotCommand extends Command {
             });
     }
 
+    @Subcommand("ban")
     async ban({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot ban <user>",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "bot.ban"
+            permission: this.tidobotModule.addBanned
         }));
          if (status !== ValidatorStatus.OK) return;
         const [user] = args;
@@ -118,13 +117,14 @@ class TidobotCommand extends Command {
             });
     }
 
+    @Subcommand("unban")
     async unban({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot unban <user>",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "bot.unban"
+            permission: this.tidobotModule.removeBanned
         }));
          if (status !== ValidatorStatus.OK) return;
         const [user] = args;
@@ -142,21 +142,18 @@ class TidobotCommand extends Command {
 }
 
 class RegularCommand extends Command {
-    constructor() {
+    constructor(private readonly tidobotModule: TidobotModule) {
         super("regular", "<add|remove>", ["reg"]);
-
-        this.addSubcommand("add", this.addRegular);
-        this.addSubcommand("remove", this.removeRegular);
-        this.addSubcommand("rem", this.removeRegular);
     }
 
+    @Subcommand("add")
     async addRegular({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "regular add <user>",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "regular.add"
+            permission: this.tidobotModule.addRegular
         }));
          if (status !== ValidatorStatus.OK) return;
         const [user] = args;
@@ -172,13 +169,14 @@ class RegularCommand extends Command {
             });
     }
 
+    @Subcommand("remove", "rem")
     async removeRegular({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "regular remove <user>",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "regular.remove"
+            permission: this.tidobotModule.removeRegular
         }));
          if (status !== ValidatorStatus.OK) return;
         const [user] = args;
@@ -196,24 +194,23 @@ class RegularCommand extends Command {
 }
 
 export default class TidobotModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(TidobotModule.name);
+        super(TidobotModule);
 
         this.coreModule = true;
     }
 
-    initialize({ command, permission }: Systems): ModuleInfo {
-        command.registerCommand(new TidobotCommand(), this);
-        command.registerCommand(new RegularCommand(), this);
-        permission.registerPermission(new Permission("bot.version", Role.NORMAL));
-        permission.registerPermission(new Permission("bot.about", Role.NORMAL));
-        permission.registerPermission(new Permission("bot.ignore.add", Role.OWNER));
-        permission.registerPermission(new Permission("bot.ignore.remove", Role.OWNER));
-        permission.registerPermission(new Permission("bot.ban", Role.BROADCASTER));
-        permission.registerPermission(new Permission("bot.unban", Role.BROADCASTER));
-        permission.registerPermission(new Permission("regular.add", Role.MODERATOR));
-        permission.registerPermission(new Permission("regular.remove", Role.MODERATOR));
+    @command tidobotCommand = new TidobotCommand(this);
+    @command regularCommand = new RegularCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission viewBotVersion = new Permission("bot.version", Role.NORMAL);
+    @permission viewBotInfo = new Permission("bot.about", Role.NORMAL);
+    @permission addIgnored = new Permission("bot.ignore.add", Role.OWNER);
+    @permission removeIgnored = new Permission("bot.ignore.remove", Role.OWNER);
+    @permission addBanned = new Permission("bot.ban", Role.BROADCASTER);
+    @permission removeBanned = new Permission("bot.unban", Role.BROADCASTER);
+    @permission addRegular = new Permission("regular.add", Role.MODERATOR);
+    @permission removeRegular = new Permission("regular.remove", Role.MODERATOR);
 }

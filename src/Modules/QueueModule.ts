@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
@@ -8,12 +8,14 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import EntityStateList from "../Database/EntityStateList";
 import {appendOrdinal} from "../Utilities/NumberUtils";
-import Setting, {SettingType} from "../Systems/Settings/Setting";
+import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {getLogger} from "../Utilities/Logger";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "Queue",
@@ -77,39 +79,32 @@ class Queue {
 class QueueCommand extends Command {
     private queues: EntityStateList<ChannelEntity, Queue> = new EntityStateList(() => new Queue());
 
-    constructor() {
+    constructor(private queueModule: QueueModule) {
         super("queue", "<join|leave|check|pop|peek|clear|open|close>");
-
-        this.addSubcommand("join", this.join);
-        this.addSubcommand("leave", this.leave);
-        this.addSubcommand("check", this.check);
-        this.addSubcommand("pop", this.pop);
-        this.addSubcommand("peek", this.peek);
-        this.addSubcommand("clear", this.clear);
-        this.addSubcommand("open", this.open);
-        this.addSubcommand("close", this.close);
     }
 
+    @Subcommand("join")
     async join({event, message, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue join",
-            permission: "queue.join"
+            permission: this.queueModule.joinQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
         const queue = await this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
         if (queue.find(message.getChatter()) >= 0) return response.message("queue:error.in");
-        const maxSize = await message.getChannel().getSetting<number>("queue.max-size");
+        const maxSize = await message.getChannel().getSetting(this.queueModule.maxSize);
         if (queue.size() >= maxSize) return response.message("queue:error.full");
         const position = appendOrdinal(queue.push(message.getChatter()) + 1);
         await response.message("queue:joined", { position });
     }
 
+    @Subcommand("leave")
     async leave({event, response, message}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue leave",
-            permission: "queue.join"
+            permission: this.queueModule.joinQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -120,13 +115,14 @@ class QueueCommand extends Command {
         await response.message("queue:left");
     }
 
+    @Subcommand("check")
     async check({ event, message, response }: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "queue check [user]",
             arguments: tuple(
                 chatterConverter({ name: "user", required: false })
             ),
-            permission: args => args[0] !== null ? "queue.check.other" : "queue.check"
+            permission: args => args[0] !== null ? this.queueModule.checkPosOther : this.queueModule.checkPos
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -137,10 +133,11 @@ class QueueCommand extends Command {
         await response.message("queue:check", { username: message.getChatter().name, position });
     }
 
+    @Subcommand("pop")
     async pop({event, message, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue pop",
-            permission: "queue.pop"
+            permission: this.queueModule.popQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -150,10 +147,11 @@ class QueueCommand extends Command {
         return response.message("queue:next", { username: chatter.name })
     }
 
+    @Subcommand("peek")
     async peek({event, response, message} : CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue peek",
-            permission: "queue.peek"
+            permission: this.queueModule.peekQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -163,10 +161,11 @@ class QueueCommand extends Command {
         return response.message("queue:next", { username: chatter.name })
     }
 
+    @Subcommand("clear")
     async clear({event, response, message}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue clear",
-            permission: "queue.clear"
+            permission: this.queueModule.clearQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -175,10 +174,11 @@ class QueueCommand extends Command {
         return response.message("queue:emptied");
     }
 
+    @Subcommand("open")
     async open({ event, message, response }: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue open",
-            permission: "queue.open"
+            permission: this.queueModule.openQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -188,10 +188,11 @@ class QueueCommand extends Command {
         return response.message("queue:opened", { prefix: await CommandSystem.getPrefix(message.getChannel()) })
     }
 
+    @Subcommand("close")
     async close({ event, message, response }: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue close",
-            permission: "queue.close"
+            permission: this.queueModule.closeQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -203,22 +204,22 @@ class QueueCommand extends Command {
 }
 
 export default class QueueModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(QueueModule.name);
+        super(QueueModule);
     }
 
-    initialize({ command, permission, settings }: Systems): ModuleInfo {
-        command.registerCommand(new QueueCommand(), this);
-        permission.registerPermission(new Permission("queue.join", Role.NORMAL));
-        permission.registerPermission(new Permission("queue.check", Role.NORMAL));
-        permission.registerPermission(new Permission("queue.check.other", Role.MODERATOR));
-        permission.registerPermission(new Permission("queue.pop", Role.MODERATOR));
-        permission.registerPermission(new Permission("queue.peek", Role.MODERATOR));
-        permission.registerPermission(new Permission("queue.clear", Role.MODERATOR));
-        permission.registerPermission(new Permission("queue.open", Role.MODERATOR));
-        permission.registerPermission(new Permission("queue.close", Role.MODERATOR));
-        settings.registerSetting(new Setting("queue.max-size", "30", SettingType.INTEGER));
+    @command queueCommand = new QueueCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission joinQueue = new Permission("queue.join", Role.NORMAL);
+    @permission checkPos = new Permission("queue.check", Role.NORMAL);
+    @permission checkPosOther = new Permission("queue.check.other", Role.MODERATOR);
+    @permission popQueue = new Permission("queue.pop", Role.MODERATOR);
+    @permission peekQueue = new Permission("queue.peek", Role.MODERATOR);
+    @permission clearQueue = new Permission("queue.clear", Role.MODERATOR);
+    @permission openQueue = new Permission("queue.open", Role.MODERATOR);
+    @permission closeQueue = new Permission("queue.close", Role.MODERATOR);
+
+    @permission maxSize = new Setting("queue.max-size", 30 as Integer, SettingType.INTEGER);
 }

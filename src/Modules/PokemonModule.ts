@@ -1,9 +1,9 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import Setting, {SettingType} from "../Systems/Settings/Setting";
+import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting";
 import TrainerEntity from "../Database/Entities/TrainerEntity";
 import PokemonEntity, {formatStats} from "../Database/Entities/PokemonEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
@@ -11,13 +11,16 @@ import {randomChance} from "../Utilities/RandomUtils";
 import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import {Response} from "../Chat/Response";
 import ChannelManager from "../Chat/ChannelManager";
-import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
+import {chatter, chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
 import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {getLogger} from "../Utilities/Logger";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "Pokemon",
@@ -65,16 +68,8 @@ function decayer(channelManager: ChannelManager): void {
 }
 
 class PokemonCommand extends Command {
-    constructor() {
+    constructor(private pokemonModule: PokemonModule) {
         super("pokemon", "<team|throw|release|release-all|fight|stats|top>", ["poke", "pm"]);
-
-        this.addSubcommand("team", this.team);
-        this.addSubcommand("throw", this.throw);
-        this.addSubcommand("release", this.release);
-        this.addSubcommand("release-all", this.releaseAll);
-        this.addSubcommand("fight", this.fight);
-        this.addSubcommand("stats", this.stats);
-        this.addSubcommand("top", this.top);
     }
 
     async getTrainerData(sender: ChatterEntity, response: Response): Promise<{ trainer: TrainerEntity, team: PokemonEntity[] }> {
@@ -91,10 +86,11 @@ class PokemonCommand extends Command {
         }
     }
 
+    @Subcommand("team")
     async team({event, sender, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon team",
-            permission: "pokemon.play"
+            permission: this.pokemonModule.playPokemon
         }));
         if (status !== ValidatorStatus.OK) return;
 
@@ -104,13 +100,14 @@ class PokemonCommand extends Command {
         return response.message("pokemon:team", {username: sender.name, team});
     }
 
+    @Subcommand("throw")
     async throw({event, sender, channel, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon throw [user]",
             arguments: tuple(
                 chatterConverter({name: "user", required: true})
             ),
-            permission: "pokemon.play"
+            permission: this.pokemonModule.playPokemon
         }));
         if (status !== ValidatorStatus.OK) return;
 
@@ -157,13 +154,14 @@ class PokemonCommand extends Command {
         });
     }
 
+    @Subcommand("release", "rel")
     async release({event, response, sender}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release [pokemon]",
             arguments: tuple(
                 string({name: "pokemon name", required: false, defaultValue: undefined})
             ),
-            permission: "pokemon.play"
+            permission: this.pokemonModule.playPokemon
         }));
         if (status !== ValidatorStatus.OK) return;
 
@@ -199,10 +197,11 @@ class PokemonCommand extends Command {
         }
     }
 
+    @Subcommand("release-all", "rel-all")
     async releaseAll({event, sender, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release-all",
-            permission: "pokemon.play"
+            permission: this.pokemonModule.playPokemon
         }));
         if (status !== ValidatorStatus.OK) return;
 
@@ -229,13 +228,14 @@ class PokemonCommand extends Command {
         }
     }
 
+    @Subcommand("fight")
     async fight({event, sender, response, channel}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon fight <trainer>",
             arguments: tuple(
                 chatterConverter({name: "trainer", required: true, active: true})
             ),
-            permission: "pokemon.play"
+            permission: this.pokemonModule.playPokemon
         }));
         if (status !== ValidatorStatus.OK) return;
         const [chatter] = args;
@@ -317,27 +317,33 @@ class PokemonCommand extends Command {
         })
     }
 
+    @Subcommand("stats")
     async stats({event, sender, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
+        const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon stats",
-            permission: "pokemon.stats"
+            arguments: tuple(
+                chatter({ name: "trainer", required: false })
+            ),
+            permission: args => args[0] === null ? this.pokemonModule.viewStats : this.pokemonModule.viewOthersStats
         }));
         if (status !== ValidatorStatus.OK) return;
 
-        let {trainer} = await this.getTrainerData(sender, response);
+        const user = args[0] === null ? sender : args[0];
+        let {trainer} = await this.getTrainerData(user, response);
         if (trainer === null) return;
 
         const {won, lost, draw} = trainer;
         let ratio = ((won / (won + lost + draw)) * 100);
         if (isNaN(ratio)) ratio = 0;
 
-        return response.message("pokemon:stats", {username: sender.name, ratio, won, lost, draw})
+        return response.message("pokemon:stats", {username: user.name, ratio, won, lost, draw})
     }
 
+    @Subcommand("top")
     async top({event, channel, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release-all",
-            permission: "pokemon.stats"
+            permission: this.pokemonModule.viewStats
         }));
         if (status !== ValidatorStatus.OK) return;
 
@@ -369,27 +375,27 @@ class PokemonCommand extends Command {
 
 @HandlesEvents()
 export default class PokemonModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor(channelManager: ChannelManager) {
-        super(PokemonModule.name);
+        super(PokemonModule);
 
         decayer(channelManager);
     }
 
-    initialize({ command, permission, settings }: Systems): ModuleInfo {
-        command.registerCommand(new PokemonCommand(), this);
-        permission.registerPermission(new Permission("pokemon.play", Role.NORMAL));
-        permission.registerPermission(new Permission("pokemon.stats", Role.NORMAL));
-        permission.registerPermission(new Permission("pokemon.stats.other", Role.MODERATOR));
-        settings.registerSetting(new Setting("pokemon.max-team-size", "5", SettingType.INTEGER));
-        settings.registerSetting(new Setting("pokemon.chance.base-catch", "0.3", SettingType.FLOAT));
-        settings.registerSetting(new Setting("pokemon.chance.shiny", "0.05", SettingType.FLOAT));
-        settings.registerSetting(new Setting("pokemon.chance.rus", "0.01", SettingType.FLOAT));
-        settings.registerSetting(new Setting("pokemon.chance.draw", "4", SettingType.INTEGER));
-        settings.registerSetting(new Setting("pokemon.level.min", "1", SettingType.INTEGER));
-        settings.registerSetting(new Setting("pokemon.level.max", "100", SettingType.INTEGER));
+    @command pokemonCommand = new PokemonCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission playPokemon = new Permission("pokemon.play", Role.NORMAL);
+    @permission viewStats = new Permission("pokemon.stats", Role.NORMAL);
+    @permission viewOthersStats = new Permission("pokemon.stats.other", Role.MODERATOR);
+
+    @setting maxTeamSize = new Setting("pokemon.max-team-size", 5 as Integer, SettingType.INTEGER);
+    @setting baseCatchChance = new Setting("pokemon.chance.base-catch", 0.3 as Float, SettingType.FLOAT);
+    @setting shinyChance = new Setting("pokemon.chance.shiny", 0.05 as Float, SettingType.FLOAT);
+    @setting rusChance = new Setting("pokemon.chance.rus", 0.01 as Float, SettingType.FLOAT);
+    @setting drawChance = new Setting("pokemon.chance.draw", 4 as Integer, SettingType.INTEGER);
+    @setting minLevel = new Setting("pokemon.level.min", 1 as Integer, SettingType.INTEGER);
+    @setting maxLevel = new Setting("pokemon.level.max", 100 as Integer, SettingType.INTEGER);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({ channel }: NewChannelEventArgs) {

@@ -6,7 +6,7 @@ import {where} from "../Where";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import SettingsSystem from "../../Systems/Settings/SettingsSystem";
 import Cache from "../../Systems/Cache/Cache";
-import {ConvertedSetting, SettingType} from "../../Systems/Settings/Setting";
+import Setting, {ConvertedSetting, SettingType, SettingValueType} from "../../Systems/Settings/Setting";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Id
@@ -34,24 +34,24 @@ export class ChannelSettings {
     constructor(private readonly channel: ChannelEntity) {
     }
 
-    async get<T extends ConvertedSetting>(key: string): Promise<T | null> {
+    async get<T extends SettingType>(key: string|Setting<T>): Promise<SettingValueType<T> | null> {
         const settings = SettingsSystem.getInstance();
-        const setting = settings.getSetting(key);
+        const setting = key instanceof Setting ? key : settings.getSetting(key);
         const defaultValue = setting === null ? null : setting.getDefaultValue();
 
         let value: string | null;
         try {
             value = await (await Cache.getInstance()).retrieve("channel." + this.channel.channelId + ".setting." + key, 30, async () => {
-                const setting = await SettingsEntity.findByKey(key, this.channel);
-                if (setting === null) settings.getLogger().error("Tried to get non-existent setting: " + key);
-                return setting === null ? defaultValue : setting.value;
+                const settingsEntity = await SettingsEntity.findByKey(setting.getKey(), this.channel);
+                if (settingsEntity === null) settings.getLogger().error("Tried to get non-existent setting: " + key);
+                return settingsEntity === null ? defaultValue : setting.value;
             });
         } catch (e) {
             settings.getLogger().error("Unable to retrieve setting", {cause: e});
             value = defaultValue;
         }
 
-        return (setting !== null ? setting.convert(value) : value) as T | null;
+        return value !== null ? setting.convert(value) : value;
     }
 
     async set(key: string, value: StringLike): Promise<void> {

@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import {ChatterStateList} from "../Database/Entities/ChatterEntity";
@@ -6,7 +6,7 @@ import FiltersEntity from "../Database/Entities/FiltersEntity";
 import {array_add, array_remove, tuple} from "../Utilities/ArrayUtils";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import Setting, {SettingType} from "../Systems/Settings/Setting";
+import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {inject} from "inversify";
@@ -22,6 +22,9 @@ import Adapter from "../Services/Adapter";
 import {getLogger, logError} from "../Utilities/Logger";
 import {removePrefix} from "../Utilities/StringUtils";
 import picomatch from "picomatch";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "Filter",
@@ -32,8 +35,12 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class NukeCommand extends Command {
-    constructor(private adapter: Adapter) {
+    private readonly adapter: Adapter;
+
+    constructor(private filterModule: FilterModule) {
         super("nuke", "[--regex] <match>");
+
+        this.adapter = filterModule.adapter;
     }
 
     async execute({ event, channel, response }: CommandEventArgs): Promise<void> {
@@ -42,10 +49,10 @@ class NukeCommand extends Command {
             arguments: tuple(
                 string({ name: "match", required: true, greedy: true })
             ),
-            permission: "filter.nuke"
+            permission: this.filterModule.nuke
         }));
         if (status !== ValidatorStatus.OK) return;
-        let match: RegExp|string = args[0];
+        let match = args[0];
 
         const { newString, removed } = removePrefix("--regex ", match);
         const regex = removed ? new RegExp(newString) : picomatch.compileRe(picomatch.parse(newString, {}) as any);
@@ -57,7 +64,7 @@ class NukeCommand extends Command {
             if (matches(message.getRaw())) {
                 try {
                     await this.adapter.tempbanChatter(message.getChatter(),
-                        await message.getChannel().getSetting<number>("filter.purge-length"),
+                        await message.getChannel().getSetting(this.filterModule.purgeLength),
                         await response.translate("filter:nuke-reason", {username: message.getChatter().name})
                     );
                     purged++;
@@ -82,7 +89,7 @@ class PermitCommand extends Command {
             arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
             ),
-            permission: "filter.permit"
+            permission: this.filterModule.permitUser
         }));
          if (status !== ValidatorStatus.OK) return;
         const [chatter] = args;
@@ -91,13 +98,13 @@ class PermitCommand extends Command {
         this.filterModule.permits.setChatter(chatter, moment());
         await response.message("filter:permit", {
             username: chatter.name,
-            second: await msg.getChannel().getSettings().get("filter.permit-length")
+            second: await msg.getChannel().getSetting(this.filterModule.permitLength)
         });
     }
 }
 
 class PardonCommand extends Command {
-    constructor() {
+    constructor(private filterModule: FilterModule) {
         super("pardon", "<user>");
     }
 
@@ -107,7 +114,7 @@ class PardonCommand extends Command {
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "filter.pardon"
+            permission: this.filterModule.pardonUser
         }));
          if (status !== ValidatorStatus.OK) return;
         const [chatter] = args;
@@ -118,7 +125,7 @@ class PardonCommand extends Command {
 }
 
 class PurgeCommand extends Command {
-    constructor(private adapter: Adapter) {
+    constructor(private filterModule: FilterModule) {
         super("purge", "<user>");
     }
 
@@ -128,26 +135,22 @@ class PurgeCommand extends Command {
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
-            permission: "filter.purge"
+            permission: this.filterModule.purgeUser
         }));
          if (status !== ValidatorStatus.OK) return;
         const [chatter] = args;
-        await this.adapter.tempbanChatter(chatter, await msg.getChannel().getSettings().get("filter.purge-length"),
+        await this.filterModule.adapter.tempbanChatter(chatter, await msg.getChannel().getSetting(this.filterModule.purgeLength),
             await response.translate("filter:purge-reason", {username: msg.getChatter().name}));
         await response.message("filter:purged", {username: chatter.name});
     }
 }
 
 class FilterCommand extends Command {
-    constructor(private makeConfirmation: ConfirmationFactory) {
+    constructor(private filterModule: FilterModule) {
         super("filter", "<add|remove|reset>");
-
-        this.addSubcommand("add", this.add);
-        this.addSubcommand("remove", this.remove);
-        this.addSubcommand("rem", this.remove);
-        this.addSubcommand("reset", this.reset);
     }
 
+    @Subcommand("add")
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter add <list> <item>",
@@ -155,7 +158,7 @@ class FilterCommand extends Command {
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
                 string({ name: "item", required: true, greedy: true })
             ),
-            permission: "filter.list.add"
+            permission: this.filterModule.addList
         }));
          if (status !== ValidatorStatus.OK) return;
         const [list, item] = args;
@@ -172,6 +175,7 @@ class FilterCommand extends Command {
             await response.message("filter:list.exists", {list, item});
     }
 
+    @Subcommand("remove", "rem")
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter remove <list> <item>",
@@ -179,7 +183,7 @@ class FilterCommand extends Command {
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
                 string({ name: "item", required: true, greedy: true })
             ),
-            permission: "filter.list.remove"
+            permission: this.filterModule.removeList
         }));
          if (status !== ValidatorStatus.OK) return;
         const [list, item] = args;
@@ -196,19 +200,20 @@ class FilterCommand extends Command {
             await response.message("filter:list.unknown", {list, item});
     }
 
+    @Subcommand("reset")
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter reset [list]",
             arguments: tuple(
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]})
             ),
-            permission: "filter.list.add"
+            permission: this.filterModule.resetList
         }));
          if (status !== ValidatorStatus.OK) return;
         const [list] = args;
         const lists = await msg.getChannel().getFilters();
 
-        const confirmation = await this.makeConfirmation(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);
+        const confirmation = await this.filterModule.makeConfirmation(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             if (list) {
                 lists[list] = [];
@@ -232,35 +237,35 @@ class FilterCommand extends Command {
 
 @HandlesEvents()
 export default class FilterModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     permits: ChatterStateList<moment.Moment>;
     strikes: ChatterStateList<number>;
 
-    constructor(@inject(Adapter) private adapter: Adapter, @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
-        super(FilterModule.name);
+    constructor(@inject(Adapter) private adapter: Adapter, @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+        super(FilterModule);
 
         this.permits = new ChatterStateList(null);
         this.strikes = new ChatterStateList(0);
     }
 
-    initialize({ command, permission, settings }: Systems): ModuleInfo {
-        command.registerCommand(new PermitCommand(this), this);
-        command.registerCommand(new PardonCommand(), this);
-        command.registerCommand(new PurgeCommand(this.adapter), this);
-        command.registerCommand(new FilterCommand(this.makeConfirmation), this);
-        command.registerCommand(new NukeCommand(this.adapter), this);
-        permission.registerPermission(new Permission("filter.ignore", Role.MODERATOR));
-        permission.registerPermission(new Permission("filter.permit", Role.MODERATOR));
-        permission.registerPermission(new Permission("filter.list.add", Role.MODERATOR));
-        permission.registerPermission(new Permission("filter.list.remove", Role.MODERATOR));
-        permission.registerPermission(new Permission("filter.list.reset", Role.MODERATOR));
-        permission.registerPermission(new Permission("filter.pardon", Role.MODERATOR));
-        permission.registerPermission(new Permission("filter.purge", Role.MODERATOR));
-        permission.registerPermission(new Permission("filter.nuke", Role.MODERATOR));
-        settings.registerSetting(new Setting("filter.permit-length", "30", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.purge-length", "1", SettingType.INTEGER));
+    @command permitCommand = new PermitCommand(this);
+    @command pardonCommand = new PardonCommand(this);
+    @command purgeCommand = new PurgeCommand(this);
+    @command filterCommand = new FilterCommand(this);
+    @command nukeCommand = new NukeCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission ignoreFilter = new Permission("filter.ignore", Role.MODERATOR);
+    @permission permitUser = new Permission("filter.permit", Role.MODERATOR);
+    @permission pardonUser = new Permission("filter.pardon", Role.MODERATOR);
+    @permission purgeUser = new Permission("filter.purge", Role.MODERATOR);
+    @permission addList = new Permission("filter.list.add", Role.MODERATOR);
+    @permission removeList = new Permission("filter.list.remove", Role.MODERATOR);
+    @permission resetList = new Permission("filter.list.reset", Role.MODERATOR);
+    @permission nuke = new Permission("filter.nuke", Role.MODERATOR);
+
+    @setting permitLength = new Setting("filter.permit-length", 30 as Integer, SettingType.INTEGER);
+    @setting purgeLength = new Setting("filter.purge-length", 1 as Integer, SettingType.INTEGER);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {

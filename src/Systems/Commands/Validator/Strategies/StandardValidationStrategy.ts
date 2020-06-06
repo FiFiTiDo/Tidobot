@@ -17,12 +17,8 @@ export default class StandardValidationStrategy<T extends unknown[]> implements 
         const args: T = [] as T;
         const silent = this.opts.silent || false;
 
-        if (this.opts.permission && !(await message.checkPermission(await resolve(this.opts.permission, rawArgs)))) {
-            return {
-                status: ValidatorStatus.NOT_PERMITTED,
-                args: null
-            }
-        }
+        if (this.opts.permission && !(await message.checkPermission(await resolve(this.opts.permission, rawArgs))))
+            return {status: ValidatorStatus.NOT_PERMITTED, args: null};
 
         if (this.opts.arguments) {
             let currIndex = 0;

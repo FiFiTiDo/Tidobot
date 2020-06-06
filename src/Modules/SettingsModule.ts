@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -15,7 +15,12 @@ import {string} from "../Systems/Commands/Validator/String";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import {getLogger} from "../Utilities/Logger";
+import {getLogger, logError} from "../Utilities/Logger";
+import {command} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import Message from "../Chat/Message";
+import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
+import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 
 export const MODULE_INFO = {
     name: "Settings",
@@ -26,7 +31,7 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class SetCommand extends Command {
-    constructor() {
+    constructor(private readonly settingsModule: SettingsModule) {
         super("set", "<setting> <value>");
     }
 
@@ -37,7 +42,7 @@ class SetCommand extends Command {
                 string({ name: "setting", required: true }),
                 string({ name: "value", required: true, greedy: true })
             ),
-            permission: "settings.set"
+            permission: this.settingsModule.setSetting
         }));
          if (status !== ValidatorStatus.OK) return;
         const [key, value] = args;
@@ -46,15 +51,13 @@ class SetCommand extends Command {
             .then(() => response.message("setting:set", {setting: key, value}))
             .catch(e => {
                 response.genericError();
-                logger.error("Unable to set setting");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
+                logError(logger, e, "Unable to set setting");
             });
     }
 }
 
 class UnsetCommand extends Command {
-    constructor() {
+    constructor(private readonly settingsModule: SettingsModule) {
         super("unset", "<setting>");
     }
 
@@ -64,7 +67,7 @@ class UnsetCommand extends Command {
             arguments: tuple(
                 string({ name: "setting", required: true })
             ),
-            permission: "settings.reset"
+            permission: this.settingsModule.resetSetting
         }));
          if (status !== ValidatorStatus.OK) return;
         const key = args[0];
@@ -72,34 +75,30 @@ class UnsetCommand extends Command {
             .then(() => response.message("setting:unset", {setting: key}))
             .catch(e => {
                 response.genericError();
-                logger.error("Unable to unset setting");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
+                logError(logger, e, "Unable to unset setting");
             });
     }
 }
 
 class ResetCommand extends Command {
-    constructor(private confirmationFactory: ConfirmationFactory) {
+    constructor(private readonly settingsModule: SettingsModule) {
         super("reset", "");
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "reset-settings",
-            permission: "settings.reset.all"
+            permission: this.settingsModule.resetAllSettings
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const confirmation = await this.confirmationFactory(msg, await response.translate("setting:confirm-reset"), 30);
+        const confirmation = await this.settingsModule.makeConfirmation(msg, await response.translate("setting:confirm-reset"), 30);
         confirmation.addListener(ConfirmedEvent, () => {
             msg.getChannel().getSettings().reset()
                 .then(() => response.message("setting:reset"))
                 .catch((e) => {
                     response.genericError();
-                    logger.error("Unable to reset the channel's settings");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
+                    logError(logger, e, "Unable to reset the channel's settings");
                 });
         });
         confirmation.run();
@@ -108,20 +107,25 @@ class ResetCommand extends Command {
 
 @HandlesEvents()
 export default class SettingsModule extends AbstractModule {
-    constructor(@inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory) {
-        super(SettingsModule.name);
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
+    constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+        super(SettingsModule);
 
         this.coreModule = true;
     }
 
-    initialize({ command, permission, expression }: Systems): ModuleInfo {
-        command.registerCommand(new SetCommand(), this);
-        command.registerCommand(new UnsetCommand(), this);
-        command.registerCommand(new ResetCommand(this.makeConfirmation), this);
-        permission.registerPermission(new Permission("settings.set", Role.MODERATOR));
-        permission.registerPermission(new Permission("settings.reset", Role.BROADCASTER));
-        permission.registerPermission(new Permission("settings.reset.all", Role.BROADCASTER));
-        expression.registerResolver(msg => ({
+    @command setCommand = new SetCommand(this);
+    @command unsetCommand = new UnsetCommand(this);
+    @command resetCommand = new ResetCommand(this);
+
+    @permission setSetting = new Permission("settings.set", Role.MODERATOR);
+    @permission resetSetting = new Permission("settings.reset", Role.BROADCASTER);
+    @permission resetAllSettings = new Permission("settings.reset.all", Role.BROADCASTER);
+
+    @ExpressionContextResolver
+    expressionContextResolver(msg: Message): ExpressionContext {
+        return {
             settings: {
                 get: async <T>(key: string, defVal?: T): Promise<ConvertedSetting | T | null> => {
                     if (defVal === undefined) defVal = null;
@@ -129,9 +133,7 @@ export default class SettingsModule extends AbstractModule {
                     return value === null ? defVal : value;
                 }
             }
-        }));
-
-        return MODULE_INFO;
+        }
     }
 
     @EventHandler(NewChannelEvent)

@@ -6,6 +6,7 @@ import {Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {Response, ResponseFactory} from "./Response";
+import Permission from "../Systems/Permissions/Permission";
 
 export default class Message {
     protected stripped: string;
@@ -65,7 +66,7 @@ export default class Message {
         return ExpressionSystem.getInstance().evaluate(expression, this);
     }
 
-    public async checkPermission(permission: string): Promise<boolean> {
+    public async checkPermission(permission: string|Permission): Promise<boolean> {
         return PermissionSystem.getInstance().check(permission, this.chatter, await this.getUserRoles());
     }
 

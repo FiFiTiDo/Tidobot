@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import MessageEvent from "../Chat/Events/MessageEvent";
@@ -7,7 +7,7 @@ import NewsEntity from "../Database/Entities/NewsEntity";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import Setting, {SettingType} from "../Systems/Settings/Setting";
+import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
@@ -23,6 +23,9 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import {tuple} from "../Utilities/ArrayUtils";
 import Adapter from "../Services/Adapter";
 import {getLogger} from "../Utilities/Logger";
+import {permission} from "../Systems/Permissions/decorators";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "News",
@@ -39,22 +42,22 @@ interface LastMessage {
 }
 
 class NewsCommand extends Command {
-    constructor(private confirmationFactory: ConfirmationFactory) {
+    private readonly confirmationFactory: ConfirmationFactory;
+
+    constructor(private readonly newsModule: NewsModule) {
         super("news", "<add|remove|clear>");
 
-        this.addSubcommand("add", this.add);
-        this.addSubcommand("remove", this.remove);
-        this.addSubcommand("rem", this.remove);
-        this.addSubcommand("clear", this.clear);
+        this.confirmationFactory = newsModule.makeConfirmation;
     }
 
+    @Subcommand("add")
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news add <message>",
             arguments: tuple(
                 string({ name: "message", required: true, greedy: true })
             ),
-            permission: "news.add"
+            permission: this.newsModule.addItem
         }));
          if (status !== ValidatorStatus.OK) return;
         const [value] = args;
@@ -70,13 +73,14 @@ class NewsCommand extends Command {
         }
     }
 
+    @Subcommand("remove", "rem")
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news remove <index>",
             arguments: tuple(
                 integer({ name: "item id", required: true })
             ),
-            permission: "news.remove"
+            permission: this.newsModule.removeItem
         }));
          if (status !== ValidatorStatus.OK) return;
         const [id] = args;
@@ -98,10 +102,11 @@ class NewsCommand extends Command {
         }
     }
 
+    @Subcommand("clear")
     async clear({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "news clear",
-            permission: "news.clear"
+            permission: this.newsModule.clearItems
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -123,40 +128,39 @@ class NewsCommand extends Command {
 
 @HandlesEvents()
 export default class NewsModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
     private lastMessage: Map<string, LastMessage>;
 
     constructor(
-        @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory,
+        @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory,
         @inject(ChannelManager) private channelManager: ChannelManager, @inject(Adapter) private adapter: Adapter
     ) {
-        super(NewsModule.name);
+        super(NewsModule);
 
         this.lastMessage = new Map();
     }
 
-    initialize({ command, permission, settings }: Systems): ModuleInfo {
-        command.registerCommand(new NewsCommand(this.makeConfirmation), this);
-        permission.registerPermission(new Permission("news.add", Role.MODERATOR));
-        permission.registerPermission(new Permission("news.remove", Role.MODERATOR));
-        permission.registerPermission(new Permission("news.clear", Role.MODERATOR));
-        permission.registerPermission(new Permission("news.reload", Role.MODERATOR));
-        settings.registerSetting(new Setting("news.message-count", "5", SettingType.INTEGER));
-        settings.registerSetting(new Setting("news.interval", "30", SettingType.INTEGER));
+    @command newsCommand = new NewsCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission addItem = new Permission("news.add", Role.MODERATOR);
+    @permission removeItem = new Permission("news.remove", Role.MODERATOR);
+    @permission clearItems = new Permission("news.clear", Role.MODERATOR);
+    @permission reload = new Permission("news.reload", Role.MODERATOR);
+
+    @setting messageCount = new Setting("news.message-count", 5 as Integer, SettingType.INTEGER);
+    @setting interval = new Setting("news.interval", 30 as Integer, SettingType.INTEGER);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
         await NewsEntity.createTable({channel});
     }
 
-    tryNext = async (channel: ChannelEntity, increment = false): Promise<void> => {
+     async tryNext(channel: ChannelEntity, increment = false): Promise<void> {
         if (this.isDisabled(channel)) return;
         if (this.lastMessage.has(channel.channelId)) {
             const lastMessage = this.lastMessage.get(channel.channelId);
-            const messageCount = await channel.getSetting<number>("news.message-count");
-            const interval = moment.duration(await channel.getSetting<number>("news.interval"), "seconds");
+            const messageCount = await channel.getSetting(this.messageCount);
+            const interval = moment.duration(await channel.getSetting(this.interval), "seconds");
 
             if (increment) lastMessage.messageCount++;
             const expires = lastMessage.timestamp.clone().add(interval);
@@ -165,7 +169,7 @@ export default class NewsModule extends AbstractModule {
         } else {
             await this.showNextMessage(channel);
         }
-    };
+    }
 
     @EventHandler(TickEvent)
     async tickHandler(): Promise<void> {

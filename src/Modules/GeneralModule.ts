@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import moment from "moment-timezone";
 import {array_rand, tuple} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
@@ -10,6 +10,12 @@ import {string} from "../Systems/Commands/Validator/String";
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import Bot from "../Application/Bot";
+import {command} from "../Systems/Commands/decorators";
+import Message from "../Chat/Message";
+import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
+import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "General",
@@ -18,14 +24,14 @@ export const MODULE_INFO = {
 };
 
 class PingCommand extends Command {
-    constructor() {
+    constructor(private generalModule: GeneralModule) {
         super("ping", null);
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "ping",
-            permission: "general.ping"
+            permission: this.generalModule.ping
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -34,7 +40,7 @@ class PingCommand extends Command {
 }
 
 class RawCommand extends Command {
-    constructor() {
+    constructor(private generalModule: GeneralModule) {
         super("raw", "<text>");
     }
 
@@ -44,7 +50,7 @@ class RawCommand extends Command {
             arguments: tuple(
                 string({ name: "text", required: true, greedy: true })
             ),
-            permission: "general.raw"
+            permission: this.generalModule.raw
         }));
          if (status !== ValidatorStatus.OK) return;
         const [value] = args;
@@ -54,7 +60,7 @@ class RawCommand extends Command {
 }
 
 class EchoCommand extends Command {
-    constructor() {
+    constructor(private generalModule: GeneralModule) {
         super("echo", "<message>");
     }
 
@@ -64,7 +70,7 @@ class EchoCommand extends Command {
             arguments: tuple(
                 string({ name: "message", required: true, greedy: true })
             ),
-            permission: "general.echo"
+            permission: this.generalModule.echo
         }));
          if (status !== ValidatorStatus.OK) return;
         const [message] = args;
@@ -74,7 +80,7 @@ class EchoCommand extends Command {
 }
 
 class EvalCommand extends Command {
-    constructor() {
+    constructor(private generalModule: GeneralModule) {
         super("eval", "<expression>");
     }
 
@@ -84,7 +90,7 @@ class EvalCommand extends Command {
             arguments: tuple(
                 string({ name: "expression", required: true, greedy: true })
             ),
-            permission: "general.eval"
+            permission: this.generalModule.eval
         }));
          if (status !== ValidatorStatus.OK) return;
         const [rawExpr] = args;
@@ -94,14 +100,14 @@ class EvalCommand extends Command {
 }
 
 class ShutdownCommand extends Command {
-    constructor() {
+    constructor(private generalModule: GeneralModule) {
         super("shutdown", null);
     }
 
     async execute({event, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "shutdown",
-            permission: "general.shutdown"
+            permission: this.generalModule.shutdown
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -112,31 +118,35 @@ class ShutdownCommand extends Command {
 }
 
 export default class GeneralModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(GeneralModule.name);
+        super(GeneralModule);
 
         this.coreModule = true;
     }
 
-    initialize({ command, permission, settings, expression }: Systems): ModuleInfo {
-        command.registerCommand(new PingCommand(), this);
-        command.registerCommand(new RawCommand(), this);
-        command.registerCommand(new EchoCommand(), this);
-        command.registerCommand(new EvalCommand(), this);
-        command.registerCommand(new ShutdownCommand(), this);
-        permission.registerPermission(new Permission("general.ping", Role.MODERATOR));
-        permission.registerPermission(new Permission("general.raw", Role.OWNER));
-        permission.registerPermission(new Permission("general.echo", Role.MODERATOR));
-        permission.registerPermission(new Permission("general.eval", Role.MODERATOR));
-        permission.registerPermission(new Permission("general.shutdown", Role.OWNER));
-        settings.registerSetting(new Setting("timezone", "America/New_York", SettingType.TIMEZONE));
-        expression.registerResolver(msg => ({
+    @command pingCommand = new PingCommand(this);
+    @command rawCommand = new RawCommand(this);
+    @command echoCommand = new EchoCommand(this);
+    @command evalCommand = new EvalCommand(this);
+    @command shutdownCommand = new ShutdownCommand(this);
+
+    @permission ping = new Permission("general.ping", Role.MODERATOR);
+    @permission raw = new Permission("general.raw", Role.OWNER);
+    @permission echo = new Permission("general.echo", Role.MODERATOR);
+    @permission eval = new Permission("general.eval", Role.MODERATOR);
+    @permission shutdown = new Permission("general.shutdown", Role.OWNER);
+
+    @setting timezone = new Setting("timezone", moment().tz("America/New_York"), SettingType.TIMEZONE);
+
+    @ExpressionContextResolver
+    expressionContextResolver(msg: Message): ExpressionContext {
+        return {
             datetime: async (format = "Y-m-d h:i:s"): Promise<string> => {
-                const timezone = await msg.getChannel().getSetting<moment.MomentZone>("timezone");
+                const timezone = await msg.getChannel().getSetting(this.timezone);
                 return moment().tz(timezone.name).format(format);
             }
-        }));
-
-        return MODULE_INFO;
+        }
     }
 }

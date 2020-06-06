@@ -1,8 +1,8 @@
 import {inject, injectable} from "inversify";
 import {ALL_MODULES_KEY} from "./index";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import AbstractModule from "./AbstractModule";
-import {getLogger} from "../Utilities/Logger";
+import AbstractModule, {Symbols} from "./AbstractModule";
+import {getLogger, logError} from "../Utilities/Logger";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
@@ -28,13 +28,12 @@ export default class ModuleManager {
 
         ModuleManager.LOGGER.info("Initializing modules");
         for (const module of Object.values(this.modules)) {
+            const info = module.getInfo();
             try {
-                const info = module.initialize(systems);
+                module.initialize(systems);
                 ModuleManager.LOGGER.info(`Initialized module ${info.name} v${info.version}`);
             } catch (e) {
-                ModuleManager.LOGGER.fatal("An error occurred while initializing the module " + module.getName());
-                ModuleManager.LOGGER.fatal("Caused by: " + e.message);
-                ModuleManager.LOGGER.fatal(e.stack);
+                logError(ModuleManager.LOGGER, e, "An error occurred while initializing the module " + info.name, true);
             }
         }
     }

@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -15,6 +15,11 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {tuple} from "../Utilities/ArrayUtils";
 import {entity} from "../Systems/Commands/Validator/Entity";
 import {getLogger} from "../Utilities/Logger";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import Message from "../Chat/Message";
+import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
+import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 
 export const MODULE_INFO = {
     name: "Permission",
@@ -32,16 +37,11 @@ const roleConverter = (name) => onePartConverter(name, "role", true, Role.OWNER,
 });
 
 class PermissionCommand extends Command {
-    constructor() {
+    constructor(private readonly permissionModule: PermissionModule) {
         super("permission", "<create|delete|set|reset>", ["perm"]);
-
-        this.addSubcommand("create", this.create);
-        this.addSubcommand("delete", this.delete);
-        this.addSubcommand("del", this.delete);
-        this.addSubcommand("set", this.set);
-        this.addSubcommand("reset", this.reset);
     }
 
+    @Subcommand("create")
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission create <permission> <default-level>",
@@ -49,7 +49,7 @@ class PermissionCommand extends Command {
                 string({name: "permission", required: true}),
                 roleConverter("default role")
             ),
-            permission: "permission.create"
+            permission: this.permissionModule.createPerm
         }));
         if (status !== ValidatorStatus.OK) return;
         const [perm_str, role] = args;
@@ -79,6 +79,7 @@ class PermissionCommand extends Command {
         }
     }
 
+    @Subcommand("delete", "del")
     async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
@@ -90,7 +91,7 @@ class PermissionCommand extends Command {
                     error: {msgKey: "permission:error.unknown", optionKey: "permission"}
                 })
             ),
-            permission: "permission.delete"
+            permission: this.permissionModule.deletePerm
         }));
         if (status !== ValidatorStatus.OK) return;
         const [permission] = args;
@@ -108,6 +109,7 @@ class PermissionCommand extends Command {
             });
     }
 
+    @Subcommand("set")
     async set({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission set <permission> <level>",
@@ -120,7 +122,7 @@ class PermissionCommand extends Command {
                 }),
                 roleConverter("level")
             ),
-            permission: "permission.set"
+            permission: this.permissionModule.setPerm
         }));
         if (status !== ValidatorStatus.OK) return;
         const [permission, role] = args;
@@ -141,6 +143,7 @@ class PermissionCommand extends Command {
             });
     }
 
+    @Subcommand("reset")
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
@@ -152,7 +155,7 @@ class PermissionCommand extends Command {
                     error: {msgKey: "permission:error.unknown", optionKey: "permission"}
                 })
             ),
-            permission: "permission.reset"
+            permission: this.permissionModule.resetPerm
         }));
         if (status !== ValidatorStatus.OK) return;
         const [permission] = args;
@@ -171,7 +174,7 @@ class PermissionCommand extends Command {
             logger.error(e.stack);
                 });
         } else {
-            if (!(await msg.checkPermission("permission.reset.all")))
+            if (!(await msg.checkPermission(this.permissionModule.resetAllPerms)))
                 await response.message("permission:error.not-permitted");
 
             PermissionSystem.getInstance().resetChannelPermissions(msg.getChannel())
@@ -188,20 +191,27 @@ class PermissionCommand extends Command {
 
 @HandlesEvents()
 export default class PermissionModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(PermissionModule.name);
+        super(PermissionModule);
 
         this.coreModule = true;
     }
 
-    initialize({ command, permission, expression }: Systems): ModuleInfo {
-        command.registerCommand(new PermissionCommand(), this);
-        permission.registerPermission(new Permission("permission.set", Role.MODERATOR));
-        permission.registerPermission(new Permission("permission.grant", Role.MODERATOR));
-        permission.registerPermission(new Permission("permission.deny", Role.MODERATOR));
-        permission.registerPermission(new Permission("permission.reset", Role.MODERATOR));
-        permission.registerPermission(new Permission("permission.reset.all", Role.BROADCASTER));
-        expression.registerResolver(msg => ({
+    @command permissionCommand = new PermissionCommand(this);
+
+    @permission createPerm = new Permission("permission.create", Role.MODERATOR);
+    @permission deletePerm = new Permission("permission.delete", Role.MODERATOR);
+    @permission setPerm = new Permission("permission.set", Role.MODERATOR);
+    @permission grantPerm = new Permission("permission.grant", Role.MODERATOR);
+    @permission denyPerm = new Permission("permission.deny", Role.MODERATOR);
+    @permission resetPerm = new Permission("permission.reset", Role.MODERATOR);
+    @permission resetAllPerms = new Permission("permission.reset.all", Role.BROADCASTER);
+
+    @ExpressionContextResolver
+    expressionContextResolver(msg: Message): ExpressionContext {
+        return {
             sender: {
                 isA: async (input: string): Promise<boolean> => {
                     const role = parseRole(input);
@@ -218,14 +228,12 @@ export default class PermissionModule extends AbstractModule {
                     } catch (e) {
                         logger.error("Unable to check permission");
                         logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
+                        logger.error(e.stack);
                         return false;
                     }
                 }
             }
-        }));
-
-        return MODULE_INFO;
+        }
     }
 
     @EventHandler(NewChannelEvent)

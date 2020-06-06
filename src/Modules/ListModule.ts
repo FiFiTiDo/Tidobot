@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import ListsEntity from "../Database/Entities/ListsEntity";
 import ListEntity from "../Database/Entities/ListEntity";
 import {tuple} from "../Utilities/ArrayUtils";
@@ -15,6 +15,10 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {entity} from "../Systems/Commands/Validator/Entity";
 import {getLogger} from "../Utilities/Logger";
+import {command, Subcommand} from "../Systems/Commands/decorators";
+import Message from "../Chat/Message";
+import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
+import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "List",
@@ -25,16 +29,8 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class ListCommand extends Command {
-    constructor() {
+    constructor(private listModule: ListModule) {
         super("list", "<create|delete|add|edit|remove>");
-
-        this.addSubcommand("create", this.create);
-        this.addSubcommand("delete", this.delete);
-        this.addSubcommand("del", this.delete);
-        this.addSubcommand("add", this.add);
-        this.addSubcommand("edit", this.edit);
-        this.addSubcommand("remove", this.remove);
-        this.addSubcommand("rem", this.remove);
     }
 
     async execute(eventArgs: CommandEventArgs): Promise<void> {
@@ -79,6 +75,7 @@ class ListCommand extends Command {
         await msg.getResponse().message("#" + item.id + ": " + item.value);
     }
 
+    @Subcommand("create")
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list create <list name>",
@@ -98,6 +95,7 @@ class ListCommand extends Command {
         }
     }
 
+    @Subcommand("delete", "del")
     async delete({event, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list delete <list name>",
@@ -122,6 +120,7 @@ class ListCommand extends Command {
         }
     }
 
+    @Subcommand("add")
     async add({event, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, string]>({
             usage: "list add <list name> <item>",
@@ -146,6 +145,7 @@ class ListCommand extends Command {
         }
     }
 
+    @Subcommand("edit")
     async edit({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy<[ListsEntity, number, string]>({
             usage: "list edit <list name> <item number> <new value>",
@@ -177,6 +177,7 @@ class ListCommand extends Command {
         }
     }
 
+    @Subcommand("remove", "rem")
     async remove({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "list remove <list name> <item number>",
@@ -209,22 +210,25 @@ class ListCommand extends Command {
 
 @HandlesEvents()
 export default class ListModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(ListModule.name);
+        super(ListModule);
     }
 
-    initialize({ command, permission, expression }): ModuleInfo {
-        const listCommand = new ListCommand(); // DO NOT REMOVE, USED IN EXPRESSION RESOLVER
-        command.registerCommand(listCommand, this);
-        permission.registerPermission(new Permission("list.create", Role.MODERATOR));
-        permission.registerPermission(new Permission("list.delete", Role.MODERATOR));
-        permission.registerPermission(new Permission("list.add", Role.MODERATOR));
-        permission.registerPermission(new Permission("list.edit", Role.MODERATOR));
-        permission.registerPermission(new Permission("list.remove", Role.MODERATOR));
-        permission.registerPermission(new Permission("list.view", Role.NORMAL));
-        permission.registerPermission(new Permission("list.view.specific", Role.NORMAL));
-        permission.registerPermission(new Permission("list.view.random", Role.NORMAL));
-        expression.registerResolver(msg => ({
+    @command listCommand = new ListCommand(this);
+
+    @permission createList = new Permission("list.create", Role.MODERATOR);
+    @permission deleteList = new Permission("list.delete", Role.MODERATOR);
+    @permission addToList = new Permission("list.add", Role.MODERATOR);
+    @permission editItem = new Permission("list.edit", Role.MODERATOR);
+    @permission removeFromList = new Permission("list.remove", Role.MODERATOR);
+    @permission viewItem = new Permission("list.view", Role.NORMAL);
+    @permission viewSpecificItem = new Permission("list.view.specific", Role.NORMAL);
+
+    @ExpressionContextResolver
+    expressionContextResolver(msg: Message) {
+        return {
             list: {
                 command: async (listName: unknown): Promise<string> => {
                     if (typeof listName !== "string") return "Invalid parameter, expected a string";
@@ -256,13 +260,11 @@ export default class ListModule extends AbstractModule {
                         const command = `${prefix}list`;
                         const raw = `${command} ${args.join(" ")}`;
                         const event = new CommandEvent(command, args, msg.extend(raw, resolve));
-                        listCommand.execute(event.getEventArgs());
+                        this.listCommand.execute(event.getEventArgs());
                     });
                 }
             }
-        }));
-
-        return MODULE_INFO;
+        }
     }
 
     @EventHandler(NewChannelEvent)

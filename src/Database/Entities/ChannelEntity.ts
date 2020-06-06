@@ -9,7 +9,7 @@ import {where} from "../Where";
 import {Observable} from "../../Utilities/Patterns/Observable";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import ChatterList from "../../Chat/ChatterList";
-import {ConvertedSetting} from "../../Systems/Settings/Setting";
+import Setting, {ConvertedSetting, SettingType, SettingValueType} from "../../Systems/Settings/Setting";
 import FiltersEntity from "./FiltersEntity";
 import {Logger} from "log4js";
 import {getLogger} from "../../Utilities/Logger";
@@ -63,8 +63,8 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
         return this.settingsManager;
     }
 
-    getSetting<T extends ConvertedSetting>(key: string): Promise<T | null> {
-        return this.getSettings().get<T>(key);
+    getSetting<T extends SettingType>(key: string|Setting<T>): Promise<SettingValueType<T> | null> {
+        return this.getSettings().get(key);
     }
 
     setSetting(key: string, value: StringLike): Promise<void> {

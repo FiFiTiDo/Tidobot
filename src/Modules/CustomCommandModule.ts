@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
 import {Role} from "../Systems/Permissions/Role";
@@ -15,6 +15,11 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {getLogger} from "../Utilities/Logger";
+import Message from "../Chat/Message";
+import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
+import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
+import {permission} from "../Systems/Permissions/decorators";
+import {command, Subcommand} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
@@ -25,14 +30,11 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class CommandCommand extends Command {
-    constructor() {
+    constructor(private customCommandModule: CustomCommandModule) {
         super("command", "<add|edit|delete>", ["cmd", "c"]);
-
-        this.addSubcommand("add", this.add);
-        this.addSubcommand("edit", this.edit);
-        this.addSubcommand("delete", this.delete);
     }
 
+    @Subcommand("add")
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command add <trigger> <response>",
@@ -40,7 +42,7 @@ class CommandCommand extends Command {
                 string({ name: "trigger", required: true }),
                 string({ name: "response", required: true, greedy: true })
             ),
-            permission: "command.add"
+            permission: this.customCommandModule.addCommand
         }));
          if (status !== ValidatorStatus.OK) return;
         const trigger = args[0].toLowerCase();
@@ -57,6 +59,7 @@ class CommandCommand extends Command {
         }
     }
 
+    @Subcommand("edit")
     async edit({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command edit <trigger|condition|response|price|cooldown> <id> <new value>",
@@ -65,7 +68,7 @@ class CommandCommand extends Command {
                 integer({ name: "id", required: true, min: 0 }),
                 string({ name: "new value", required: true, greedy: true})
             ),
-            permission: "command.edit"
+            permission: this.customCommandModule.editCommand
         }));
          if (status !== ValidatorStatus.OK) return;
         const [type, id, value] = args;
@@ -122,10 +125,12 @@ class CommandCommand extends Command {
             });
     }
 
+    @Subcommand("delete", "del")
     async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command delete <id>",
-            arguments: tuple(integer({ name: "id", required: true, min: 0 }))
+            arguments: tuple(integer({ name: "id", required: true, min: 0 })),
+            permission: this.customCommandModule.deleteCommand
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -146,18 +151,23 @@ class CommandCommand extends Command {
 
 @HandlesEvents()
 export default class CustomCommandModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor() {
-        super(CustomCommandModule.name);
+        super(CustomCommandModule);
     }
 
-    initialize({ command, permission, expression }): ModuleInfo {
-        command.registerCommand(new CommandCommand(), this);
-        permission.registerPermission(new Permission("command.add", Role.MODERATOR));
-        permission.registerPermission(new Permission("command.edit", Role.MODERATOR));
-        permission.registerPermission(new Permission("command.delete", Role.MODERATOR));
-        permission.registerPermission(new Permission("command.free", Role.MODERATOR));
-        permission.registerPermission(new Permission("command.ignore-cooldown", Role.MODERATOR));
-        expression.registerResolver(msg => ({
+    @command commandCommand = new CommandCommand(this);
+
+    @permission addCommand = new Permission("command.add", Role.MODERATOR);
+    @permission editCommand = new Permission("command.edit", Role.MODERATOR);
+    @permission deleteCommand = new Permission("command.delete", Role.MODERATOR);
+    @permission freeUsage = new Permission("command.free", Role.MODERATOR);
+    @permission ignoreCooldown = new Permission("command.ignore-cooldown", Role.MODERATOR);
+
+    @ExpressionContextResolver
+    expressionContextResolver(msg: Message): ExpressionContext {
+        return {
             alias: async (command: unknown): Promise<string> => new Promise(resolve => {
                 if (typeof command !== "string") return msg.getResponse().translate("expression:error.argument", {
                     expected: msg.getResponse().translate("expression:types.string")
@@ -167,9 +177,7 @@ export default class CustomCommandModule extends AbstractModule {
                 newMsg.addToLoopProtection(command);
                 this.handleMessage({event: new MessageEvent(newMsg)});
             })
-        }));
-
-        return MODULE_INFO;
+        };
     }
 
     @EventHandler(NewChannelEvent)

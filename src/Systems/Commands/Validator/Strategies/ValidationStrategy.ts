@@ -1,6 +1,7 @@
 import {CommandEvent} from "../../CommandEvent";
 import {ValueConverterInfo} from "../Converter";
 import {Resolvable} from "../../../../Utilities/Interfaces/Resolvable";
+import Permission from "../../../Permissions/Permission";
 
 export enum ValidatorStatus {
     ERROR, INVALID_ARGS, NOT_PERMITTED, OK
@@ -16,7 +17,7 @@ export interface CommandEventValidatorOptions<T> {
     arguments?: {
         [K in keyof T]: ValueConverterInfo<T[K]>
     };
-    permission?: Resolvable<string[], string>;
+    permission?: Resolvable<string[], string|Permission>;
     silent?: boolean;
 }
 

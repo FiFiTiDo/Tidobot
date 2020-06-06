@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import {array_rand} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -9,6 +9,8 @@ import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies
 import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
 import Adapter from "../Services/Adapter";
 import {getLogger} from "../Utilities/Logger";
+import {command} from "../Systems/Commands/decorators";
+import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "Fun",
@@ -19,14 +21,18 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 class RouletteCommand extends Command {
-    constructor(private adapter: Adapter) {
+    private readonly adapter: Adapter;
+
+    constructor(private funModule: FunModule) {
         super("roulette", null);
+
+        this.adapter = funModule.adapter;
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "roulette",
-            permission: "fun.roulette"
+            permission: this.funModule.playRoulette
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -54,14 +60,18 @@ class RouletteCommand extends Command {
 }
 
 class SeppukuCommand extends Command {
-    constructor(private adapter: Adapter) {
+    private readonly adapter: Adapter;
+
+    constructor(private funModule: FunModule) {
         super("seppuku", null);
+
+        this.adapter = funModule.adapter;
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "seppuku",
-            permission: "fun.seppuku"
+            permission: this.funModule.playSeppuku
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -75,14 +85,14 @@ class SeppukuCommand extends Command {
 }
 
 class Magic8BallCommand extends Command {
-    constructor() {
+    constructor(private funModule: FunModule) {
         super("8ball", null);
     }
 
     async execute({event, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "8ball",
-            permission: "fun.8ball"
+            permission: this.funModule.play8Ball
         }));
          if (status !== ValidatorStatus.OK) return;
 
@@ -92,18 +102,17 @@ class Magic8BallCommand extends Command {
 }
 
 export default class FunModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
+
     constructor(@inject(Adapter) private adapter: Adapter) {
-        super(FunModule.name);
+        super(FunModule);
     }
 
-    initialize({ command, permission}: Systems): ModuleInfo {
-        command.registerCommand(new RouletteCommand(this.adapter), this);
-        command.registerCommand(new SeppukuCommand(this.adapter), this);
-        command.registerCommand(new Magic8BallCommand(), this);
-        permission.registerPermission(new Permission("fun.roulette", Role.NORMAL));
-        permission.registerPermission(new Permission("fun.seppuku", Role.NORMAL));
-        permission.registerPermission(new Permission("fun.8ball", Role.NORMAL));
+    @command rouletteCommand = new RouletteCommand(this);
+    @command seppukuCommand = new SeppukuCommand(this);
+    @command magic8BallCommand = new Magic8BallCommand(this);
 
-        return MODULE_INFO;
-    }
+    @permission playRoulette = new Permission("fun.roulette", Role.NORMAL);
+    @permission playSeppuku = new Permission("fun.seppuku", Role.NORMAL);
+    @permission play8Ball = new Permission("fun.8ball", Role.NORMAL);
 }

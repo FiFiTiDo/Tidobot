@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Systems} from "./AbstractModule";
+import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
 import Dispatcher from "../Systems/Event/Dispatcher";
 import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
@@ -7,6 +7,7 @@ import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {generateRandomCode} from "../Utilities/RandomUtils";
+import {command} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "Confirmation",
@@ -91,20 +92,17 @@ class ConfirmCommand extends Command {
 }
 
 export default class ConfirmationModule extends AbstractModule {
+    static [Symbols.ModuleInfo] = MODULE_INFO;
     readonly confirmations: ChatterStateList<Confirmation>;
 
     constructor() {
-        super(ConfirmationModule.name);
+        super(ConfirmationModule);
 
         this.coreModule = true;
         this.confirmations = new ChatterStateList<Confirmation>(null);
     }
 
-    initialize({ command}: Systems): ModuleInfo {
-        command.registerCommand(new ConfirmCommand(this.confirmations), this);
-
-        return MODULE_INFO;
-    }
+    @command confirmCommand = new ConfirmCommand(this.confirmations);
 
     async make(message: Message, prompt: string, seconds: number): Promise<Confirmation> {
         const chatter = message.getChatter();

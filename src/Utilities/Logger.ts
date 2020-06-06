@@ -11,12 +11,14 @@ export const getLogger = configure({
     }
 }).getLogger;
 
-export function logError(logger: Logger, error: Error, message?: string) {
+export function logError(logger: Logger, error: Error, message?: string, fatal = false) {
+    const func = fatal ? logger.fatal : logger.error;
+
     if (message) {
-        logger.error(message);
-        logger.error("Caused by: " + error.message);
+        func(message);
+        func("Caused by: " + error.message);
     } else {
-        logger.error(error.message);
+        func(error.message);
     }
-    logger.error(error.stack);
+    func(error.stack);
 }

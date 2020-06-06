@@ -1,0 +1,28 @@
+{
+    "slots": {
+        "emotes": "{{username}}: [ {{emote1}} {{emote2}} {{emote3}} ]",
+        "win": "+{{amount}}"
+    },
+    "win": [
+        "You\\'re a winner baby",
+        "Literally hacking!",
+        "Condragulations you are the winner of this game",
+        "Shantay you stay",
+        "You\\'re a champion, greatest of them all",
+        "Blessed RNG :O",
+        "Now THAT is how you win!",
+        "Oooo Shiny :O"
+    ],
+    "loss": [
+        "Better luck next time",
+        "You\\'re not very good at this...",
+        "Sashay away",
+        "LOOOOSEEEER",
+        "You LOSE good DAY sir.",
+        "The odds were not in your favor",
+        "That... that is not how you win...",
+        "I could do better than that.",
+        "You may have lost but you are a winner at heart",
+        "Did you even try?"
+    ]
+}

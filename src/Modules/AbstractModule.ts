@@ -30,7 +30,7 @@ export interface Systems {
 }
 
 export const Symbols = {
-    ModuleInfo: Symbol("The key for the module information")
+    ModuleInfo: Symbol("Module Information")
 };
 
 export interface ModuleConstructor<T extends AbstractModule> {

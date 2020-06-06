@@ -13,8 +13,10 @@ export function randomInt(min: number, max?: number): number {
     return Math.floor(randomFloat(min, max));
 }
 
-export function randomFloat(min: number, max?: number): number {
-    if (!max) {
+export function randomFloat(min?: number, max?: number): number {
+    if (typeof min === "undefined" && typeof max === "undefined")
+        return Math.random();
+    else if (typeof min === "number" && typeof max === "undefined") {
         max = min;
         min = 0;
     }

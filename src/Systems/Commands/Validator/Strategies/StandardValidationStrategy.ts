@@ -41,6 +41,9 @@ export default class StandardValidationStrategy<T extends unknown[]> implements 
             }
         }
 
+        if (this.opts.price && !(await message.getChatter().charge(this.opts.price)))
+            return { status: ValidatorStatus.LOW_BALANCE, args: null };
+
         return {
             status: ValidatorStatus.OK, args
         }

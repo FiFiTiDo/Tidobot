@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import {getLogger} from "../Utilities/Logger";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
@@ -8,6 +8,12 @@ import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
 import {setting} from "../Systems/Settings/decorators";
 import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {randomFloat, randomInt} from "../Utilities/RandomUtils";
+import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import CurrencyModule from "./CurrencyModule";
+import {array_rand} from "../Utilities/ArrayUtils";
 
 export const MODULE_INFO = {
     name: "Gambling",
@@ -22,8 +28,75 @@ class SlotsCommand extends Command {
         super("slots", "");
     }
 
-    async execute({}: CommandEventArgs): Promise<void> {
+    async getPrizes(channel: ChannelEntity): Promise<[Float, Float, Float, Float, Float]> {
+        return [
+            await channel.getSetting(this.gamblingModule.slotsPrize0),
+            await channel.getSetting(this.gamblingModule.slotsPrize1),
+            await channel.getSetting(this.gamblingModule.slotsPrize2),
+            await channel.getSetting(this.gamblingModule.slotsPrize3),
+            await channel.getSetting(this.gamblingModule.slotsPrize4),
+        ]
+    }
 
+    async getEmotes(channel: ChannelEntity): Promise<[string, string, string, string, string]> {
+        return [
+            await channel.getSetting(this.gamblingModule.slotsEmote0),
+            await channel.getSetting(this.gamblingModule.slotsEmote1),
+            await channel.getSetting(this.gamblingModule.slotsEmote2),
+            await channel.getSetting(this.gamblingModule.slotsEmote3),
+            await channel.getSetting(this.gamblingModule.slotsEmote4),
+        ]
+    }
+
+     getRandomIndex(): number {
+        const number = randomFloat();
+        if (number <= 0.075)
+            return 4;
+        else if (number <= 0.2)
+            return 3;
+        else if (number <= 0.45)
+            return 2;
+        else if (number <= 0.7)
+            return 1;
+        else
+            return 0;
+    }
+
+    async execute({ event, channel, response, sender }: CommandEventArgs): Promise<void> {
+        const {status} = await event.validate(new StandardValidationStrategy({
+            usage: "slots",
+            permission: this.gamblingModule.playSlots,
+            price: await channel.getSetting(this.gamblingModule.slotsPrice)
+        }));
+        if (status !== ValidatorStatus.OK) return;
+
+        const emotes = await this.getEmotes(channel);
+        const prizes = await this.getPrizes(channel);
+        const emote1 = this.getRandomIndex(), emote2 = this.getRandomIndex(), emote3 = this.getRandomIndex();
+        let message = await response.translate("gambling:slots.emotes", {
+            username: sender.name, emote1: emotes[emote1], emote2: emotes[emote2], emote3: emotes[emote3]
+        });
+        let winnings = 0;
+
+        if (emote1 === emote2 && emote2 === emote3) {
+            winnings = prizes[emote1];
+        } else if (emote1 === emote2) {
+            winnings = Math.floor(prizes[emote1] * 0.3);
+        } else if (emote2 === emote3 || emote3 === emote1) {
+            winnings = Math.floor(prizes[emote3] * 0.3);
+        }
+
+        if (winnings > 0) {
+            await sender.deposit(winnings);
+            message += " " + await response.translate("gambling:slots.win", {
+                amount: await CurrencyModule.formatAmount(winnings, channel)
+            });
+            message += " " + array_rand(await response.getTranslation("gambling:win"));
+        } else {
+            message += " " + array_rand(await response.getTranslation("gambling:loss"));
+        }
+
+        return response.rawMessage(message);
     }
 }
 
@@ -38,6 +111,7 @@ export default class GamblingModule extends AbstractModule {
 
     @permission playSlots = new Permission("gambling.slots", Role.NORMAL);
 
+    @setting slotsPrice = new Setting("slots.price", 75 as Float, SettingType.FLOAT);
     @setting slotsPrize0 = new Setting("slots.prize.0", 75 as Float, SettingType.FLOAT);
     @setting slotsPrize1 = new Setting("slots.prize.1", 150 as Float, SettingType.FLOAT);
     @setting slotsPrize2 = new Setting("slots.prize.2", 300 as Float, SettingType.FLOAT);

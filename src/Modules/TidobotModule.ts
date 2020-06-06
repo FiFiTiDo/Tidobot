@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -14,6 +14,7 @@ import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
 import {getLogger} from "../Utilities/Logger";
 import {command, Subcommand} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
+import {version} from "../../package.json";
 
 export const MODULE_INFO = {
     name: "Tidobot",
@@ -35,10 +36,7 @@ class TidobotCommand extends Command {
             permission: this.tidobotModule.viewBotVersion
         }));
          if (status !== ValidatorStatus.OK) return;
-
-         const config = await Config.getInstance().getConfig(GeneralConfig);
-
-        await response.message("Tidobot v" + config.version);
+        await response.message("Tidobot v" + version);
     }
 
     @Subcommand("about")

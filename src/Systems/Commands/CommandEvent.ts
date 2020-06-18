@@ -4,6 +4,8 @@ import {Response} from "../../Chat/Response";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import ValidationStrategy, {ValidatorResponse} from "./Validator/Strategies/ValidationStrategy";
+import Command from "./Command";
+import CommandEntity from "../../Database/Entities/CommandEntity";
 
 export interface CommandEventArgs {
     event: CommandEvent;
@@ -14,7 +16,7 @@ export interface CommandEventArgs {
 }
 
 export class CommandEvent extends Event<CommandEvent> {
-    constructor(private readonly command: string, private readonly args: string[], private readonly msg: Message) {
+    constructor(private readonly trigger: string, private readonly args: string[], private readonly msg: Message, private readonly command: Command|CommandEntity) {
         super(CommandEvent.name);
     }
 
@@ -28,8 +30,8 @@ export class CommandEvent extends Event<CommandEvent> {
         };
     }
 
-    getCommand(): string {
-        return this.command;
+    getTrigger(): string {
+        return this.trigger;
     }
 
     getArgument(i: number): string {
@@ -42,6 +44,10 @@ export class CommandEvent extends Event<CommandEvent> {
 
     getArgumentCount(): number {
         return this.args.length;
+    }
+
+    getCommand(): Command|CommandEntity {
+        return this.command;
     }
 
     shiftArgument(): string {
@@ -58,7 +64,7 @@ export class CommandEvent extends Event<CommandEvent> {
     }
 
     clone(): CommandEvent {
-        return new CommandEvent(this.command, this.args.slice(), this.msg);
+        return new CommandEvent(this.trigger, this.args.slice(), this.msg, this.command);
     }
 
     async validate<T>(strategy: ValidationStrategy<T>): Promise<ValidatorResponse<T>> {

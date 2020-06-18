@@ -6,10 +6,12 @@ import {ManyToMany, OneToMany} from "../Decorators/Relationships";
 import GroupMembersEntity from "./GroupMembersEntity";
 import UserPermissionsEntity from "./UserPermissionsEntity";
 import {where} from "../Where";
-import ChannelEntity, {ChannelStateList} from "./ChannelEntity";
+import ChannelEntity from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 import IgnoredEntity from "./IgnoredEntity";
+import {Resolvable} from "../../Utilities/Interfaces/Resolvable";
+import EntityStateList from "../EntityStateList";
 
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_chatters`)
@@ -92,48 +94,6 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
         return IgnoredEntity.isIgnored(this.getService(), this.userId);
     }
 }
-export type ChatterStateListItem<T> = [ChatterEntity, T];
 
-export class ChatterStateList<T> {
-    private readonly list: ChannelStateList<{ [key: string]: T }>;
-    private readonly users: Map<string, ChatterEntity>;
-
-    constructor(private readonly defVal: T) {
-        this.list = new ChannelStateList({});
-        this.users = new Map();
-    }
-
-    hasChatter(chatter: ChatterEntity): boolean {
-        return Object.prototype.hasOwnProperty.call(this.list.getChannel(chatter.getChannel()), chatter.userId);
-    }
-
-    getChatter(chatter: ChatterEntity): T {
-        if (!this.hasChatter(chatter))
-            this.setChatter(chatter, this.defVal);
-
-        return this.list.getChannel(chatter.getChannel())[chatter.userId];
-    }
-
-    setChatter(chatter: ChatterEntity, value: T): void {
-        this.list.getChannel(chatter.getChannel())[chatter.userId] = value;
-        this.users.set(chatter.userId, chatter);
-    }
-
-    removeChatter(chatter: ChatterEntity): void {
-        delete this.list.getChannel(chatter.getChannel())[chatter.userId];
-    }
-
-    size(channel: ChannelEntity): number {
-        return Object.keys(this.list.getChannel(channel)).length;
-    }
-
-    * entries(channel: ChannelEntity): Generator<ChatterStateListItem<T>, any, unknown> {
-        for (const [user_id, num] of Object.entries(this.list.getChannel(channel))) {
-            yield [this.users.get(user_id), num];
-        }
-    }
-
-    clear(channel: ChannelEntity): void {
-        this.list.deleteChannel(channel);
-    }
-}
+export const filterByChannel = (channel: ChannelEntity) => ([chatter, _]: [ChatterEntity, any]) => chatter.getChannel().is(channel);
+export const filterOutChannel = (channel: ChannelEntity) => ([chatter, _]: [ChatterEntity, any]) => !chatter.getChannel().is(channel);

@@ -22,7 +22,7 @@ import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "List",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Keep lists of different things like quotes or gifs"
 };
 
@@ -79,6 +79,7 @@ class ListCommand extends Command {
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list create <list name>",
+            subcommand: "create",
             arguments: tuple(
                 string({name: "list name", required: true})
             ),
@@ -99,6 +100,7 @@ class ListCommand extends Command {
     async delete({event, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "list delete <list name>",
+            subcommand: "delete",
             arguments: tuple(
                 entity({
                     name: "list name",
@@ -124,6 +126,7 @@ class ListCommand extends Command {
     async add({event, response}: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, string]>({
             usage: "list add <list name> <item>",
+            subcommand: "add",
             arguments: tuple(
                 entity({
                     name: "list name",
@@ -149,6 +152,7 @@ class ListCommand extends Command {
     async edit({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy<[ListsEntity, number, string]>({
             usage: "list edit <list name> <item number> <new value>",
+            subcommand: "edit",
             arguments: tuple(
                 entity({
                     name: "list name",
@@ -181,6 +185,7 @@ class ListCommand extends Command {
     async remove({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "list remove <list name> <item number>",
+            subcommand: "remove",
             arguments: tuple(
                 entity({
                     name: "list name",

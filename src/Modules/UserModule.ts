@@ -14,11 +14,11 @@ import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/Validati
 import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {getLogger} from "../Utilities/Logger";
-import {command} from "../Systems/Commands/decorators";
+import {command, Subcommand} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "User",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Managing users in your channel including granting/denying permissions"
 };
 
@@ -27,15 +27,13 @@ const logger = getLogger(MODULE_INFO.name);
 class UserCommand extends Command {
     constructor(private readonly userModule: UserModule) {
         super("user", "<grant|deny|reset>", ["u"]);
-
-        this.addSubcommand("grant", this.grant);
-        this.addSubcommand("deny", this.deny);
-        this.addSubcommand("reset", this.reset);
     }
 
+    @Subcommand("grant")
     async grant({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "user grant <group> <permission>",
+            subcommand: "grant",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 string({ name: "permission", required: true})
@@ -55,9 +53,11 @@ class UserCommand extends Command {
             });
     }
 
+    @Subcommand("grant")
     async deny({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "user deny <group> <permission>",
+            subcommand: "deny",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 string({ name: "permission", required: true})
@@ -77,9 +77,11 @@ class UserCommand extends Command {
             });
     }
 
+    @Subcommand("reset")
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
+            subcommand: "reset",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 string({ name: "permission", required: false, defaultValue: undefined })

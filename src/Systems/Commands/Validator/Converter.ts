@@ -1,4 +1,4 @@
-import {Resolvable, resolve} from "../../../Utilities/Interfaces/Resolvable";
+import {AsyncResolvable, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
 import {MissingRequiredArgumentError} from "./ValidationErrors";
 import Message from "../../../Chat/Message";
 
@@ -8,11 +8,11 @@ interface ConverterResponse<T> {
 }
 
 export interface ValueConverter<T> {
-    (parts: string[], index: number, message: Message): Resolvable<void, ConverterResponse<T>>;
+    (parts: string[], index: number, message: Message): AsyncResolvable<void, ConverterResponse<T>>;
 }
 
 export interface OnePartValueConverter<T> {
-    (part: string, column: number, message: Message): Resolvable<void, T>;
+    (part: string, column: number, message: Message): AsyncResolvable<void, T>;
 }
 
 export interface ValueConverterInfo<T> {
@@ -38,7 +38,7 @@ export function onePartConverter<T>(argument: string, type: string, required: bo
 
             return {
                 newIndex: index + 1,
-                converted: await resolve(converter(parts[index], getStartingColumn(parts, index), message))
+                converted: await resolveAsync(converter(parts[index], getStartingColumn(parts, index), message))
             }
         }
     }

@@ -16,10 +16,11 @@ import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
+import {MomentZone} from "moment-timezone/moment-timezone";
 
 export const MODULE_INFO = {
     name: "General",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "General bot commands that don't fit in other modules"
 };
 

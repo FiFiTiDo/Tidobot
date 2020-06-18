@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
 import {Role} from "../Systems/Permissions/Role";
@@ -23,7 +23,7 @@ import {command, Subcommand} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.0.1",
+    version: "1.1.1",
     description: "Create your own commands with the powerful expression engine."
 };
 
@@ -38,6 +38,7 @@ class CommandCommand extends Command {
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command add <trigger> <response>",
+            subcommand: "add",
             arguments: tuple(
                 string({ name: "trigger", required: true }),
                 string({ name: "response", required: true, greedy: true })
@@ -63,6 +64,7 @@ class CommandCommand extends Command {
     async edit({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command edit <trigger|condition|response|price|cooldown> <id> <new value>",
+            subcommand: "edit",
             arguments: tuple(
                 string({ name: "attribute", required: true, accepted: ["trigger", "condition", "response", "price", "cooldown"] }),
                 integer({ name: "id", required: true, min: 0 }),
@@ -107,7 +109,7 @@ class CommandCommand extends Command {
                     return;
                 }
 
-                command.cooldown = seconds;
+                command.userCooldown = seconds;
                 break;
             }
             default:
@@ -129,6 +131,7 @@ class CommandCommand extends Command {
     async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "command delete <id>",
+            subcommand: "delete",
             arguments: tuple(integer({ name: "id", required: true, min: 0 })),
             permission: this.customCommandModule.deleteCommand
         }));

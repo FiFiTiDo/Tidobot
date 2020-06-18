@@ -1,7 +1,7 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import Message from "../Chat/Message";
-import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
-import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import ChatterEntity, {filterByChannel} from "../Database/Entities/ChatterEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
@@ -20,10 +20,11 @@ import {getLogger} from "../Utilities/Logger";
 import {command, Subcommand} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
+import EntityStateList from "../Database/EntityStateList";
 
 export const MODULE_INFO = {
     name: "Poll",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Run polls to get user input on a question"
 };
 
@@ -55,18 +56,19 @@ interface StrawpollCreateArgs {
 }
 
 class StrawpollCommand extends Command {
-    private lastStrawpoll: ChannelStateList<number>;
+    private lastStrawpoll: EntityStateList<ChannelEntity, number>;
 
     constructor(private readonly pollsModule: PollsModule) {
         super("strawpoll", "<create|check>");
 
-        this.lastStrawpoll = new ChannelStateList<number>(-1);
+        this.lastStrawpoll = new EntityStateList<ChannelEntity, number>(-1);
     }
 
     @Subcommand("check")
     async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "strawpoll check [poll id]",
+            subcommand: "check",
             arguments: tuple(
                 integer({ name: "poll id", required: true })
             ),
@@ -76,12 +78,12 @@ class StrawpollCommand extends Command {
 
         let pollId;
         if (args.length < 1) {
-            if (!this.lastStrawpoll.hasChannel(msg.getChannel())) {
+            if (!this.lastStrawpoll.has(msg.getChannel())) {
                 await response.message("poll:strawpoll.error.no-recent");
                 return;
             }
 
-            pollId = this.lastStrawpoll.getChannel(msg.getChannel());
+            pollId = this.lastStrawpoll.get(msg.getChannel());
         } else {
             pollId = args[0];
         }
@@ -97,9 +99,10 @@ class StrawpollCommand extends Command {
     }
 
     @Subcommand("create")
-    async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
+    async create({event, message: msg, response, channel}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new CliArgsValidationStrategy<StrawpollCreateArgs>({
             usage: "strawpoll create --title \"title\" <option 1> <option 2> ... [option n]",
+            subcommand: "create",
             arguments: {
                 title: string({ name: "title", required: true }),
                 _: string({ name: "options", required: true, array: true }),
@@ -121,6 +124,8 @@ class StrawpollCommand extends Command {
             data: {title, options, multi, dupcheck, captcha}
         }).then(resp => resp.data);
 
+        this.lastStrawpoll.set(channel, resp.id);
+
         let times = await msg.getChannel().getSetting(this.pollsModule.spamStrawpollLink);
         if (isNaN(times)) times = 1 as Integer;
         await response.spam("poll:strawpoll.created", {url: `https://www.strawpoll.me/${resp.id}`}, {
@@ -133,29 +138,29 @@ class StrawpollCommand extends Command {
 class Poll {
     private _open: boolean;
     private readonly votes: { [key: string]: ChatterEntity[] };
-    private userVotes: ChatterStateList<string>;
+    private userVotes: EntityStateList<ChatterEntity, string>;
 
     constructor(private readonly options: string[], private channel: ChannelEntity) {
         this.votes = {};
-        this.userVotes = new ChatterStateList<string>("");
+        this.userVotes = new EntityStateList<ChatterEntity, string>("");
 
         for (const option of options)
             this.votes[option] = [];
     }
 
     validateVote(option: string, chatter: ChatterEntity): boolean {
-        return this.options.indexOf(option) >= 0 && !this.userVotes.hasChatter(chatter);
+        return this.options.indexOf(option) >= 0 && !this.userVotes.has(chatter);
     }
 
     addVote(option: string, chatter: ChatterEntity): boolean {
         if (!this.validateVote(option, chatter)) return false;
         this.votes[option].push(chatter);
-        this.userVotes.setChatter(chatter, option);
+        this.userVotes.set(chatter, option);
         return true;
     }
 
     removeVote(chatter: ChatterEntity): boolean {
-        const option = this.userVotes.getChatter(chatter);
+        const option = this.userVotes.get(chatter);
         if (!option) return false;
         this.votes[option].splice(this.votes[option].indexOf(chatter), 1);
         return true;
@@ -175,7 +180,7 @@ class Poll {
     }
 
     getTotalVotes(): number {
-        return this.userVotes.size(this.channel);
+        return this.userVotes.size(filterByChannel(this.channel));
     }
 
     getResults(): { [key: string]: ChatterEntity[] } {
@@ -211,8 +216,8 @@ class VoteCommand extends Command {
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        if (!this.pollsModule.runningPolls.hasChannel(msg.getChannel())) return;
-        const poll = this.pollsModule.runningPolls.getChannel(msg.getChannel());
+        if (!this.pollsModule.runningPolls.has(msg.getChannel())) return;
+        const poll = this.pollsModule.runningPolls.get(msg.getChannel());
         const [optionNum] = args;
 
         const option = poll.getOption(optionNum);
@@ -236,7 +241,8 @@ class PollCommand extends Command {
     @Subcommand("run")
     async run({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "!poll run <option 1> <option 2> ... <option n>",
+            usage: "poll run <option 1> <option 2> ... <option n>",
+            subcommand: "run",
             arguments: tuple(
                 string({ name: "poll options", required: true, quoted: true, array: true })
             ),
@@ -246,13 +252,13 @@ class PollCommand extends Command {
         const [options] = args;
         const prefix = await CommandSystem.getPrefix(msg.getChannel());
 
-        if (this.pollsModule.runningPolls.hasChannel(msg.getChannel())) {
+        if (this.pollsModule.runningPolls.has(msg.getChannel())) {
             await response.message("poll:already-running", {prefix});
             return;
         }
 
         const poll = new Poll(options, msg.getChannel());
-        this.pollsModule.runningPolls.setChannel(msg.getChannel(), poll);
+        this.pollsModule.runningPolls.set(msg.getChannel(), poll);
 
         await response.message("poll:open", {prefix});
         await response.message("poll:options", {
@@ -264,6 +270,7 @@ class PollCommand extends Command {
     async stop({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "poll stop",
+            subcommand: "stop",
             permission: this.pollsModule.stopPoll
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -282,6 +289,7 @@ class PollCommand extends Command {
     async results({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "poll results",
+            subcommand: "results",
             permission: this.pollsModule.viewResults
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -292,25 +300,25 @@ class PollCommand extends Command {
     }
 
     private async getPoll(msg: Message): Promise<Poll> {
-        if (!this.pollsModule.runningPolls.hasChannel(msg.getChannel())) {
+        if (!this.pollsModule.runningPolls.has(msg.getChannel())) {
             await msg.getResponse().message("poll:error.not-running", {
                 prefix: await CommandSystem.getPrefix(msg.getChannel())
             });
             return;
         }
 
-        return this.pollsModule.runningPolls.getChannel(msg.getChannel());
+        return this.pollsModule.runningPolls.get(msg.getChannel());
     }
 }
 
 export default class PollsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    readonly runningPolls: ChannelStateList<Poll>;
+    readonly runningPolls: EntityStateList<ChannelEntity, Poll>;
 
     constructor() {
         super(PollsModule);
 
-        this.runningPolls = new ChannelStateList<Poll>(null);
+        this.runningPolls = new EntityStateList<ChannelEntity, Poll>(null);
     }
 
     @command pollCommand = new PollCommand(this);

@@ -23,8 +23,10 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
     public condition: string;
     @Column({datatype: DataTypes.FLOAT})
     public price: number;
-    @Column({datatype: DataTypes.INTEGER})
-    public cooldown: number;
+    @Column({name: "user_cooldown", datatype: DataTypes.INTEGER})
+    public userCooldown: number;
+    @Column({name: "global_cooldown", datatype: DataTypes.INTEGER})
+    public globalCooldown: number;
     @Column({name: "created_at", datatype: DataTypes.DATE})
     public createdAt: Moment;
     @Column({name: "updated_at", datatype: DataTypes.DATE})

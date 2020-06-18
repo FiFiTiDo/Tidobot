@@ -12,8 +12,8 @@ export default class EntityStateList<TEntity extends Entity<TEntity>, TValue> {
         return Object.prototype.hasOwnProperty.call(this.state, entity.id);
     }
 
-    public async get(entity: TEntity): Promise<TValue> {
-        if (!this.has(entity)) this.set(entity, await resolve(this.defVal));
+    public get(entity: TEntity): TValue {
+        if (!this.has(entity)) this.set(entity, resolve(this.defVal));
         return this.state[entity.id];
     }
 
@@ -41,5 +41,23 @@ export default class EntityStateList<TEntity extends Entity<TEntity>, TValue> {
 
     public clear(): void {
         this.state = {};
+    }
+
+    public filter(f: (id: number, entity: TEntity, value: TValue) => boolean) {
+        const ids = Object.keys(this.entityMap) as number[];
+        for (const id of ids) {
+            if (!f(id, this.entityMap[id], this.state[id])) {
+                delete this.state[id];
+                delete this.entityMap[id];
+            }
+        }
+    }
+
+    public getAll(filter: (entry?: [TEntity, TValue], index?: number) => boolean = ()=>true): [TEntity, TValue][] {
+        return this.entries().filter(filter)
+    }
+
+    size(filter: (entry?: [TEntity, TValue], index?: number) => boolean = ()=>true) {
+        return this.getAll(filter).length;
     }
 }

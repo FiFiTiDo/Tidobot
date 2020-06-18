@@ -13,11 +13,13 @@ import MessageEvent, {MessageEventArgs} from "../../Chat/Events/MessageEvent";
 import PermissionSystem from "../Permissions/PermissionSystem";
 import Permission from "../Permissions/Permission";
 import {Role} from "../Permissions/Role";
-import ChatterEntity, {ChatterStateList} from "../../Database/Entities/ChatterEntity";
+import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import moment from "moment";
 import System from "../System";
 import MessageCache from "./MessageCache";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import EntityStateList from "../../Database/EntityStateList";
+import {SettingType} from "../Settings/Setting";
 
 @HandlesEvents()
 export default class FilterSystem extends System {
@@ -31,7 +33,7 @@ export default class FilterSystem extends System {
     }
 
     private readonly strikeManager: StrikeManager = new StrikeManager();
-    private readonly permits: ChatterStateList<moment.Moment> = new ChatterStateList<moment.Moment>(null);
+    private readonly permits: EntityStateList<ChatterEntity, moment.Moment> = new EntityStateList<ChatterEntity, moment.Moment>(null);
     private readonly filters: Filter[];
     private readonly messageCache: MessageCache = new MessageCache();
 
@@ -60,13 +62,13 @@ export default class FilterSystem extends System {
         const { sender, channel, message } = eventArgs;
         await this.messageCache.add(message);
         if (await message.checkPermission("filter.ignore.all")) return;
-        if (this.permits.hasChatter(sender)) {
-            const timestamp = this.permits.getChatter(sender);
-            const expires = timestamp.clone().add(await channel.getSetting<string>("filter.permit-length"), "seconds");
+        if (this.permits.has(sender)) {
+            const timestamp = this.permits.get(sender);
+            const expires = timestamp.clone().add(await channel.getSetting<SettingType.STRING>("filter.permit-length"), "seconds");
             if (moment().isBefore(expires))
                 return;
             else
-                this.permits.removeChatter(sender);
+                this.permits.delete(sender);
         }
 
 
@@ -82,7 +84,7 @@ export default class FilterSystem extends System {
     }
 
     permitUser(chatter: ChatterEntity) {
-        this.permits.setChatter(chatter, moment());
+        this.permits.set(chatter, moment());
     }
 
     getCachedMessages(channel: ChannelEntity) {

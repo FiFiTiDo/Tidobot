@@ -14,13 +14,31 @@ export function command(target: any, property: string|symbol): void {
 }
 
 const SUBCOMMAND_META_KEY = "command:sub:auto-register";
+export interface SubcommandParams {
+    label: string;
+    aliases?: string[];
+    userCooldown?: number;
+    globalCooldown?: number;
+}
 
-export function getSubcommands<T extends Command>(command: T): { [key: string]: string[] } {
+export function getSubcommands<T extends Command>(command: T): { [key: string]: SubcommandParams } {
     return getMetadata(SUBCOMMAND_META_KEY, command.constructor);
 }
 
-export function Subcommand(...labels: string[]): Function {
-    return function (target: any, property: string|symbol, descriptor: TypedPropertyDescriptor<CommandListener>): any {
-        addMetadata(SUBCOMMAND_META_KEY, target.constructor, { key: property, value: [...labels] });
+export function Subcommand(param0: SubcommandParams|string, ...aliases: string[]): Function {
+    let value: SubcommandParams;
+    if (typeof param0 === "string") {
+        value = {
+            label: param0,
+            aliases,
+            userCooldown: 0,
+            globalCooldown: 0
+        };
+    } else {
+        value = param0;
+    }
+
+    return function (target: any, property: string, _: TypedPropertyDescriptor<CommandListener>): any {
+        addMetadata(SUBCOMMAND_META_KEY, target.constructor, { key: property, value });
     }
 }

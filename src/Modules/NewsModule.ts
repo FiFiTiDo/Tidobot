@@ -29,7 +29,7 @@ import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "News",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Automated messages that are sent periodically"
 };
 
@@ -54,6 +54,7 @@ class NewsCommand extends Command {
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news add <message>",
+            subcommand: "add",
             arguments: tuple(
                 string({ name: "message", required: true, greedy: true })
             ),
@@ -77,6 +78,7 @@ class NewsCommand extends Command {
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "news remove <index>",
+            subcommand: "remove",
             arguments: tuple(
                 integer({ name: "item id", required: true })
             ),
@@ -106,6 +108,7 @@ class NewsCommand extends Command {
     async clear({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "news clear",
+            subcommand: "clear",
             permission: this.newsModule.clearItems
         }));
          if (status !== ValidatorStatus.OK) return;

@@ -29,7 +29,7 @@ import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
 
 export const MODULE_INFO = {
     name: "Currency",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "A points system used for granting the use of certain bot features"
 };
 
@@ -44,6 +44,7 @@ class BankCommand extends Command {
     async give({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank give <user> <amount>",
+            subcommand: "give",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 float({ name: "amount", required: true })
@@ -71,6 +72,7 @@ class BankCommand extends Command {
     async giveAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank give-all <amount>",
+            subcommand: "give-all",
             arguments: tuple(
                 float({ name: "amount", required: true }),
                 boolean({ name: "only-active", required: false, defaultValue: true })
@@ -103,6 +105,7 @@ class BankCommand extends Command {
     async take({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank take <user> <amount>",
+            subcommand: "take",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true }),
                 float({ name: "amount", required: true })
@@ -130,6 +133,7 @@ class BankCommand extends Command {
     async takeAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank take-all <amount>",
+            subcommand: "take-all",
             arguments: tuple(
                 float({ name: "amount", required: true }),
                 boolean({ name: "only-active", required: false, defaultValue: true })
@@ -161,6 +165,7 @@ class BankCommand extends Command {
     async balance({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank balance <user>",
+            subcommand: "balance",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
@@ -179,6 +184,7 @@ class BankCommand extends Command {
     async reset({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bank reset <user>",
+            subcommand: "reset",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
@@ -205,6 +211,7 @@ class BankCommand extends Command {
     async resetAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "bank reset-all",
+            subcommand: "reset-all",
             permission: this.currencyModule.bankResetAll
         }));
          if (status !== ValidatorStatus.OK) return;

@@ -1,7 +1,5 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import moment from "moment";
-import {ChatterStateList} from "../Database/Entities/ChatterEntity";
 import FiltersEntity from "../Database/Entities/FiltersEntity";
 import {array_add, array_remove, tuple} from "../Utilities/ArrayUtils";
 import {Role} from "../Systems/Permissions/Role";
@@ -28,7 +26,7 @@ import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "Filter",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Manage the filtering system used to filter out unwanted messages automatically"
 };
 
@@ -95,7 +93,6 @@ class PermitCommand extends Command {
         const [chatter] = args;
 
         FilterSystem.getInstance().permitUser(chatter);
-        this.filterModule.permits.setChatter(chatter, moment());
         await response.message("filter:permit", {
             username: chatter.name,
             second: await msg.getChannel().getSetting(this.filterModule.permitLength)
@@ -154,6 +151,7 @@ class FilterCommand extends Command {
     async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter add <list> <item>",
+            subcommand: "add",
             arguments: tuple(
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
                 string({ name: "item", required: true, greedy: true })
@@ -179,6 +177,7 @@ class FilterCommand extends Command {
     async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter remove <list> <item>",
+            subcommand: "remove",
             arguments: tuple(
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]}),
                 string({ name: "item", required: true, greedy: true })
@@ -204,6 +203,7 @@ class FilterCommand extends Command {
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "filter reset [list]",
+            subcommand: "reset",
             arguments: tuple(
                 string({ name: "list", required: true, accepted: ["domains", "badWords", "emotes"]})
             ),
@@ -239,14 +239,8 @@ class FilterCommand extends Command {
 export default class FilterModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
 
-    permits: ChatterStateList<moment.Moment>;
-    strikes: ChatterStateList<number>;
-
     constructor(@inject(Adapter) private adapter: Adapter, @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
         super(FilterModule);
-
-        this.permits = new ChatterStateList(null);
-        this.strikes = new ChatterStateList(0);
     }
 
     @command permitCommand = new PermitCommand(this);

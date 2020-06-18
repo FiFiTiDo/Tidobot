@@ -1,8 +1,8 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import {array_rand, tuple} from "../Utilities/ArrayUtils";
-import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
-import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
 import Message from "../Chat/Message";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {Role} from "../Systems/Permissions/Role";
@@ -19,10 +19,11 @@ import {getLogger} from "../Utilities/Logger";
 import {command, Subcommand} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
+import EntityStateList from "../Database/EntityStateList";
 
 export const MODULE_INFO = {
     name: "Raffle",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Run a raffle to randomly select users from the chat who entered the specified keyword"
 };
 
@@ -41,12 +42,12 @@ interface RaffleSettings {
 
 class Raffle {
     private state: RaffleState;
-    private userEntries: ChatterStateList<number>;
+    private userEntries: EntityStateList<ChatterEntity, number>;
     private entries: string[];
     private winners: string[];
 
     constructor(private readonly keyword: string, private channel: ChannelEntity, private settings: RaffleSettings) {
-        this.userEntries = new ChatterStateList<number>(0);
+        this.userEntries = new EntityStateList<ChatterEntity, number>(0);
         this.state = RaffleState.CLOSED;
         this.reset();
     }
@@ -73,13 +74,13 @@ class Raffle {
 
     async canEnter(chatter: ChatterEntity, roles: Role[]): Promise<boolean> {
         if (!this.isOpen()) return false;
-        if (this.userEntries.getChatter(chatter) >= this.settings.maxEntries) return false;
+        if (this.userEntries.get(chatter) >= this.settings.maxEntries) return false;
 
         return PermissionSystem.getInstance().check("raffle.enter", chatter, roles);
     }
 
     addEntry(chatter: ChatterEntity): void {
-        this.userEntries.setChatter(chatter, this.userEntries.getChatter(chatter) + 1);
+        this.userEntries.set(chatter, this.userEntries.get(chatter) + 1);
         this.entries.push(chatter.name);
     }
 
@@ -95,7 +96,7 @@ class Raffle {
     }
 
     reset(): void {
-        this.userEntries.clear(this.channel);
+        this.userEntries.filter((id, entity) => !entity.getChannel().is(this.channel));
         this.entries = [];
         this.winners = [];
     }
@@ -110,6 +111,7 @@ class RaffleCommand extends Command {
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle open [keyword]",
+            subcommand: "open",
             arguments: tuple(
                 string({ name: "entry phrase", required: true, greedy: true})
             ),
@@ -118,8 +120,8 @@ class RaffleCommand extends Command {
          if (status !== ValidatorStatus.OK) return;
         const [keyword] = args;
 
-        if (this.raffleModule.raffles.hasChannel(msg.getChannel())) {
-            if (this.raffleModule.raffles.getChannel(msg.getChannel()).isOpen()) {
+        if (this.raffleModule.raffles.has(msg.getChannel())) {
+            if (this.raffleModule.raffles.get(msg.getChannel()).isOpen()) {
                 await response.message("raffle:error.already-open");
                 return;
             }
@@ -138,6 +140,7 @@ class RaffleCommand extends Command {
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle close",
+            subcommand: "close",
             permission: this.raffleModule.closeRaffle
         }));
         const raffle = await this.getRaffle(msg, RaffleState.OPEN);
@@ -151,6 +154,7 @@ class RaffleCommand extends Command {
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle reset",
+            subcommand: "reset",
             permission: this.raffleModule.resetRaffle
         }));
         const raffle = await this.getRaffle(msg);
@@ -164,6 +168,7 @@ class RaffleCommand extends Command {
     async pull({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "raffle pull",
+            subcommand: "pull",
             permission: this.raffleModule.pullWinner
         }));
         const raffle = await this.getRaffle(msg);
@@ -180,12 +185,12 @@ class RaffleCommand extends Command {
     }
 
     private async getRaffle(msg: Message, state: RaffleState = RaffleState.OPEN | RaffleState.CLOSED): Promise<Raffle | null> {
-        if (!this.raffleModule.raffles.hasChannel(msg.getChannel())) {
+        if (!this.raffleModule.raffles.has(msg.getChannel())) {
             await msg.getResponse().message("raffle:error.no-recent");
             return null;
         }
 
-        const raffle = this.raffleModule.raffles.getChannel(msg.getChannel());
+        const raffle = this.raffleModule.raffles.get(msg.getChannel());
         if (raffle.getState() & state) {
             return raffle;
         } else {
@@ -202,12 +207,12 @@ class RaffleCommand extends Command {
 @HandlesEvents()
 export default class RaffleModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    readonly raffles: ChannelStateList<Raffle>;
+    readonly raffles: EntityStateList<ChannelEntity, Raffle>;
 
     constructor() {
         super(RaffleModule);
 
-        this.raffles = new ChannelStateList<Raffle>(null);
+        this.raffles = new EntityStateList<ChannelEntity, Raffle>(null);
     }
 
     @command raffleCommand = new RaffleCommand(this);
@@ -225,12 +230,15 @@ export default class RaffleModule extends AbstractModule {
     @EventHandler(MessageEvent)
     async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
         const msg = event.getMessage();
-        if (this.isDisabled(msg.getChannel())) return;
-        if (!this.raffles.hasChannel(msg.getChannel())) return;
-        const raffle = this.raffles.getChannel(msg.getChannel());
+        const channel = msg.getChannel();
+        const sender = msg.getChatter();
+
+        if (this.isDisabled(channel)) return;
+        if (!this.raffles.has(channel)) return;
+        const raffle = this.raffles.get(channel);
 
         if (msg.getRaw().toLowerCase() === raffle.getKeyword().toLowerCase())
-            if (await raffle.canEnter(msg.getChatter(), await msg.getUserRoles()))
-                raffle.addEntry(msg.getChatter());
+            if (await raffle.canEnter(sender, await msg.getUserRoles()))
+                raffle.addEntry(sender);
     }
 }

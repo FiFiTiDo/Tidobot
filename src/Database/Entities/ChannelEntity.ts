@@ -9,7 +9,7 @@ import {where} from "../Where";
 import {Observable} from "../../Utilities/Patterns/Observable";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import ChatterList from "../../Chat/ChatterList";
-import Setting, {ConvertedSetting, SettingType, SettingValueType} from "../../Systems/Settings/Setting";
+import Setting, {SettingType, SettingValueType} from "../../Systems/Settings/Setting";
 import FiltersEntity from "./FiltersEntity";
 import {Logger} from "log4js";
 import {getLogger} from "../../Utilities/Logger";
@@ -98,38 +98,5 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
         if (filters === null)
             throw new Error("Unable to retrieve filters.");
         return filters;
-    }
-}
-
-export class ChannelStateList<T> {
-    private list: { [key: string]: T };
-    private readonly defVal: T;
-
-    constructor(defVal: T) {
-        this.list = {};
-        this.defVal = defVal;
-    }
-
-    hasChannel(channel: ChannelEntity): boolean {
-        return Object.prototype.hasOwnProperty.call(this.list, channel.channelId);
-    }
-
-    getChannel(channel: ChannelEntity): T {
-        if (!this.hasChannel(channel))
-            this.list[channel.channelId] = this.defVal;
-
-        return this.list[channel.channelId];
-    }
-
-    setChannel(channel: ChannelEntity, value: T): void {
-        this.list[channel.channelId] = value;
-    }
-
-    deleteChannel(channel: ChannelEntity): void {
-        delete this.list[channel.channelId];
-    }
-
-    clear(): void {
-        this.list = {};
     }
 }

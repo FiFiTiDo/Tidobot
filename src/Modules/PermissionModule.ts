@@ -23,7 +23,7 @@ import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 
 export const MODULE_INFO = {
     name: "Permission",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Change the minimum role required for predefined permissions or make your own"
 };
 
@@ -45,6 +45,7 @@ class PermissionCommand extends Command {
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission create <permission> <default-level>",
+            subcommand: "create",
             arguments: tuple(
                 string({name: "permission", required: true}),
                 roleConverter("default role")
@@ -82,7 +83,8 @@ class PermissionCommand extends Command {
     @Subcommand("delete", "del")
     async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "permission reset [permission]",
+            usage: "permission delete [permission]",
+            subcommand: "delete",
             arguments: tuple(
                 entity({
                     name: "permission",
@@ -113,6 +115,7 @@ class PermissionCommand extends Command {
     async set({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission set <permission> <level>",
+            subcommand: "set",
             arguments: tuple(
                 entity({
                     name: "permission",
@@ -147,6 +150,7 @@ class PermissionCommand extends Command {
     async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "permission reset [permission]",
+            subcommand: "reset",
             arguments: tuple(
                 entity({
                     name: "permission",

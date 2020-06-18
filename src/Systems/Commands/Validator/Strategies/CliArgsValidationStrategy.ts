@@ -4,10 +4,10 @@ import ValidationStrategy, {
     ValidatorStatus
 } from "./ValidationStrategy";
 import {CommandEvent} from "../../CommandEvent";
-import {resolve} from "../../../../Utilities/Interfaces/Resolvable";
+import {resolve, resolveAsync} from "../../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError} from "../ValidationErrors";
-import minimist = require("minimist-string");
 import {getLogger} from "log4js";
+import minimist = require("minimist-string");
 
 interface CliArguments {
     [key: string]: any
@@ -23,7 +23,7 @@ export default class CliArgsValidationStrategy<T extends CliArguments> implement
         const args = {};
         const silent = this.opts.silent || false;
 
-        if (this.opts.permission && !(await message.checkPermission(await resolve(this.opts.permission, rawArgs)))) {
+        if (this.opts.permission && !(await message.checkPermission(resolve(this.opts.permission, rawArgs)))) {
             return {
                 status: ValidatorStatus.NOT_PERMITTED,
                 args: null
@@ -34,7 +34,7 @@ export default class CliArgsValidationStrategy<T extends CliArguments> implement
             for (const [key, arg] of Object.entries(this.opts.arguments)) {
                 try {
                     const parts = rawArgs[key] || [];
-                    const { converted } = await resolve(arg.converter(parts, 0, message));
+                    const { converted } = await resolveAsync(arg.converter(parts, 0, message));
                     args[key] = converted;
                 } catch (err) {
                     if (err instanceof InvalidInputError) {

@@ -1,21 +1,22 @@
-import ChatterEntity, {ChatterStateList} from "../../Database/Entities/ChatterEntity";
-import Setting, {SettingType} from "../Settings/Setting";
+import ChatterEntity from "../../Database/Entities/ChatterEntity";
+import Setting, {Integer, SettingType} from "../Settings/Setting";
 import SettingsSystem from "../Settings/SettingsSystem";
 import Message from "../../Chat/Message";
 import System from "../System";
+import EntityStateList from "../../Database/EntityStateList";
 
 
 export default class StrikeManager extends System {
-    private strikes: ChatterStateList<number> = new ChatterStateList<number>(0);
+    private strikes: EntityStateList<ChatterEntity, number> = new EntityStateList<ChatterEntity, number>(0);
 
     constructor() {
         super("StrikeManager");
 
         const settings = SettingsSystem.getInstance();
-        settings.registerSetting(new Setting("filter.strike.1", "0", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.strike.2", "600", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.strike.3", "28800", SettingType.INTEGER));
-        settings.registerSetting(new Setting("filter.strikeout", "-1", SettingType.INTEGER));
+        settings.registerSetting(new Setting("filter.strike.1", 1 as Integer, SettingType.INTEGER));
+        settings.registerSetting(new Setting("filter.strike.2", 600 as Integer, SettingType.INTEGER));
+        settings.registerSetting(new Setting("filter.strike.3", 28800 as Integer, SettingType.INTEGER));
+        settings.registerSetting(new Setting("filter.strikeout", -1 as Integer, SettingType.INTEGER));
 
         this.logger.info("System initialized");
     }
@@ -24,8 +25,8 @@ export default class StrikeManager extends System {
         const chatter = message.getChatter();
         const response = message.getResponse();
         const adapter = message.getAdapter();
-        const strike = (this.strikes.getChatter(chatter) + 1) % 4;
-        this.strikes.setChatter(chatter, strike);
+        const strike = (this.strikes.get(chatter) + 1) % 4;
+        this.strikes.set(chatter, strike);
         const reason = await response.translate(`filter:reasons.${type}`);
         const banReason = await response.translate("filter:ban-reason", {
             reason: await response.translate(`filter:ban-reasons.${type}`)
@@ -58,6 +59,6 @@ export default class StrikeManager extends System {
     }
 
     public pardonUser(chatter: ChatterEntity) {
-        this.strikes.setChatter(chatter, 0);
+        this.strikes.set(chatter, 0);
     }
 }

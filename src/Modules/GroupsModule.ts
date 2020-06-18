@@ -23,7 +23,7 @@ import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "Group",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Assign users groups to allow for granting permissions to groups of people rather than individually"
 };
 
@@ -42,6 +42,7 @@ class GroupCommand extends Command {
     async addMember({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group add <group> <user>",
+            subcommand: "add",
             arguments: tuple(
                 entity({
                     name: "group",
@@ -72,6 +73,7 @@ class GroupCommand extends Command {
     async removeMember({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group remove <group> <user>",
+            subcommand: "remove",
             arguments: tuple(
                 entity({
                     name: "group",
@@ -104,6 +106,7 @@ class GroupCommand extends Command {
     async createGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group create <group>",
+            subcommand: "create",
             arguments: tuple(
                 string({ name: "group name", required: true })
             ),
@@ -127,6 +130,7 @@ class GroupCommand extends Command {
     async deleteGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group delete <group>",
+            subcommand: "delete",
             arguments: tuple(
                 entity({
                     name: "group",
@@ -161,6 +165,7 @@ class GroupCommand extends Command {
     async grantPerm({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group grant <group> <permission>",
+            subcommand: "grant",
             arguments: tuple(
                 entity({
                     name: "group",
@@ -189,6 +194,7 @@ class GroupCommand extends Command {
     async denyPerm({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group deny <group> <permission>",
+            subcommand: "deny",
             arguments: tuple(
                 entity({
                     name: "group",
@@ -217,6 +223,7 @@ class GroupCommand extends Command {
     async resetPerms({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "group reset <group> [permission]",
+            subcommand: "reset",
             arguments: tuple(
                 entity({
                     name: "group",

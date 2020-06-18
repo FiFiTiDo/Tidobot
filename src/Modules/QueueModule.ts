@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
@@ -19,7 +19,7 @@ import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "Queue",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Users can enter a queue to be selected for some purpose"
 };
 
@@ -87,11 +87,12 @@ class QueueCommand extends Command {
     async join({event, message, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue join",
+            subcommand: "join",
             permission: this.queueModule.joinQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
         if (queue.find(message.getChatter()) >= 0) return response.message("queue:error.in");
         const maxSize = await message.getChannel().getSetting(this.queueModule.maxSize);
@@ -104,11 +105,12 @@ class QueueCommand extends Command {
     async leave({event, response, message}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue leave",
+            subcommand: "leave",
             permission: this.queueModule.joinQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
         if (queue.find(message.getChatter()) < 0) return response.message("queue:error.not-in");
         queue.remove(message.getChatter());
@@ -119,6 +121,7 @@ class QueueCommand extends Command {
     async check({ event, message, response }: CommandEventArgs): Promise<void> {
         const {status, args} = await event.validate(new StandardValidationStrategy({
             usage: "queue check [user]",
+            subcommand: "check",
             arguments: tuple(
                 chatterConverter({ name: "user", required: false })
             ),
@@ -126,7 +129,7 @@ class QueueCommand extends Command {
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         const index = queue.find(args[0] !== null ? args[0] : message.getChatter()) + 1;
         if (index < 1) return response.message("queue:error.not-in");
         const position = appendOrdinal(index);
@@ -137,11 +140,12 @@ class QueueCommand extends Command {
     async pop({event, message, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue pop",
+            subcommand: "pop",
             permission: this.queueModule.popQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         const chatter = queue.pop();
         if (chatter === undefined) return response.message("queue:error.empty");
         return response.message("queue:next", { username: chatter.name })
@@ -151,11 +155,12 @@ class QueueCommand extends Command {
     async peek({event, response, message} : CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue peek",
+            subcommand: "peek",
             permission: this.queueModule.peekQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         const chatter = queue.peek();
         if (chatter === undefined) return response.message("queue:error.empty");
         return response.message("queue:next", { username: chatter.name })
@@ -165,11 +170,12 @@ class QueueCommand extends Command {
     async clear({event, response, message}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue clear",
+            subcommand: "clear",
             permission: this.queueModule.clearQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         queue.clear();
         return response.message("queue:emptied");
     }
@@ -178,11 +184,12 @@ class QueueCommand extends Command {
     async open({ event, message, response }: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue open",
+            subcommand: "open",
             permission: this.queueModule.openQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         if (queue.isOpen()) return response.message("queue:error.open");
         queue.open();
         return response.message("queue:opened", { prefix: await CommandSystem.getPrefix(message.getChannel()) })
@@ -192,11 +199,12 @@ class QueueCommand extends Command {
     async close({ event, message, response }: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "queue close",
+            subcommand: "close",
             permission: this.queueModule.closeQueue
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        const queue = await this.queues.get(message.getChannel());
+        const queue = this.queues.get(message.getChannel());
         if (!queue.isOpen()) return response.message("queue:error.closed");
         queue.close();
         return response.message("queue:closed");

@@ -1,17 +1,18 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import Dispatcher from "../Systems/Event/Dispatcher";
 import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
-import {ChatterStateList} from "../Database/Entities/ChatterEntity";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {generateRandomCode} from "../Utilities/RandomUtils";
 import {command} from "../Systems/Commands/decorators";
+import EntityStateList from "../Database/EntityStateList";
 
 export const MODULE_INFO = {
     name: "Confirmation",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "An added confirmation layer to actions that cannot be undone and are of great magnitude"
 };
 
@@ -75,31 +76,31 @@ export interface ConfirmationFactory {
 }
 
 class ConfirmCommand extends Command {
-    constructor(private confirmations: ChatterStateList<Confirmation>) {
+    constructor(private confirmations: EntityStateList<ChatterEntity, Confirmation>) {
         super("confirm", "<code>");
     }
 
     execute({event, message, response}: CommandEventArgs): Promise<any> {
-        if (!this.confirmations.hasChatter(message.getChatter())) return response.message("confirmation:error.expired");
+        if (!this.confirmations.has(message.getChatter())) return response.message("confirmation:error.expired");
         if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");
 
-        const confirmation = this.confirmations.getChatter(message.getChatter());
+        const confirmation = this.confirmations.get(message.getChatter());
         if (confirmation.check(event.getArgument(0))) {
             confirmation.confirm();
-            this.confirmations.removeChatter(message.getChatter());
+            this.confirmations.delete(message.getChatter());
         }
     }
 }
 
 export default class ConfirmationModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    readonly confirmations: ChatterStateList<Confirmation>;
+    readonly confirmations: EntityStateList<ChatterEntity, Confirmation>;
 
     constructor() {
         super(ConfirmationModule);
 
         this.coreModule = true;
-        this.confirmations = new ChatterStateList<Confirmation>(null);
+        this.confirmations = new EntityStateList<ChatterEntity, Confirmation>(null);
     }
 
     @command confirmCommand = new ConfirmCommand(this.confirmations);
@@ -108,8 +109,8 @@ export default class ConfirmationModule extends AbstractModule {
         const chatter = message.getChatter();
         const code = generateRandomCode(6);
         const confirmation = new Confirmation(seconds, code);
-        confirmation.addListener(ExpiredEvent, () => this.confirmations.removeChatter(chatter));
-        this.confirmations.setChatter(chatter, confirmation);
+        confirmation.addListener(ExpiredEvent, () => this.confirmations.delete(chatter));
+        this.confirmations.set(chatter, confirmation);
 
         await message.getResponse().rawMessage(prompt);
         await message.getResponse().message("confirmation:time", {

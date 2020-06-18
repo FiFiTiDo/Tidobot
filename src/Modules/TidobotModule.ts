@@ -18,7 +18,7 @@ import {version} from "../../package.json";
 
 export const MODULE_INFO = {
     name: "Tidobot",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Used to manage core bot functionality other than settings and get more info"
 };
 
@@ -29,10 +29,11 @@ class TidobotCommand extends Command {
         super("tidobot", "<version|about||ban|unban>");
     }
 
-    @Subcommand("version")
+    @Subcommand("version", "ver")
     async version({event, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot version",
+            subcommand: "version",
             permission: this.tidobotModule.viewBotVersion
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -43,6 +44,7 @@ class TidobotCommand extends Command {
     async about({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot about",
+            subcommand: "about",
             permission: this.tidobotModule.viewBotInfo
         }));
          if (status !== ValidatorStatus.OK) return;
@@ -54,6 +56,7 @@ class TidobotCommand extends Command {
     async ignore({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot ignore <user>",
+            subcommand: "ignore",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
@@ -75,6 +78,7 @@ class TidobotCommand extends Command {
     async unignore({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot unignore <user>",
+            subcommand: "unignore",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
@@ -96,6 +100,7 @@ class TidobotCommand extends Command {
     async ban({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot ban <user>",
+            subcommand: "bsn",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
@@ -119,6 +124,7 @@ class TidobotCommand extends Command {
     async unban({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "tidobot unban <user>",
+            subcommand: "unban",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
@@ -148,6 +154,7 @@ class RegularCommand extends Command {
     async addRegular({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "regular add <user>",
+            subcommand: "add",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),
@@ -171,6 +178,7 @@ class RegularCommand extends Command {
     async removeRegular({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "regular remove <user>",
+            subcommand: "remove",
             arguments: tuple(
                 chatterConverter({ name: "user", required: true })
             ),

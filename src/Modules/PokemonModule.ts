@@ -24,7 +24,7 @@ import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "Pokemon",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Play pokemon using other users as your team's pokemon"
 };
 
@@ -90,6 +90,7 @@ class PokemonCommand extends Command {
     async team({event, sender, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon team",
+            subcommand: "team",
             permission: this.pokemonModule.playPokemon
         }));
         if (status !== ValidatorStatus.OK) return;
@@ -104,6 +105,7 @@ class PokemonCommand extends Command {
     async throw({event, sender, channel, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon throw [user]",
+            subcommand: "throw",
             arguments: tuple(
                 chatterConverter({name: "user", required: true})
             ),
@@ -158,6 +160,7 @@ class PokemonCommand extends Command {
     async release({event, response, sender}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release [pokemon]",
+            subcommand: "release",
             arguments: tuple(
                 string({name: "pokemon name", required: false, defaultValue: undefined})
             ),
@@ -201,6 +204,7 @@ class PokemonCommand extends Command {
     async releaseAll({event, sender, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon release-all",
+            subcommand: "release-all",
             permission: this.pokemonModule.playPokemon
         }));
         if (status !== ValidatorStatus.OK) return;
@@ -232,6 +236,7 @@ class PokemonCommand extends Command {
     async fight({event, sender, response, channel}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon fight <trainer>",
+            subcommand: "fight",
             arguments: tuple(
                 chatterConverter({name: "trainer", required: true, active: true})
             ),
@@ -321,6 +326,7 @@ class PokemonCommand extends Command {
     async stats({event, sender, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "pokemon stats",
+            subcommand: "stats",
             arguments: tuple(
                 chatter({ name: "trainer", required: false })
             ),
@@ -342,7 +348,8 @@ class PokemonCommand extends Command {
     @Subcommand("top")
     async top({event, channel, response}: CommandEventArgs): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon release-all",
+            usage: "pokemon top",
+            subcommand: "top",
             permission: this.pokemonModule.viewStats
         }));
         if (status !== ValidatorStatus.OK) return;

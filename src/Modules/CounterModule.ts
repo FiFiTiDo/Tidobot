@@ -21,7 +21,7 @@ import {command, Subcommand} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "Counter",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Add counters for anything that needs to be counted, add and subtract from them as you wish"
 };
 
@@ -58,6 +58,7 @@ class CounterCommand extends Command {
     async increment({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter increment <counter> [amount]",
+            subcommand: "increment",
             arguments: tuple(
                 entity({
                     name: "counter",
@@ -88,6 +89,7 @@ class CounterCommand extends Command {
     async decrement({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter decrement <counter> [amount]",
+            subcommand: "decrement",
             arguments: tuple(
                 entity({
                     name: "counter",
@@ -118,6 +120,7 @@ class CounterCommand extends Command {
     async set({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter set <counter> <amount>",
+            subcommand: "set",
             arguments: tuple(
                 entity({
                     name: "counter",
@@ -148,6 +151,7 @@ class CounterCommand extends Command {
     async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter create <counter>",
+            subcommand: "create",
             arguments: tuple(
                 string({name: "counter name", required: true})
             ),
@@ -175,6 +179,7 @@ class CounterCommand extends Command {
     async delete({event, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "counter delete <counter>",
+            subcommand: "delete",
             arguments: tuple(
                 entity({
                     name: "counter",

@@ -1,7 +1,7 @@
-import AbstractModule, {ModuleInfo, Systems, Symbols} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import CurrencyModule from "./CurrencyModule";
-import ChatterEntity, {ChatterStateList} from "../Database/Entities/ChatterEntity";
-import ChannelEntity, {ChannelStateList} from "../Database/Entities/ChannelEntity";
+import ChatterEntity, {filterByChannel} from "../Database/Entities/ChatterEntity";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
@@ -16,10 +16,11 @@ import {getLogger} from "../Utilities/Logger";
 import {setting} from "../Systems/Settings/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {command, Subcommand} from "../Systems/Commands/decorators";
+import EntityStateList from "../Database/EntityStateList";
 
 export const MODULE_INFO = {
     name: "Betting",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Place bets using points on a specific options, the total points is divided among those who bet for the winning option."
 };
 
@@ -30,7 +31,7 @@ enum PlaceBetResponse {
 }
 
 class BettingGame {
-    private readonly bets: Map<string, ChatterStateList<number>>;
+    private readonly bets: Map<string, EntityStateList<ChatterEntity, number>>;
     private open: boolean;
 
     constructor(private bettingModule: BettingModule, private readonly title: string, private readonly channel: ChannelEntity, options: string[]) {
@@ -39,7 +40,7 @@ class BettingGame {
         this.open = true;
 
         for (const option of options)
-            this.bets.set(option.toLowerCase(), new ChatterStateList<number>(0));
+            this.bets.set(option.toLowerCase(), new EntityStateList<ChatterEntity, number>(0));
     }
 
     getTitle(): string {
@@ -52,8 +53,8 @@ class BettingGame {
 
         for (const [option, bets] of this.bets.entries()) {
             if (option === winningOption.toLowerCase()) {
-                const winnings = Math.ceil(this.getGrandTotal() / bets.size(this.channel));
-                for (const [chatter] of bets.entries(this.channel)) await chatter.deposit(winnings);
+                const winnings = Math.ceil(this.getGrandTotal() / bets.size(filterByChannel(this.channel)));
+                for (const [chatter] of bets.getAll(filterByChannel(this.channel))) await chatter.deposit(winnings);
                 return winnings;
             }
         }
@@ -65,7 +66,7 @@ class BettingGame {
         const bets = this.bets.get(option);
 
         let value = 0;
-        if (bets.hasChatter(chatter)) value = bets.getChatter(chatter);
+        if (bets.has(chatter)) value = bets.get(chatter);
         value += amount;
 
         const min = await chatter.getChannel().getSetting(this.bettingModule.minimumBet);
@@ -76,14 +77,14 @@ class BettingGame {
         if (chatter.balance < amount) return PlaceBetResponse.LOW_BALANCE;
 
         await chatter.charge(amount);
-        bets.setChatter(chatter, value);
+        bets.set(chatter, value);
         return PlaceBetResponse.BET_PLACED;
     }
 
     *getTotals(): Generator<[string, number]> {
         for (const [option, bets] of this.bets.entries()) {
             let total = 0;
-            for (const [, value] of bets.entries(this.channel)) total += value;
+            for (const [, value] of bets.getAll(filterByChannel(this.channel))) total += value;
             yield [option, total];
         }
     }
@@ -100,18 +101,19 @@ class BettingGame {
 }
 
 class BetCommand extends Command {
-    private betInstances: ChannelStateList<BettingGame>;
+    private betInstances: EntityStateList<ChannelEntity, BettingGame>;
 
     constructor(private bettingModule: BettingModule) {
         super("bet", "<place|open|close|check>");
 
-        this.betInstances = new ChannelStateList<BettingGame>(null);
+        this.betInstances = new EntityStateList<ChannelEntity, BettingGame>(null);
     }
 
     @Subcommand("place")
     async place({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet place <option> <amount>",
+            subcommand: "place",
             arguments: tuple(
                 string({ name: "option", required: true }),
                 float({ name: "amount", required: true })
@@ -121,8 +123,8 @@ class BetCommand extends Command {
         if (status !== ValidatorStatus.OK) return;
         const [option, amount] = args;
 
-        if (!this.betInstances.hasChannel(msg.getChannel())) return;
-        const game = this.betInstances.getChannel(msg.getChannel());
+        if (!this.betInstances.has(msg.getChannel())) return;
+        const game = this.betInstances.get(msg.getChannel());
         if (!game.isOpen()) return;
 
         try {
@@ -160,6 +162,7 @@ class BetCommand extends Command {
     async open({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet open \"<title>\" <option 1> <option 2> ... <option n>",
+            subcommand: "open",
             arguments: tuple(
                 string({ name: "title", required: true, quoted: true }),
                 string({ name: "option", required: true, quoted: true, array: true })
@@ -169,11 +172,11 @@ class BetCommand extends Command {
         if (status !== ValidatorStatus.OK) return;
         const [title, options] = args;
 
-        if (this.betInstances.hasChannel(msg.getChannel()) && this.betInstances.getChannel(msg.getChannel()).isOpen())
+        if (this.betInstances.has(msg.getChannel()) && this.betInstances.get(msg.getChannel()).isOpen())
             return response.message("bet:error.already-open");
 
         const game = new BettingGame(this.bettingModule, title, msg.getChannel(), options);
-        this.betInstances.setChannel(msg.getChannel(), game);
+        this.betInstances.set(msg.getChannel(), game);
         await response.message("bet:opened", {
             title,
             options: options.join(", ")
@@ -184,6 +187,7 @@ class BetCommand extends Command {
     async close({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const {args, status} = await event.validate(new StandardValidationStrategy({
             usage: "bet close <winning option>",
+            subcommand: "close",
             arguments: tuple(
                 string({ name: "winning option", required: true })
             ),
@@ -192,10 +196,10 @@ class BetCommand extends Command {
         if (status !== ValidatorStatus.OK) return;
         const [option] = args;
 
-        if (!this.betInstances.hasChannel(msg.getChannel()) || !this.betInstances.getChannel(msg.getChannel()).isOpen())
+        if (!this.betInstances.has(msg.getChannel()) || !this.betInstances.get(msg.getChannel()).isOpen())
             return response.message("bet:error.not-open");
 
-        const game = this.betInstances.getChannel(msg.getChannel());
+        const game = this.betInstances.get(msg.getChannel());
         const winnings = await game.close(option);
 
         if (winnings === null)
@@ -212,14 +216,15 @@ class BetCommand extends Command {
     async check({event, message: msg, response}: CommandEventArgs): Promise<void> {
         const args = await event.validate(new StandardValidationStrategy({
             usage: "bet check",
+            subcommand: "check",
             permission: this.bettingModule.checkBet
         }));
         if (args === null) return;
 
-        if (!this.betInstances.hasChannel(msg.getChannel()))
+        if (!this.betInstances.has(msg.getChannel()))
             return response.message("bet:error.no-recent");
 
-        const game = this.betInstances.getChannel(msg.getChannel());
+        const game = this.betInstances.get(msg.getChannel());
         const grandTotal = game.getGrandTotal();
         const parts = [];
         for (const [option, total] of game.getTotals())

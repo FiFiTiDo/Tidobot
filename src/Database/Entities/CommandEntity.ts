@@ -7,6 +7,7 @@ import Message from "../../Chat/Message";
 import MessageParser from "../../Chat/MessageParser";
 import ChannelEntity from "./ChannelEntity";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
+import CooldownSystem from "../../Systems/Cooldown/CooldownSystem";
 
 export enum CommandConditionResponse {
     DONT_RUN, RUN_NOW, RUN_DEFAULT
@@ -51,6 +52,7 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
         if (this.condition.toLowerCase() === "@@default") return CommandConditionResponse.RUN_DEFAULT;
         const doRun = await msg.evaluateExpression(this.condition);
         if (typeof doRun !== "boolean") return CommandConditionResponse.DONT_RUN;
+        if (!CooldownSystem.getInstance().check(msg, this)) return CommandConditionResponse.DONT_RUN;
         return doRun ? CommandConditionResponse.RUN_NOW : CommandConditionResponse.DONT_RUN;
     }
 

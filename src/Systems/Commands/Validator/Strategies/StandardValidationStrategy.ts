@@ -6,6 +6,7 @@ import ValidationStrategy, {
 import {CommandEvent} from "../../CommandEvent";
 import {resolve, resolveAsync} from "../../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError} from "../ValidationErrors";
+import CooldownSystem from "../../../Cooldown/CooldownSystem";
 
 export default class StandardValidationStrategy<T extends unknown[]> implements ValidationStrategy<T> {
     constructor(private opts: CommandEventValidatorOptions<T>) {
@@ -41,9 +42,15 @@ export default class StandardValidationStrategy<T extends unknown[]> implements 
             }
         }
 
+        const cooldown = CooldownSystem.getInstance();
+        if (!cooldown.check(message, event.getCommand(), this.opts.subcommand)) {
+            return { status: ValidatorStatus.TOO_QUICKLY, args: null };
+        }
+
         if (this.opts.price && !(await message.getChatter().charge(this.opts.price)))
             return { status: ValidatorStatus.LOW_BALANCE, args: null };
 
+        cooldown.add(message, event.getCommand(), this.opts.subcommand);
         return {
             status: ValidatorStatus.OK, args
         }

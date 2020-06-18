@@ -23,7 +23,7 @@ import {command, Subcommand} from "../Systems/Commands/decorators";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.1.1",
+    version: "1.2.1",
     description: "Create your own commands with the powerful expression engine."
 };
 
@@ -204,6 +204,7 @@ export default class CustomCommandModule extends AbstractModule {
         for (const command of commands) {
             const res = await command.checkCondition(msg);
             if (res === CommandConditionResponse.RUN_NOW) {
+                if (command.price > 0 && !(await msg.getChatter().charge(command.price))) continue;
                 executed++;
                 await msg.getResponse().rawMessage(await command.getResponse(msg));
             } else if (res === CommandConditionResponse.RUN_DEFAULT) {
@@ -213,6 +214,7 @@ export default class CustomCommandModule extends AbstractModule {
 
         if (executed === 0) {
             for (const command of defCommands) {
+                if (command.price > 0 && !(await msg.getChatter().charge(command.price))) continue;
                 executed++;
                 await msg.getResponse().rawMessage(await command.getResponse(msg));
             }

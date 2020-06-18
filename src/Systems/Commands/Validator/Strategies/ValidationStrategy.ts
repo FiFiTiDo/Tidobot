@@ -7,7 +7,7 @@ import Command from "../../Command";
 import CommandEntity from "../../../../Database/Entities/CommandEntity";
 
 export enum ValidatorStatus {
-    ERROR, INVALID_ARGS, NOT_PERMITTED, LOW_BALANCE, OK
+    ERROR, INVALID_ARGS, NOT_PERMITTED, TOO_QUICKLY, LOW_BALANCE, OK
 }
 
 export interface ValidatorResponse<T> {

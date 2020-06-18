@@ -18,16 +18,18 @@ export default class LastFMSystem extends System {
         return this.instance;
     }
 
+    private usernameSetting = new Setting("lastfm.username", "", SettingType.STRING);
+
     constructor(private readonly api: LastFMApi) {
         super("LastFM");
         const settings = SettingsSystem.getInstance();
-        settings.registerSetting(new Setting("lastfm.username", "", SettingType.STRING));
+        settings.registerSetting(this.usernameSetting);
 
         this.logger.info("System initialized");
     }
 
     public getUsername(channel: ChannelEntity): Promise<string> {
-        return channel.getSetting<string>("lastfm.username");
+        return channel.getSetting(this.usernameSetting);
     }
 
     public async getLastPlayed(username: string);

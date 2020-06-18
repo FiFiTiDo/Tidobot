@@ -24,7 +24,7 @@ import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "Pokemon",
-    version: "1.0.1",
+    version: "1.0.2",
     description: "Play pokemon using other users as your team's pokemon"
 };
 
@@ -116,7 +116,7 @@ class PokemonCommand extends Command {
         const {trainer, team} = await this.getTrainerData(sender, response);
         if (trainer === null) return;
 
-        const maxTeamSize = await channel.getSetting<number>("pokemon.max-team-size");
+        const maxTeamSize = await channel.getSetting(this.pokemonModule.maxTeamSize);
         if (team.length >= maxTeamSize) return response.message("pokemon:error.full");
 
         const stats = await PokemonEntity.generateStats(trainer);
@@ -129,7 +129,7 @@ class PokemonCommand extends Command {
                     return response.message("pokemon:error.already-caught");
         }
 
-        const baseChance = await channel.getSetting<number>("pokemon.chance.base-catch");
+        const baseChance = await channel.getSetting(this.pokemonModule.baseCatchChance);
         if (!randomChance(baseChance - (stats.level / 1000.0)))
             return response.message("pokemon:catch.full", {
                 username: sender.name,
@@ -262,7 +262,7 @@ class PokemonCommand extends Command {
         let targetExp = 0;
         let result: string;
 
-        const draw_chance = await channel.getSetting<number>("pokemon.chance.draw");
+        const draw_chance = await channel.getSetting(this.pokemonModule.drawChance);
         const MIN_WIN = 50 + draw_chance / 2;
         const MAX_LOSS = 50 - draw_chance / 2;
 

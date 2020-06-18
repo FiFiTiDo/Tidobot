@@ -26,19 +26,15 @@ import {setting} from "../Systems/Settings/decorators";
 
 export const MODULE_INFO = {
     name: "Filter",
-    version: "1.1.1",
+    version: "1.1.2",
     description: "Manage the filtering system used to filter out unwanted messages automatically"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
 class NukeCommand extends Command {
-    private readonly adapter: Adapter;
-
     constructor(private filterModule: FilterModule) {
         super("nuke", "[--regex] <match>");
-
-        this.adapter = filterModule.adapter;
     }
 
     async execute({ event, channel, response }: CommandEventArgs): Promise<void> {
@@ -61,7 +57,7 @@ class NukeCommand extends Command {
         for (const message of cached) {
             if (matches(message.getRaw())) {
                 try {
-                    await this.adapter.tempbanChatter(message.getChatter(),
+                    await this.filterModule.adapter.tempbanChatter(message.getChatter(),
                         await message.getChannel().getSetting(this.filterModule.purgeLength),
                         await response.translate("filter:nuke-reason", {username: message.getChatter().name})
                     );
@@ -239,7 +235,7 @@ class FilterCommand extends Command {
 export default class FilterModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
 
-    constructor(@inject(Adapter) private adapter: Adapter, @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+    constructor(@inject(Adapter) public adapter: Adapter, @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
         super(FilterModule);
     }
 

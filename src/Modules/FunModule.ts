@@ -14,19 +14,15 @@ import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "Fun",
-    version: "1.0.0",
+    version: "1.0.1",
     description: "Just a bunch of fun things that don't fit in their own module"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
 class RouletteCommand extends Command {
-    private readonly adapter: Adapter;
-
     constructor(private funModule: FunModule) {
         super("roulette", null);
-
-        this.adapter = funModule.adapter;
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -49,7 +45,7 @@ class RouletteCommand extends Command {
                     username: msg.getChatter().name
                 });
                 try {
-                    await this.adapter.tempbanChatter(msg.getChatter(), 60, await response.translate("fun:roulette.reason"));
+                    await this.funModule.adapter.tempbanChatter(msg.getChatter(), 60, await response.translate("fun:roulette.reason"));
                 } catch (e) {
                     logger.warn(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", {cause: e});
                     return response.message("error.bot-not-permitted");
@@ -60,12 +56,8 @@ class RouletteCommand extends Command {
 }
 
 class SeppukuCommand extends Command {
-    private readonly adapter: Adapter;
-
     constructor(private funModule: FunModule) {
         super("seppuku", null);
-
-        this.adapter = funModule.adapter;
     }
 
     async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
@@ -76,7 +68,7 @@ class SeppukuCommand extends Command {
          if (status !== ValidatorStatus.OK) return;
 
         try {
-            return this.adapter.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
+            return this.funModule.adapter.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
         } catch (e) {
             logger.warn(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", {cause: e});
             return response.message("error.bot-not-permitted");
@@ -104,7 +96,7 @@ class Magic8BallCommand extends Command {
 export default class FunModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
 
-    constructor(@inject(Adapter) private adapter: Adapter) {
+    constructor(@inject(Adapter) public adapter: Adapter) {
         super(FunModule);
     }
 

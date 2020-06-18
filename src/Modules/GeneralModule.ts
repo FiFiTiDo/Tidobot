@@ -20,7 +20,7 @@ import {MomentZone} from "moment-timezone/moment-timezone";
 
 export const MODULE_INFO = {
     name: "General",
-    version: "1.0.1",
+    version: "1.0.2",
     description: "General bot commands that don't fit in other modules"
 };
 
@@ -139,7 +139,7 @@ export default class GeneralModule extends AbstractModule {
     @permission eval = new Permission("general.eval", Role.MODERATOR);
     @permission shutdown = new Permission("general.shutdown", Role.OWNER);
 
-    @setting timezone = new Setting("timezone", moment().tz("America/New_York"), SettingType.TIMEZONE);
+    @setting timezone = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE);
 
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {

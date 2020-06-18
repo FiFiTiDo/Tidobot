@@ -31,6 +31,8 @@ export interface Systems {
 
 export const Symbols = {
     ModuleInfo: Symbol("Module Information")
+} as {
+    readonly ModuleInfo: unique symbol
 };
 
 export interface ModuleConstructor<T extends AbstractModule> {

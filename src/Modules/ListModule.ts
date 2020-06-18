@@ -22,7 +22,7 @@ import {permission} from "../Systems/Permissions/decorators";
 
 export const MODULE_INFO = {
     name: "List",
-    version: "1.0.1",
+    version: "1.0.2",
     description: "Keep lists of different things like quotes or gifs"
 };
 
@@ -264,7 +264,7 @@ export default class ListModule extends AbstractModule {
                         }
                         const command = `${prefix}list`;
                         const raw = `${command} ${args.join(" ")}`;
-                        const event = new CommandEvent(command, args, msg.extend(raw, resolve));
+                        const event = new CommandEvent(command, args, msg.extend(raw, resolve), this.listCommand);
                         this.listCommand.execute(event.getEventArgs());
                     });
                 }

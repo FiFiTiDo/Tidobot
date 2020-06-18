@@ -18,7 +18,7 @@ import {version} from "../../package.json";
 
 export const MODULE_INFO = {
     name: "Tidobot",
-    version: "1.0.1",
+    version: "1.0.2",
     description: "Used to manage core bot functionality other than settings and get more info"
 };
 

@@ -2,7 +2,7 @@ import Event, {EventConstructor} from "./Event";
 import Listener from "./Listener";
 import EventSystem from "./EventSystem";
 import {EventPriority} from "./EventPriority";
-import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";
+import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
 
 const EVENT_META_KEY = "handler:events";
 

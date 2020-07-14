@@ -9,10 +9,10 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import {string} from "../Systems/Commands/Validator/String";
-import {integer} from "../Systems/Commands/Validator/Integer";
-import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {string} from "../Systems/Commands/Validation/String";
+import {integer} from "../Systems/Commands/Validation/Integer";
+import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";

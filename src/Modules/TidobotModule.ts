@@ -5,9 +5,9 @@ import {Role} from "../Systems/Permissions/Role";
 import IgnoredEntity from "../Database/Entities/IgnoredEntity";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {chatter as chatterConverter} from "../Systems/Commands/Validator/Chatter";
-import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
-import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
+import {chatter as chatterConverter} from "../Systems/Commands/Validation/Chatter";
+import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
 import Config from "../Systems/Config/Config";
 import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
@@ -26,7 +26,7 @@ const logger = getLogger(MODULE_INFO.name);
 
 class TidobotCommand extends Command {
     constructor(private readonly tidobotModule: TidobotModule) {
-        super("tidobot", "<version|about||ban|unban>");
+        super("tidobot", "<version|about|ban|unban>");
     }
 
     @Subcommand("version", "ver")

@@ -6,12 +6,12 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {integer} from "../Systems/Commands/Validator/Integer";
-import {string} from "../Systems/Commands/Validator/String";
-import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {integer} from "../Systems/Commands/Validation/Integer";
+import {string} from "../Systems/Commands/Validation/String";
+import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import {entity} from "../Systems/Commands/Validator/Entity";
+import {entity} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import Message from "../Chat/Message";

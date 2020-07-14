@@ -1,4 +1,4 @@
-import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";
+import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
 import AbstractModule, {ModuleConstructor} from "../../Modules/AbstractModule";
 
 const PERMISSIONS_META_KEY = "permissions:auto-register";

@@ -4,8 +4,16 @@ export function getMetadata<T>(key: string, target: any): T {
     return Reflect.getMetadata(key, target) as T;
 }
 
+export function getPropertyMetadata<T>(key: string, target: any, propertyKey: string): T {
+    return Reflect.getMetadata(key, target, propertyKey) as T;
+}
+
 export function setMetadata<T>(key: string, target: any, value: T): void {
     Reflect.defineMetadata(key, value, target);
+}
+
+export function setPropertyMetadata<T>(key: string, target: any, propertyKey: string, value: T): void {
+    Reflect.defineMetadata(key, target, propertyKey, value);
 }
 
 interface KeyValuePair<T> {
@@ -28,6 +36,18 @@ export function addMetadata<T>(metaKey: string, target: any, value: T | KeyValue
         data.push(value);
     }
     setMetadata(metaKey, target, data);
+}
+
+export function addPropertyMetadata<T>(key: string, target: any, propertyKey: string, value: T): void {
+    let data: any;
+    if (isKeyValuePair(value)) {
+        data = getPropertyMetadata<T>(key, target, propertyKey) || {};
+        data[value.key] = value.value;
+    } else {
+        data = getPropertyMetadata<T[]>(key, target, propertyKey) || [];
+        data.push(value);
+    }
+    setPropertyMetadata(key, target, propertyKey, data);
 }
 
 export type TYPE_CONSTRUCTORS = NumberConstructor|StringConstructor|ArrayBufferConstructor|ArrayConstructor|

@@ -1,4 +1,4 @@
-import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";
+import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
 
 
 export enum DataTypes {

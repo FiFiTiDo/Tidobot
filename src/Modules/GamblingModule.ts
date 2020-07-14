@@ -10,8 +10,8 @@ import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {randomFloat, randomInt} from "../Utilities/RandomUtils";
-import StandardValidationStrategy from "../Systems/Commands/Validator/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validator/Strategies/ValidationStrategy";
+import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
+import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
 import CurrencyModule from "./CurrencyModule";
 import {array_rand} from "../Utilities/ArrayUtils";
 

@@ -2,11 +2,11 @@ import sinon from "sinon"
 import {CommandEvent} from "../../../../../src/Systems/Commands/CommandEvent";
 import Message from "../../../../../src/Chat/Message";
 import StandardValidationStrategy
-    from "../../../../../src/Systems/Commands/Validator/Strategies/StandardValidationStrategy";
-import {string} from "../../../../../src/Systems/Commands/Validator/String";
-import {integer} from "../../../../../src/Systems/Commands/Validator/Integer";
+    from "../../../../../src/Systems/Commands/Validation/Strategies/StandardValidationStrategy";
+import {string} from "../../../../../src/Systems/Commands/Validation/String";
+import {integer} from "../../../../../src/Systems/Commands/Validation/Integer";
 import {expect} from "chai";
-import {ValidatorStatus} from "../../../../../src/Systems/Commands/Validator/Strategies/ValidationStrategy";
+import {ValidatorStatus} from "../../../../../src/Systems/Commands/Validation/Strategies/ValidationStrategy";
 
 describe("StandardValidationStrategy", function () {
     let message;

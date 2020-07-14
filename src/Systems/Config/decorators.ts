@@ -1,4 +1,4 @@
-import {addMetadata} from "../../Utilities/DeccoratorUtils";
+import {addMetadata} from "../../Utilities/DecoratorUtils";
 
 export const CONFIG_OPTIONS_KEY = "config:option";
 

@@ -1,7 +1,7 @@
 import Entity, {EntityConstructor, EntityParameters} from "../Entities/Entity";
 import {DataTypes, getColumns} from "./Columns";
 import {formatConstraints} from "./Constraints";
-import {getMetadata, setMetadata} from "../../Utilities/DeccoratorUtils";
+import {getMetadata, setMetadata} from "../../Utilities/DecoratorUtils";
 
 const TABLE_NAME_KEY = "entity:table_name";
 type TableNameFormatter = (params: EntityParameters) => string;

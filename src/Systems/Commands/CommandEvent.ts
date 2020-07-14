@@ -3,7 +3,7 @@ import Message from "../../Chat/Message";
 import {Response} from "../../Chat/Response";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import ValidationStrategy, {ValidatorResponse} from "./Validator/Strategies/ValidationStrategy";
+import ValidationStrategy, {ValidatorResponse} from "./Validation/Strategies/ValidationStrategy";
 import Command from "./Command";
 import CommandEntity from "../../Database/Entities/CommandEntity";
 

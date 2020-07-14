@@ -1,5 +1,5 @@
 import Entity, {EntityConstructor} from "../Entities/Entity";
-import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";
+import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
 
 const CONSTRAINTS_KEY = "entity:constraints";
 

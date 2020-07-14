@@ -1,4 +1,4 @@
-import {addMetadata, getMetadata} from "../../Utilities/DeccoratorUtils";
+import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
 import AbstractModule, {ModuleConstructor} from "../../Modules/AbstractModule";
 import {ExpressionContextResolver as ResolverFunc} from "./ExpressionSystem";
 

@@ -1,4 +1,4 @@
-import {getMetadata} from "../../../Utilities/DeccoratorUtils";
+import {getMetadata} from "../../../Utilities/DecoratorUtils";
 import {CONFIG_OPTIONS_KEY} from "../decorators";
 import * as path from "path";
 import * as fs from "fs";

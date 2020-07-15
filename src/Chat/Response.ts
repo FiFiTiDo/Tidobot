@@ -4,6 +4,9 @@ import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
 import {array_rand} from "../Utilities/ArrayUtils";
 import {TranslationProvider} from "../symbols";
+import CommandSystem from "../Systems/Commands/CommandSystem";
+import {Logger} from "log4js";
+import {logError} from "../Utilities/Logger";
 
 export class Response {
     constructor(private adapter: Adapter, private translator: TranslationProvider, private channelManager: ChannelManager, private msg: Message) {
@@ -58,11 +61,25 @@ export class Response {
     }
 
     async genericError(): Promise<void> {
-        const errors: string[] = await this.getTranslation("generic-error");
+        const errors: string[] = await this.getTranslation<string[]>("generic-error");
         const error = array_rand(errors);
         return this.rawMessage(error);
     }
+
+    async genericErrorAndLog(e: Error, logger: Logger, message?: string, fatal = false): Promise<void> {
+        logError(logger, e, message, fatal);
+        return this.genericError();
+    }
+
+    async invalidArgument(argument: string, given: string, usage: string): Promise<void> {
+        return CommandSystem.showInvalidArgument(argument, given, usage, this.msg);
+    }
+
+    async invalidArgumentKey(argumentKey: string, given: string, usage: string): Promise<void> {
+        return this.invalidArgument(await this.translate(argumentKey), given, usage);
+    }
 }
+
 
 export interface ResponseFactory {
     (msg: Message): Response;

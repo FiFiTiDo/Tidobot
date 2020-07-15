@@ -2,6 +2,8 @@ import {onePartConverter, ValueConverterInfo} from "./Converter";
 import {InvalidArgumentError, InvalidInputError} from "./ValidationErrors";
 import Entity, {EntityConstructor} from "../../../Database/Entities/Entity";
 import ChannelEntity from "../../../Database/Entities/ChannelEntity";
+import {ArgumentConverter} from "./Argument";
+import {CommandEvent} from "../CommandEvent";
 
 interface ConvertibleEntity<T extends Entity<T>> extends EntityConstructor<T> {
     convert(raw: string, channel: ChannelEntity): Promise<T|null>;
@@ -29,4 +31,32 @@ export function entity<T extends Entity<T>>(opts: EntityOptions<T>): ValueConver
         }
         return entity;
     });
+}
+
+interface ErrorInfo {
+    msgKey: string;
+    optionKey: string;
+}
+
+export class EntityConverter<T extends ConvertibleEntity<T>> implements ArgumentConverter<T> {
+    type: string;
+
+    constructor(private entity: T, private error?: ErrorInfo) {
+        this.type = entity.TYPE;
+    }
+
+    async convert(input: string, name: string, column: number, event: CommandEvent): Promise<T> {
+        const msg = event.getMessage();
+        const channel = msg.getChannel();
+        const response = msg.getResponse();
+
+        const entity = await this.entity.convert(input, channel);
+        if (entity === null) {
+            if (this.error)
+                throw new InvalidInputError(await response.translate(this.error.msgKey, {[this.error.optionKey]: input}));
+            else
+                throw new InvalidArgumentError(this.name, this.entity.TYPE, input, column);
+        }
+        return entity;
+    }
 }

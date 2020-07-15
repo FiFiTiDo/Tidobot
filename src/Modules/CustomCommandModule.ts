@@ -7,19 +7,20 @@ import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import CommandSystem from "../Systems/Commands/CommandSystem";
-import {string} from "../Systems/Commands/Validation/String";
-import {integer} from "../Systems/Commands/Validation/Integer";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
-import {getLogger} from "../Utilities/Logger";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
+import {string, StringConverter, StringEnumConverter} from "../Systems/Commands/Validation/String";
+import {getLogger, logErrorAndRespond} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {permission} from "../Systems/Permissions/decorators";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response"
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {EntityConverter} from "../Systems/Commands/Validation/Entity";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
@@ -28,127 +29,69 @@ export const MODULE_INFO = {
 };
 
 const logger = getLogger(MODULE_INFO.name);
+const CommandConverter = new EntityConverter(CommandEntity, { msgKey: "command:error.unknown", optionKey: "id" });
 
 class CommandCommand extends Command {
-    constructor(private customCommandModule: CustomCommandModule) {
+    constructor() {
         super("command", "<add|edit|delete>", ["cmd", "c"]);
     }
 
-    @Subcommand("add")
-    async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "command add <trigger> <response>",
-            subcommand: "add",
-            arguments: tuple(
-                string({ name: "trigger", required: true }),
-                string({ name: "response", required: true, greedy: true })
-            ),
-            permission: this.customCommandModule.addCommand
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const trigger = args[0].toLowerCase();
-        const resp = args[1];
-
-        try {
-            const command = await CommandEntity.create(trigger, resp, msg.getChannel());
-            await response.message("command:added", {id: command.id});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Unable to add custom command");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler("command add", "<trigger> <response>", 1)
+    @CheckPermission("command.add")
+    async add(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(StringConverter) trigger: string,
+        @RestArguments(true, true) resp: string
+    ): Promise<void> {
+        CommandEntity.create(trigger, resp, channel)
+            .then(entity => response.message("command:added", {id: entity.id}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("edit")
-    async edit({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "command edit <trigger|condition|response|price|cooldown> <id> <new value>",
-            subcommand: "edit",
-            arguments: tuple(
-                string({ name: "attribute", required: true, accepted: ["trigger", "condition", "response", "price", "cooldown"] }),
-                integer({ name: "id", required: true, min: 0 }),
-                string({ name: "new value", required: true, greedy: true})
-            ),
-            permission: this.customCommandModule.editCommand
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [type, id, value] = args;
-        const command: CommandEntity = await CommandEntity.get(id, {channel: msg.getChannel()});
-        if (command === null) {
-            await response.message("command:error.unknown", {id});
-            return;
-        }
-
+    @CommandHandler("command edit", "<trigger|condition|response|price|cooldown> <id> <new value>", 1)
+    @CheckPermission("command.edit")
+    async edit(
+        event: CommandEvent, @ResponseArg response: ChatResponse, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        @Argument(new StringEnumConverter(["trigger", "condition", "response", "price", "cooldown"]), "attribute") type: string,
+        @Argument(CommandConverter) command: CommandEntity,
+        @RestArguments(true, true) value: string
+    ): Promise<void> {
         switch (type.toLowerCase()) {
-            case "trigger":
-                command.trigger = value.toLowerCase();
-                break;
-            case "condition":
-                command.condition = value;
-                break;
-            case "response":
-                command.response = value;
-                break;
+            case "trigger": command.trigger = value.toLowerCase(); break;
+            case "condition": command.condition = value; break;
+            case "response": command.response = value; break;
             case "price": {
                 const price = parseFloat(value);
-
-                if (isNaN(price)) {
-                    await CommandSystem.showInvalidArgument(await response.translate("command:argument.price"), value, "command edit price <id> <new price>", msg);
-                    return;
-                }
-
+                if (isNaN(price))
+                    return response.invalidArgumentKey("command:argument.price", value, "command edit price <id> <new price>");
                 command.price = price;
                 break;
             }
             case "cooldown": {
                 const seconds = parseInt(value);
-
-                if (isNaN(seconds)) {
-                    await CommandSystem.showInvalidArgument(await response.translate("command:argument.cooldown"), value, "command edit cooldown <id> <seconds>", msg);
-                    return;
-                }
-
+                if (isNaN(seconds))
+                    return response.invalidArgumentKey("command:argument.cooldown", value, "command edit cooldown <id> <seconds>");
                 command.userCooldown = seconds;
                 break;
             }
             default:
-                await CommandSystem.showInvalidArgument(await response.translate("command:argument.type"), type, "command edit <trigger|condition|response|price> <id> <new value>", msg);
-                return;
+                return response.invalidArgumentKey("command:argument.type", type, "command edit <trigger|condition|response|price> <id> <new value>");
         }
 
         command.save()
-            .then(() => response.message(`command:edit.${type}`, {id, value}))
-            .catch(async (e) => {
-                await response.genericError();
-                logger.error("Failed to save changes to custom command");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            });
+            .then(() => response.message(`command:edit.${type}`, {id: command.id, value}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("delete", "del")
-    async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "command delete <id>",
-            subcommand: "delete",
-            arguments: tuple(integer({ name: "id", required: true, min: 0 })),
-            permission: this.customCommandModule.deleteCommand
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const id = args[0];
-        const command = await CommandEntity.get(id, {channel: msg.getChannel()});
-        if (command === null) return response.message("command:error.unknown", {id});
-
+    @CommandHandler("command delete", "<id>", 1)
+    @CheckPermission("command.delete")
+    async delete(
+        event: CommandEvent, @ResponseArg response: ChatResponse, @Channel channel: ChannelEntity,
+        @Argument(CommandConverter) command: CommandEntity
+    ): Promise<void> {
         command.delete()
-            .then(() => response.message("command:deleted", {id}))
-            .catch(async (e) => {
-                await response.genericError();
-                logger.error("Failed to delete the custom command");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            });
+            .then(() => response.message("command:deleted", {id: command.id}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
@@ -160,7 +103,7 @@ export default class CustomCommandModule extends AbstractModule {
         super(CustomCommandModule);
     }
 
-    @command commandCommand = new CommandCommand(this);
+    @command commandCommand = new CommandCommand();
 
     @permission addCommand = new Permission("command.add", Role.MODERATOR);
     @permission editCommand = new Permission("command.edit", Role.MODERATOR);

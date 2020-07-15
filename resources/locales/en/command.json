@@ -21,7 +21,8 @@
         "trigger": "Updated the trigger for command #{{id}} to {{value}}",
         "condition": "Updated the condition for command #{{id}}",
         "price": "Updated the price for command #{{id}} to {{value}}",
-        "cooldown": "Updated the cooldown for command #{{id}} to {{value}} seconds"
+        "global-cooldown": "Updated the global cooldown for command #{{id}} to {{value}} seconds",
+        "user-cooldown": "Updated the user cooldown for command #{{id}} to {{value}} seconds"
     },
     "deleted": "Deleted command #{{id}}",
     "arguments": {

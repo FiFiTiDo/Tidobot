@@ -28,6 +28,8 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
     public userCooldown: number;
     @Column({name: "global_cooldown", datatype: DataTypes.INTEGER})
     public globalCooldown: number;
+    @Column()
+    public enabled: boolean;
     @Column({name: "created_at", datatype: DataTypes.DATE})
     public createdAt: Moment;
     @Column({name: "updated_at", datatype: DataTypes.DATE})

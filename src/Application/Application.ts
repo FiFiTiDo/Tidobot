@@ -1,4 +1,4 @@
-import {AdapterOptions} from "../Services/Adapter";
+import {AdapterOptions} from "../Adapters/Adapter";
 import args from "args";
 import moment from "moment";
 import {inject} from "inversify";

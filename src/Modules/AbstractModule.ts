@@ -12,7 +12,7 @@ import {getPermissions} from "../Systems/Permissions/decorators";
 import Permission from "../Systems/Permissions/Permission";
 import {getCommands} from "../Systems/Commands/decorators";
 import Command from "../Systems/Commands/Command";
-import Adapter from "../Services/Adapter";
+import Adapter from "../Adapters/Adapter";
 import {ConfirmationFactory} from "./ConfirmationModule";
 import symbols from "../symbols";
 

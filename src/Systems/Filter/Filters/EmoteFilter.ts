@@ -3,8 +3,8 @@ import FiltersEntity from "../../../Database/Entities/FiltersEntity";
 import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import StrikeManager from "../StrikeManager";
 import SettingsSystem from "../../Settings/SettingsSystem";
-import Setting, {SettingType} from "../../Settings/Setting";
-import {TwitchMessage} from "../../../Services/Twitch/TwitchMessage";
+import Setting, {Integer, SettingType} from "../../Settings/Setting";
+import {TwitchMessage} from "../../../Adapters/Twitch/TwitchMessage";
 import PermissionSystem from "../../Permissions/PermissionSystem";
 import Permission from "../../Permissions/Permission";
 import {Role} from "../../Permissions/Role";
@@ -14,9 +14,9 @@ export default class EmoteFilter extends Filter {
         super(strikeManager);
 
         const settings = SettingsSystem.getInstance();
-        settings.registerSetting(new Setting("filter.emotes.enabled", "true", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.emotes.whitelist", "false", SettingType.BOOLEAN));
-        settings.registerSetting(new Setting("filter.emotes.amount", "20", SettingType.INTEGER));
+        settings.registerSetting(new Setting("filter.emotes.enabled", true, SettingType.BOOLEAN));
+        settings.registerSetting(new Setting("filter.emotes.whitelist", false, SettingType.BOOLEAN));
+        settings.registerSetting(new Setting("filter.emotes.amount", 20 as Integer, SettingType.INTEGER));
 
         const perm = PermissionSystem.getInstance();
         perm.registerPermission(new Permission("filter.ignore.emote", Role.MODERATOR));
@@ -28,8 +28,8 @@ export default class EmoteFilter extends Filter {
         if (!enabled) return false;
 
         const emotes = lists.emotes;
-        const whitelist = await channel.getSetting<boolean>("filter.emotes.whitelist");
-        const max = await channel.getSetting<number>("filter.emotes.amount");
+        const whitelist = await channel.getSetting<SettingType.BOOLEAN>("filter.emotes.whitelist");
+        const max = await channel.getSetting<SettingType.INTEGER>("filter.emotes.amount");
 
         if (message instanceof TwitchMessage) {
             const msgEmotes = message.getUserState().emotes || {};

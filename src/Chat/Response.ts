@@ -1,4 +1,4 @@
-import Adapter from "../Services/Adapter";
+import Adapter from "../Adapters/Adapter";
 import ChannelManager from "./ChannelManager";
 import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";

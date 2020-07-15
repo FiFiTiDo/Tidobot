@@ -1,10 +1,10 @@
 import {Container} from "inversify";
-import Adapter from "./Services/Adapter";
+import Adapter from "./Adapters/Adapter";
 import symbols, {TranslationProvider} from "./symbols";
-import TwitchAdapter from "./Services/Twitch/TwitchAdapter";
+import TwitchAdapter from "./Adapters/Twitch/TwitchAdapter";
 import ChannelManager from "./Chat/ChannelManager";
 import * as Modules from "./Modules";
-import {TwitchMessage, TwitchMessageFactory} from "./Services/Twitch/TwitchMessage";
+import {TwitchMessage, TwitchMessageFactory} from "./Adapters/Twitch/TwitchMessage";
 import {Database} from "sqlite3";
 import ModuleManager from "./Modules/ModuleManager";
 import {Response, ResponseFactory} from "./Chat/Response";

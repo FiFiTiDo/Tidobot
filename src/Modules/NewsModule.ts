@@ -21,7 +21,7 @@ import {integer} from "../Systems/Commands/Validation/Integer";
 import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
 import {tuple} from "../Utilities/ArrayUtils";
-import Adapter from "../Services/Adapter";
+import Adapter from "../Adapters/Adapter";
 import {getLogger} from "../Utilities/Logger";
 import {permission} from "../Systems/Permissions/decorators";
 import {command, Subcommand} from "../Systems/Commands/decorators";

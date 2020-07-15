@@ -7,7 +7,7 @@ import Command from "../Systems/Commands/Command";
 import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
 import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import Adapter from "../Services/Adapter";
+import Adapter from "../Adapters/Adapter";
 import {getLogger} from "../Utilities/Logger";
 import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";

@@ -20,7 +20,7 @@ export default class MessageEvent extends Event<MessageEvent> {
     }
 
     getEventArgs(): MessageEventArgs {
-        return Object.assign({}, super.getEventArgs(), {
+        return Object.assign(super.getEventArgs(), {
             message: this.message,
             response: this.message.getResponse(),
             sender: this.message.getChatter(),

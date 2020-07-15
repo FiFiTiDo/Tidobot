@@ -1,5 +1,5 @@
 import MessageParser from "./MessageParser";
-import Adapter from "../Services/Adapter";
+import Adapter from "../Adapters/Adapter";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {Role} from "../Systems/Permissions/Role";

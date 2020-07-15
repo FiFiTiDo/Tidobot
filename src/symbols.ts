@@ -1,5 +1,5 @@
 import {TFunction} from "i18next";
-import Adapter from "./Services/Adapter";
+import Adapter from "./Adapters/Adapter";
 
 export default {
     TranslateFunc: Symbol("Translation function"),

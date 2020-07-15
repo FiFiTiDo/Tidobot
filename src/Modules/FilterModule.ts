@@ -16,7 +16,7 @@ import {chatter as chatterConverter} from "../Systems/Commands/Validation/Chatte
 import {string} from "../Systems/Commands/Validation/String";
 import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import Adapter from "../Services/Adapter";
+import Adapter from "../Adapters/Adapter";
 import {getLogger, logError} from "../Utilities/Logger";
 import {removePrefix} from "../Utilities/StringUtils";
 import picomatch from "picomatch";

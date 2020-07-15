@@ -1,4 +1,4 @@
-import Adapter, {AdapterOptions} from "../Services/Adapter";
+import Adapter, {AdapterOptions} from "../Adapters/Adapter";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import * as util from "util";
 import {EventPriority} from "../Systems/Event/EventPriority";

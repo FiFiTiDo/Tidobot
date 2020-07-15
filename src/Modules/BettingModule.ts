@@ -47,14 +47,14 @@ class BetCommand extends Command {
             const resp = await this.betService.placeBet(sender, option, amount, channel);
             if (resp === null) return;
             switch (resp) {
-                case PlaceBetResponse.INVALID_OPTION:return await response.message("bet:error.invalid-option");
+                case PlaceBetResponse.INVALID_OPTION: return await response.message("bet:error.invalid-option");
                 case PlaceBetResponse.LOW_BALANCE: return await response.message("currency:error.low-balance", {
-                    currency_name: await CurrencyModule.getPluralName(msg.getChannel())
+                    currency_name: await CurrencyModule.getPluralName(channel)
                 });
-                case PlaceBetResponse.TOO_LOW:return await response.message("bet:error.too-low");
+                case PlaceBetResponse.TOO_LOW: return await response.message("bet:error.too-low");
                 case PlaceBetResponse.TOO_HIGH: return await response.message("bet:error.too-high");
                 case PlaceBetResponse.BET_PLACED: return await response.message("bet:placed", {
-                    amount: await CurrencyModule.formatAmount(amount, msg.getChannel()), option
+                    amount: await CurrencyModule.formatAmount(amount, channel), option
                 });
             }
         } catch (e) {
@@ -104,7 +104,7 @@ class BetCommand extends Command {
         for (const [option, total] of optionTotals)
             parts.push(await response.translate("bet:check.part", {
                 option,
-                amount: await CurrencyModule.formatAmount(total, msg.getChannel()),
+                amount: await CurrencyModule.formatAmount(total, channel),
                 percentage: (total / grandTotal) * 100
             }));
         await response.message("bet:check.full", {options: parts.join("; ")});

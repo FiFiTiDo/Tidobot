@@ -24,7 +24,7 @@ import {EntityConverter} from "../Systems/Commands/Validation/Entity";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.2.1",
+    version: "1.3.0",
     description: "Create your own commands with the powerful expression engine."
 };
 

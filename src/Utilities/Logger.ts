@@ -1,4 +1,5 @@
 import {configure, Logger} from "log4js";
+import {Response} from "../Chat/Response";
 
 export const getLogger = configure({
     appenders: {
@@ -11,7 +12,7 @@ export const getLogger = configure({
     }
 }).getLogger;
 
-export function logError(logger: Logger, error: Error, message?: string, fatal = false) {
+export function logError(logger: Logger, error: Error, message?: string, fatal = false): void {
     const func = fatal ? logger.fatal : logger.error;
 
     if (message) {
@@ -21,4 +22,9 @@ export function logError(logger: Logger, error: Error, message?: string, fatal =
         func(error.message);
     }
     func(error.stack);
+}
+
+export function logErrorAndRespond(error: Error, logger: Logger, response: Response): Promise<void> {
+    logError(logger, error);
+    return response.genericError();
 }

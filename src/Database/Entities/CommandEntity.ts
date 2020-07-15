@@ -71,4 +71,13 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
         if (resp.startsWith("/") || resp.startsWith(".")) resp = ">> " + resp;
         return resp;
     }
+
+
+    public static async convert(raw: string, channel: ChannelEntity): Promise<CommandEntity|null> {
+        const id = parseInt(raw);
+        if (isNaN(id) || id < 0) return null;
+        return this.get(id, { channel });
+    }
+
+    public static readonly TYPE = "command";
 }

@@ -6,6 +6,8 @@ import {
 } from "./ValidationErrors";
 import {array_find} from "../../../Utilities/ArrayUtils";
 import {getStartingColumn, ValueConverterInfo} from "./Converter";
+import {ArgumentConverter} from "./Argument";
+import {CommandEvent} from "../CommandEvent";
 
 interface StringOptions {
     accepted?: string[];
@@ -91,4 +93,24 @@ export function string(opts: SingleStringOptions|MultipleStringOptions): ValueCo
             return { newIndex, converted }
         }
     }
+}
+
+export class StringConverter {
+    static type = "string";
+    static convert(input: string, name: string, column: number, event: CommandEvent): string {
+        return input;
+    }
+}
+
+export class StringEnumConverter implements ArgumentConverter<string> {
+    type: string;
+
+    constructor(private accepted: string[]) {}
+
+    convert(input: string, name: string, column: number, event: CommandEvent): string {
+        if (!array_find(input, this.accepted))
+            throw new InvalidInputError(`${input} is not an acceptable value`);
+        return input;
+    }
+
 }

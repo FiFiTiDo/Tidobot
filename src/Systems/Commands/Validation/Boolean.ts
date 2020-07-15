@@ -18,3 +18,13 @@ export function boolean(opts: IntegerOptions): ValueConverterInfo<boolean> {
         return boolean;
     });
 }
+
+export class BooleanConverter {
+    static type = "boolean";
+    static convert(input: string, name: string, column: number): boolean {
+        const boolean = parseBool(input);
+        if (boolean === null)
+            throw new InvalidArgumentError(name, this.type, input, column);
+        return boolean;
+    }
+}

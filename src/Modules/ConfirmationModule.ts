@@ -4,15 +4,18 @@ import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {generateRandomCode} from "../Utilities/RandomUtils";
 import {command} from "../Systems/Commands/decorators";
 import EntityStateList from "../Database/EntityStateList";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
 
 export const MODULE_INFO = {
     name: "Confirmation",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "An added confirmation layer to actions that cannot be undone and are of great magnitude"
 };
 
@@ -80,14 +83,15 @@ class ConfirmCommand extends Command {
         super("confirm", "<code>");
     }
 
-    execute({event, message, response}: CommandEventArgs): Promise<any> {
-        if (!this.confirmations.has(message.getChatter())) return response.message("confirmation:error.expired");
+    @CommandHandler("confirm", "<code>")
+    handleConfirm(event: CommandEvent, @Sender sender: ChatterEntity, @ResponseArg response: Response): Promise<any> {
+        if (!this.confirmations.has(sender)) return response.message("confirmation:error.expired");
         if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");
 
-        const confirmation = this.confirmations.get(message.getChatter());
+        const confirmation = this.confirmations.get(sender);
         if (confirmation.check(event.getArgument(0))) {
             confirmation.confirm();
-            this.confirmations.delete(message.getChatter());
+            this.confirmations.delete(sender);
         }
     }
 }

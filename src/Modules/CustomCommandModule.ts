@@ -27,7 +27,7 @@ import {BooleanConverter} from "../Systems/Commands/Validation/Boolean";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.3.0",
+    version: "1.3.1",
     description: "Create your own commands with the powerful expression engine."
 };
 
@@ -118,7 +118,7 @@ class CommandCommand extends Command {
 
     @CommandHandler("command edit user-cooldown", "<id> <new cooldown>", 2)
     @CheckPermission("command.edit")
-    async editUserCooldown(
+    async editGlobalCooldown(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerConverter({ min: 0 })) value: number

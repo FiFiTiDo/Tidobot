@@ -12,7 +12,7 @@ export class Response {
     constructor(private adapter: Adapter, private translator: TranslationProvider, private channelManager: ChannelManager, private msg: Message) {
     }
 
-    rawMessage(message: string) {
+    rawMessage(message: string): Promise<void> {
         return this.adapter.sendMessage(message, this.msg.getChannel());
     }
 

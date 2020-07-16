@@ -1,207 +1,103 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import CountersEntity from "../Database/Entities/CountersEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {integer} from "../Systems/Commands/Validation/Integer";
-import {string} from "../Systems/Commands/Validation/String";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
-import {entity} from "../Systems/Commands/Validation/Entity";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
+import {IntegerConverter} from "../Systems/Commands/Validation/Integer";
+import {StringConverter} from "../Systems/Commands/Validation/String";
+import {EntityConverter} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {permission} from "../Systems/Permissions/decorators";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import {Argument, Channel, ResponseArg} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
 
 export const MODULE_INFO = {
     name: "Counter",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "Add counters for anything that needs to be counted, add and subtract from them as you wish"
 };
 
 const logger = getLogger(MODULE_INFO.name);
+const CounterConverter = new EntityConverter(CountersEntity, {msgKey: "counter:unknown", optionKey: "counter"});
 
 class CounterCommand extends Command {
-    constructor(private counterModule: CounterModule) {
-        super("counter", "<increment|decrement|subtract|add|set|create|delete>");
+    constructor() {
+        super("counter", "<inc|dec|add|sub|set|create|delete>");
     }
 
-    async execute(eventArgs: CommandEventArgs): Promise<void> {
-        if (await super.executeSubcommands(eventArgs)) return;
-
-        const {event, response} = eventArgs;
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "counter <counter name>",
-            arguments: tuple(
-                entity({
-                    name: "counter",
-                    entity: CountersEntity,
-                    required: true,
-                    error: {msgKey: "counter:unknown", optionKey: "counter"}
-                })
-            ),
-            permission: this.counterModule.checkCounter
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [counter] = args;
-
-        await response.message("counter:value", {counter: counter.name, value: counter.value});
+    @CommandHandler(/^counter (?!increment|inc|add|decrement|dec|subtract|sub|set|create|delete|del)/, "counter <counter name>")
+    @CheckPermission("counter.check")
+    async retrieveValueHandler(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity
+    ): Promise<void> {
+        return response.message("counter:value", {counter: counter.name, value: counter.value});
     }
 
-    @Subcommand("increment", "inc", "add")
-    async increment({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "counter increment <counter> [amount]",
-            subcommand: "increment",
-            arguments: tuple(
-                entity({
-                    name: "counter",
-                    entity: CountersEntity,
-                    required: true,
-                    error: {msgKey: "counter:unknown", optionKey: "counter"}
-                }),
-                integer({name: "amount", required: false, defaultValue: 1})
-            ),
-            permission: this.counterModule.changeCounter
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [counter, amount] = args;
-
-        try {
-            counter.value += amount;
-            await counter.save();
-            await response.message("counter:incremented", {counter: counter.name, amount});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to increment counter");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler(/^counter (increment|inc|add)/, "counter increment <counter name> <amount>", 1)
+    @CheckPermission("counter.change")
+    async increment(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
+        @Argument(new IntegerConverter({ min: 1 }), "amount", false) amount: number = 1
+    ): Promise<void> {
+        counter.value += amount;
+        return counter.save()
+            .then(() => response.message("counter:incremented", {counter: counter.name, amount}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("decrement", "dec", "subtract", "sub")
-    async decrement({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "counter decrement <counter> [amount]",
-            subcommand: "decrement",
-            arguments: tuple(
-                entity({
-                    name: "counter",
-                    entity: CountersEntity,
-                    required: true,
-                    error: {msgKey: "counter:unknown", optionKey: "counter"}
-                }),
-                integer({name: "amount", required: false, defaultValue: 1})
-            ),
-            permission: this.counterModule.changeCounter
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [counter, amount] = args;
-
-        try {
-            counter.value -= amount;
-            await counter.save();
-            await response.message("counter:decremented", {counter: counter.name, amount});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to decrement from counter");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler(/^counter (decrement|dec|subtract|sub)/, "counter decrement <counter name> <amount>", 1)
+    @CheckPermission("counter.change")
+    async decrement(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
+        @Argument(new IntegerConverter({ min: 1 }), "amount", false) amount: number = 1
+    ): Promise<void> {
+        counter.value -= amount;
+        return counter.save()
+            .then(() => response.message("counter:decremented", {counter: counter.name, amount}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("set")
-    async set({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "counter set <counter> <amount>",
-            subcommand: "set",
-            arguments: tuple(
-                entity({
-                    name: "counter",
-                    entity: CountersEntity,
-                    required: true,
-                    error: {msgKey: "counter:unknown", optionKey: "counter"}
-                }),
-                integer({name: "amount", required: true})
-            ),
-            permission: this.counterModule.changeCounter
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [counter, amount] = args;
-
-        try {
-            counter.value = amount;
-            await counter.save();
-            await response.message("counter:set", {counter: counter.name, amount});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to set counter");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler("counter set", "counter set <counter name> <amount>", 1)
+    @CheckPermission("counter.change")
+    async set(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
+        @Argument(new IntegerConverter({ min: 1 })) amount: number
+    ): Promise<void> {
+        counter.value = amount;
+        return counter.save()
+            .then(() => response.message("counter:set", {counter: counter.name, amount}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("create")
-    async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "counter create <counter>",
-            subcommand: "create",
-            arguments: tuple(
-                string({name: "counter name", required: true})
-            ),
-            permission: this.counterModule.createCounter
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [name] = args;
-
-        try {
-            const counter = await CountersEntity.make({channel: msg.getChannel()}, {name, value: 0});
-            if (counter === null) {
-                await response.message("counter:error.exists", {counter: name});
-                return;
-            }
-            await response.message("counter:created", {counter: counter.name});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to create counter");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler("counter create", "counter create <counter name>", 1)
+    @CheckPermission("counter.create")
+    async create(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(StringConverter, "counter name") name: string
+    ): Promise<void> {
+        return CountersEntity.make({channel}, {name, value: 0})
+            .then(entity => response.message(entity === null ? "counter:error.exists" : "counter:created", { counter: name }))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("delete", "del")
-    async delete({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "counter delete <counter>",
-            subcommand: "delete",
-            arguments: tuple(
-                entity({
-                    name: "counter",
-                    entity: CountersEntity,
-                    required: true,
-                    error: {msgKey: "counter:unknown", optionKey: "counter"}
-                })
-            ),
-            permission: this.counterModule.deleteCounter
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [counter] = args;
-
-        try {
-            await counter.delete();
-            await response.message("counter.deleted", {counter: counter.name});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to delete counter");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler(/^counter (delete|del)/, "counter delete <counter name>", 1)
+    @CheckPermission("counter.delete")
+    async delete(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity
+    ): Promise<void> {
+        return counter.delete()
+            .then(() => response.message("counter.deleted", {counter: counter.name}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
@@ -213,7 +109,7 @@ export default class CounterModule extends AbstractModule {
         super(CounterModule);
     }
 
-    @command counterCommand = new CounterCommand(this);
+    @command counterCommand = new CounterCommand();
 
     @permission checkCounter = new Permission("counter.check", Role.NORMAL);
     @permission changeCounter = new Permission("counter.change", Role.MODERATOR);
@@ -233,12 +129,13 @@ export default class CounterModule extends AbstractModule {
                     if (typeof name !== "string") return "Expected a string for argument 1";
                     const counter = await CountersEntity.findByName(name, msg.getChannel());
                     const couldNotFindCounter = "Could not find counter";
+                    const expectedANumber = "Expected a number for argument 1";
 
                     return {
                         value: counter === null ? couldNotFindCounter : counter.value,
                         add: async (amt: unknown): Promise<string | number> => {
                             if (counter === null) return couldNotFindCounter;
-                            if (typeof amt != "number") return "Expected a number for argument 1";
+                            if (typeof amt != "number") return expectedANumber;
 
                             counter.value += amt;
                             await counter.save();
@@ -246,7 +143,7 @@ export default class CounterModule extends AbstractModule {
                         },
                         sub: async (amt: unknown): Promise<string | number> => {
                             if (counter === null) return couldNotFindCounter;
-                            if (typeof amt != "number") return "Expected a number for argument 1";
+                            if (typeof amt != "number") return expectedANumber;
 
                             counter.value -= amt;
                             await counter.save();
@@ -254,7 +151,7 @@ export default class CounterModule extends AbstractModule {
                         },
                         set: async (amt: unknown): Promise<string | number> => {
                             if (counter === null) return couldNotFindCounter;
-                            if (typeof amt != "number") return "Expected a number for argument 1";
+                            if (typeof amt != "number") return expectedANumber;
 
                             counter.value = amt;
                             await counter.save();

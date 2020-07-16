@@ -5,23 +5,29 @@ import {addMetadata, getMetadata} from "../../../Utilities/DecoratorUtils";
 const COMMAND_HANDLER_META_KEY = "command:handler";
 
 export interface CommandHandlerFunction {
-    (event: CommandEvent, ...args: any[]): Promise<void>;
+    (event: CommandEvent, ...args: any[]): Promise<boolean>;
 }
 
 export function getCommandHandlers(target: any): string[] {
     return getMetadata(COMMAND_HANDLER_META_KEY, target.constructor);
 }
 
-export function CommandHandler(label: string, usage: string, shiftArgs: number = 0, silent: boolean = false) {
+export function CommandHandler(match: string|RegExp, usage: string, shiftArgs: number = 0, silent: boolean = false) {
     return function (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<CommandHandlerFunction>) {
         const originalMethod = descriptor.value;
         descriptor.value = async function (event: CommandEvent) {
-            if (!event.getMessage().getRaw().substr(1).startsWith(label)) return;
+            if (typeof match === "string") {
+                if (!event.getMessage().getRaw().substr(1).startsWith(match)) return false;
+            } else {
+                if (!event.getMessage().getRaw().substr(1).match(match)) return false
+            }
+
             const newEvent = event.clone();
             for (let i = 0; i < shiftArgs; i++) newEvent.shiftArgument();
             const args = await resolveArguments(newEvent, target, propertyKey, usage, silent);
-            if (args === null) return;
+            if (args === null) return false;
             originalMethod.apply(this, args);
+            return true;
         };
         addMetadata(COMMAND_HANDLER_META_KEY, target.constructor, propertyKey)
     }

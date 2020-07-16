@@ -29,7 +29,7 @@ export const ALL_MODULES = [
     TidobotModule, UserModule, QueueModule, PokemonModule, GamblingModule
 ];
 
-export const ALL_MODULES_KEY = Symbol("All Modules");
+export const ALL_MODULES_KEY: symbol = Symbol("All Modules");
 
 export function createBindings(container: Container): void {
     autoProvide(container, ALL_MODULES);

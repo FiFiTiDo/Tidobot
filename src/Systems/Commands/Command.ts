@@ -1,17 +1,17 @@
 import CommandSystem, {CommandListener} from "./CommandSystem";
-import {CommandEventArgs} from "./CommandEvent";
+import {CommandEvent, CommandEventArgs} from "./CommandEvent";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import {getSubcommands, SubcommandParams} from "./decorators";
-import {getCommandHandlers} from "./Validation/CommandHandler";
+import {CommandHandlerFunction, getCommandHandlers} from "./Validation/CommandHandler";
 
 export default class Command {
     private subcommandData: Map<string, SubcommandParams>;
     private subcommands: Map<string, CommandListener>;
-    private commandHandlers: string[];
+    private readonly commandHandlers: CommandHandlerFunction[];
 
     constructor(protected label: string, protected usage: string | null, protected aliases: string[] = []) {
         this.subcommands = new Map();
-        this.commandHandlers = getCommandHandlers(this);
+        this.commandHandlers = getCommandHandlers(this).map(property => this[property]);
 
         for (const [property, data] of Object.entries(getSubcommands(this))) {
             this.addSubcommand(data.label, this[property], data);
@@ -53,11 +53,17 @@ export default class Command {
 
     async execute(args: CommandEventArgs): Promise<void> {
         const {message, response} = args;
-        for (const commandHandler of this.commandHandlers)
 
-
-        if (!this.executeSubcommands(args))
+        if (!this.executeSubcommands(args) && !this.executeCommandHandlers(args.event))
             return response.rawMessage(await this.formatUsage(message.getChannel()));
+    }
+
+    protected async executeCommandHandlers(event: CommandEvent) {
+        let executed = false;
+        for (const commandHandler of this.commandHandlers) {
+            if (commandHandler.call(this, event)) executed = true;
+        }
+        return executed;
     }
 
     protected async executeSubcommands(args: CommandEventArgs): Promise<boolean> {

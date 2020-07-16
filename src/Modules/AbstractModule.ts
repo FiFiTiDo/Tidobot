@@ -41,14 +41,12 @@ export interface ModuleConstructor<T extends AbstractModule> {
     [Symbols.ModuleInfo]: ModuleInfo;
 }
 
-
-@injectable()
 export default abstract class AbstractModule {
     protected coreModule = false;
     private readonly name: string;
     private readonly info: ModuleInfo;
 
-    protected constructor(@unmanaged() constructor: ModuleConstructor<any>) {
+    protected constructor(constructor: ModuleConstructor<any>) {
         this.name = constructor.name;
         this.info = constructor[Symbols.ModuleInfo];
 
@@ -83,8 +81,6 @@ export default abstract class AbstractModule {
                 throw new Error("Invalid module configuration, property " + property.toString() + " is defined as a permission but is not a permission");
         }
     }
-
-    public initialize(systems: Systems): void {};
 
     getName(): string {
         return this.name;

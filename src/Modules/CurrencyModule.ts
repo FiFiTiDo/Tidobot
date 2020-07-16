@@ -1,4 +1,4 @@
-import AbstractModule, {Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import {pluralize} from "../Utilities/functions";
 import * as util from "util";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
@@ -11,250 +11,142 @@ import {inject} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {float} from "../Systems/Commands/Validation/Float";
-import {chatter as chatterConverter} from "../Systems/Commands/Validation/Chatter";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
+import {FloatConverter} from "../Systems/Commands/Validation/Float";
+import {ChatterConverter} from "../Systems/Commands/Validation/Chatter";
 import {getLogger} from "../Utilities/Logger";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
-import {boolean} from "../Systems/Commands/Validation/Boolean";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {BooleanConverter} from "../Systems/Commands/Validation/Boolean";
+import {command} from "../Systems/Commands/decorators";
 import ConnectedEvent from "../Chat/Events/ConnectedEvent";
 import {EventHandler} from "../Systems/Event/decorators";
 import Timeout = NodeJS.Timeout;
 import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, MessageArg, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "Currency",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "A points system used for granting the use of certain bot features"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
 class BankCommand extends Command {
-    constructor(private currencyModule: CurrencyModule, private confirmationFactory: ConfirmationFactory) {
+    constructor(private confirmationFactory: ConfirmationFactory) {
         super("bank", "<give|give-all|take|take-all|balance|reset|reset-all>");
     }
 
-    @Subcommand("give")
-    async give({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "bank give <user> <amount>",
-            subcommand: "give",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true }),
-                float({ name: "amount", required: true })
-            ),
-            permission: this.currencyModule.bankGive
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [chatter, amount] = args;
-
-        try {
-            await chatter.deposit(amount);
-            await response.message("currency:give", {
-                amount: await CurrencyModule.formatAmount(amount, msg.getChannel()),
+    @CommandHandler("bank give", "bank give <user> <amount>", 1)
+    @CheckPermission("currency.bank.give")
+    async give(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new ChatterConverter()) chatter: ChatterEntity, @Argument(new FloatConverter({ min: 1 })) amount: number
+    ): Promise<void> {
+        return chatter.deposit(amount)
+            .then(async () => response.message("currency:give", {
+                amount: await CurrencyModule.formatAmount(amount, channel),
                 username: chatter.name
-            });
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to give money to chatter's bank account");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+            })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("give-all")
-    async giveAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "bank give-all <amount>",
-            subcommand: "give-all",
-            arguments: tuple(
-                float({ name: "amount", required: true }),
-                boolean({ name: "only-active", required: false, defaultValue: true })
-            ),
-            permission: this.currencyModule.bankGiveAll
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [amount, onlyActive] = args;
-
-        const chatters: ChatterEntity[] = onlyActive ? msg.getChannel().getChatters() : await ChatterEntity.getAll({channel: msg.getChannel()});
-
-        const ops = [];
-        for (const chatter of chatters)
-            ops.push(chatter.deposit(amount));
-
-        try {
-            await Promise.all(ops);
-            await response.message("currency:give-all", {
-                amount: await CurrencyModule.formatAmount(amount, msg.getChannel())
-            });
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to give amount to all chatter's accounts");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler("bank give-all", "bank give-all <amount>", 1)
+    @CheckPermission("currency.bank.give-all")
+    async giveAll(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new FloatConverter({ min: 1 })) amount: number,
+        @Argument(BooleanConverter, "only-active", false) onlyActive: boolean
+    ): Promise<void> {
+        const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
+        return Promise.all(chatters.map(chatter => chatter.deposit(amount)))
+            .then(async () => response.message("currency:give-all", {
+                amount: await CurrencyModule.formatAmount(amount, channel)
+            })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("take")
-    async take({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "bank take <user> <amount>",
-            subcommand: "take",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true }),
-                float({ name: "amount", required: true })
-            ),
-            permission: this.currencyModule.bankTake
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [chatter, amount] = args;
-
-        try {
-            await chatter.withdraw(amount);
-            await response.message("currency:take", {
-                amount: await CurrencyModule.formatAmount(amount, msg.getChannel()),
+    @CommandHandler("bank take", "bank take <user> <amount>", 1)
+    @CheckPermission("currency.bank.take")
+    async take(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new ChatterConverter()) chatter: ChatterEntity,
+        @Argument(new FloatConverter({ min: 1 })) amount: number
+    ): Promise<void> {
+        return chatter.withdraw(amount)
+            .then(async () => response.message("currency:take", {
+                amount: await CurrencyModule.formatAmount(amount, channel),
                 username: chatter.name
-            });
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to take money from chatter's bank account");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+            })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("take-all")
-    async takeAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "bank take-all <amount>",
-            subcommand: "take-all",
-            arguments: tuple(
-                float({ name: "amount", required: true }),
-                boolean({ name: "only-active", required: false, defaultValue: true })
-            ),
-            permission: this.currencyModule.bankTakeAll
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [amount, onlyActive] = args;
-        const chatters: ChatterEntity[] = onlyActive ? msg.getChannel().getChatters() : await msg.getChannel().chatters();
-
-        const ops = [];
-        for (const chatter of chatters)
-            ops.push(chatter.withdraw(amount));
-
-        try {
-            await Promise.all(ops);
-            await response.message("currency.take-all", {
-                amount: await CurrencyModule.formatAmount(amount, msg.getChannel())
-            });
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to take amount out of all chatter's accounts");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler("bank take", "bank take-all <amount>", 1)
+    @CheckPermission("currency.bank.take-all")
+    async takeAll(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new FloatConverter({ min: 1 })) amount: number,
+        @Argument(BooleanConverter, "only-active", false) onlyActive: boolean
+    ): Promise<void> {
+        const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
+        return Promise.all(chatters.map(chatter => chatter.withdraw(amount)))
+            .then(async () => response.message("currency:take-all", {
+                amount: await CurrencyModule.formatAmount(amount, channel)
+            })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("balance", "bal")
-    async balance({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "bank balance <user>",
-            subcommand: "balance",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true })
-            ),
-            permission: this.currencyModule.bankBalance
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args;
-
-        await response.message("currency:balance-other", {
-            username: chatter.name,
-            balance: await CurrencyModule.formatAmount(chatter.balance, msg.getChannel())
-        });
+    @CommandHandler(/^bank (balance|bal)/, "bank balance <username>", 1)
+    @CheckPermission("currency.bank.balance")
+    async balance(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new ChatterConverter()) chatter: ChatterEntity
+    ): Promise<void> {
+        return response.message("currency:balance-other", {username: chatter.name, balance: await chatter.formattedBalance});
     }
 
-    @Subcommand("reset")
-    async reset({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "bank reset <user>",
-            subcommand: "reset",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true })
-            ),
-            permission: this.currencyModule.bankReset
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args;
-
-        try {
-            chatter.balance = 0;
-            await chatter.save();
-            await response.message("currency:reset.user", {
-                username: chatter.name
-            });
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to reset chatter's bank account");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler("bank reset", "bank reset <username>", 1)
+    @CheckPermission("currency.bank.reset")
+    async reset(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new ChatterConverter()) chatter: ChatterEntity
+    ): Promise<void> {
+        chatter.balance = 0;
+        return chatter.save()
+            .then(() => response.message("currency:reset.user", {username: chatter.name}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("reset-all")
-    async resetAll({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "bank reset-all",
-            subcommand: "reset-all",
-            permission: this.currencyModule.bankResetAll
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
+    @CommandHandler("bank reset-all", "bank reset", 1)
+    @CheckPermission("currency.bank.reset-all")
+    async resetAll(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message
+    ): Promise<void> {
         const confirmation = await this.confirmationFactory(msg, await response.translate("currency.reset.all-confirm"), 30);
-        confirmation.addListener(ConfirmedEvent, async () => {
-            try {
-                const chatters: ChatterEntity[] = await ChatterEntity.getAll({channel: msg.getChannel()});
-                const ops = [];
-                for (const chatter of chatters) {
-                    chatter.balance = 0;
-                    ops.push(chatter.save());
-                }
-                await Promise.all(ops);
-                await response.message("currency:reset.all");
-            } catch (e) {
-                await response.genericError();
-                logger.error("Unable to reset currency module");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            }
-        });
+        confirmation.addListener(ConfirmedEvent, () => ChatterEntity.getAll({channel})
+            .then(chatters => Promise.all(chatters.map(chatter => {
+                chatter.balance = 0;
+                return chatter.save();
+            })))
+            .then(() => response.message("currency:reset.all"))
+            .catch(e => response.genericErrorAndLog(e, logger))
+        );
         confirmation.run();
     }
 }
 
 class BalanceCommand extends Command {
-    constructor(private currencyModule: CurrencyModule) {
+    constructor() {
         super("balance", null, ["bal"]);
     }
 
-    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "balance",
-            permission: this.currencyModule.getBalance
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const balance = msg.getChatter().balance;
-        await response.message("currency:balance", {
-            username: msg.getChatter().name,
-            balance: await CurrencyModule.formatAmount(balance, msg.getChannel())
-        });
+    @CommandHandler(/^(balance|bal)/, "balance")
+    @CheckPermission("currency.balance")
+    async handleCommand(
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity
+    ): Promise<void> {
+        return response.message("currency:balance", {username: sender.name, balance: await sender.formattedBalance});
     }
 }
 
@@ -263,29 +155,24 @@ class PayCommand extends Command {
         super("pay", "<user> <amount>");
     }
 
-    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "pay <user> <amount>",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true }),
-                float({ name: "amount", required: true })
-            ),
-            permission: this.currencyModule.payUser
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [chatter, amount] = args;
-
-        const successful = await msg.getChatter().charge(amount);
+    @CommandHandler("pay", "pay <user> <amount>")
+    @CheckPermission("currency.pay")
+    async handleCommand(
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
+        @Argument(new ChatterConverter()) chatter: ChatterEntity,
+        @Argument(new FloatConverter({ min: 1 })) amount: number
+    ): Promise<void> {
+        const successful = await sender.charge(amount);
         if (successful === false) {
-            await response.message("currency:error.low-balance");
+            return response.message("currency:error.low-balance");
         } else if (successful === null) {
-            await response.genericError();
+            return response.genericError();
         } else {
-            await chatter.deposit(amount);
-            await response.message("currency.pay", {
-                username: chatter.name,
-                amount: await CurrencyModule.formatAmount(amount, msg.getChannel())
-            });
+            return chatter.deposit(amount)
+                .then(async () => response.message("currency.pay", {
+                    username: chatter.name,
+                    amount: await CurrencyModule.formatAmount(amount, channel)
+                })).catch(e => response.genericErrorAndLog(e, logger));
         }
     }
 }
@@ -315,8 +202,8 @@ export default class CurrencyModule extends AbstractModule {
         return util.format("%d %s", amount, pluralize(amount, singular, plural));
     }
 
-    @command bankCommand = new BankCommand(this, this.makeConfirmation);
-    @command balanceCommand = new BalanceCommand(this);
+    @command bankCommand = new BankCommand(this.makeConfirmation);
+    @command balanceCommand = new BalanceCommand();
     @command payCommand = new PayCommand(this);
 
     @permission payUser = new Permission("currency.pay", Role.NORMAL);

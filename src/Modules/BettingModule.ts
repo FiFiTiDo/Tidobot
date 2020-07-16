@@ -21,7 +21,7 @@ import {BetService, PlaceBetResponse} from "../Services/BetService";
 
 export const MODULE_INFO = {
     name: "Betting",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Place bets using points on a specific options, the total points is divided among those who bet for the winning option."
 };
 
@@ -36,7 +36,7 @@ class BetCommand extends Command {
         this.betService = new BetService(bettingModule);
     }
 
-    @CommandHandler("bet place", "<option> <amount>")
+    @CommandHandler("bet place", "bet place <option> <amount>")
     @CheckPermission("bet.place")
     async place(
         event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
@@ -62,7 +62,7 @@ class BetCommand extends Command {
         }
     }
 
-    @CommandHandler("bet open", "\"<title>\" <option 1> <option 2> ... <option n>")
+    @CommandHandler("bet open", "bet open \"<title>\" <option 1> <option 2> ... <option n>")
     @CheckPermission("bet.open")
     async open(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
@@ -76,7 +76,7 @@ class BetCommand extends Command {
         }
     }
 
-    @CommandHandler("bet close", "<winning option>")
+    @CommandHandler("bet close", "bet close <winning option>")
     @CheckPermission("bet.close")
     async close(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
@@ -92,7 +92,7 @@ class BetCommand extends Command {
         });
     }
 
-    @CommandHandler("bet check", "")
+    @CommandHandler("bet check", "bet check")
     @CheckPermission("bet.check")
     async check(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity

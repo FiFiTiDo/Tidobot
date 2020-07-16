@@ -15,7 +15,7 @@ import {Response} from "../Chat/Response";
 
 export const MODULE_INFO = {
     name: "Confirmation",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "An added confirmation layer to actions that cannot be undone and are of great magnitude"
 };
 
@@ -83,7 +83,7 @@ class ConfirmCommand extends Command {
         super("confirm", "<code>");
     }
 
-    @CommandHandler("confirm", "<code>")
+    @CommandHandler("confirm", "confirm <code>")
     handleConfirm(event: CommandEvent, @Sender sender: ChatterEntity, @ResponseArg response: Response): Promise<any> {
         if (!this.confirmations.has(sender)) return response.message("confirmation:error.expired");
         if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");

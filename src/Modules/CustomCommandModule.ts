@@ -27,7 +27,7 @@ import {BooleanConverter} from "../Systems/Commands/Validation/Boolean";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.3.1",
+    version: "1.3.2",
     description: "Create your own commands with the powerful expression engine."
 };
 
@@ -39,7 +39,7 @@ class CommandCommand extends Command {
         super("command", "<add|edit|delete>", ["cmd", "c"]);
     }
 
-    @CommandHandler("command add", "<trigger> <response>", 1)
+    @CommandHandler(/^(c|cmd|command) add/, "command add <trigger> <response>", 1)
     @CheckPermission("command.add")
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
@@ -51,7 +51,7 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command edit trigger", "<id> <new trigger>", 2)
+    @CommandHandler(/^(c|cmd|command) edit trigger/, "command edit trigger <id> <new trigger>", 2)
     @CheckPermission("command.edit")
     async editTrigger(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
@@ -64,7 +64,7 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command edit condition", "<id> <new condition>", 2)
+    @CommandHandler(/^(c|cmd|command) edit (condition|cond)/, "command edit condition <id> <new condition>", 2)
     @CheckPermission("command.edit")
     async editCondition(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
@@ -77,7 +77,7 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command edit response", "<id> <new response>", 2)
+    @CommandHandler(/^(c|cmd|command) edit (response|resp)/, "command edit response <id> <new response>", 2)
     @CheckPermission("command.edit")
     async editResponse(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
@@ -90,7 +90,7 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command edit price", "<id> <new price>", 2)
+    @CommandHandler(/^(c|cmd|command) edit price/, "command edit price <id> <new price>", 2)
     @CheckPermission("command.edit")
     async editPrice(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
@@ -103,7 +103,7 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command edit global-cooldown", "<id> <new cooldown>", 2)
+    @CommandHandler(/^(c|cmd|command) edit (global-cooldwn|gc)/, "command edit trigger <id> <new cooldown>", 2)
     @CheckPermission("command.edit")
     async editGlobalCooldown(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
@@ -116,9 +116,9 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command edit user-cooldown", "<id> <new cooldown>", 2)
+    @CommandHandler(/^(c|cmd|command) edit (user-cooldown|uc)/, "command edit user-cooldown <id> <new cooldown>", 2)
     @CheckPermission("command.edit")
-    async editGlobalCooldown(
+    async editUserCooldown(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerConverter({ min: 0 })) value: number
@@ -129,9 +129,9 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command edit enabled", "<id> <new value>", 2)
+    @CommandHandler(/^(c|cmd|command) edit enabled/, "command edit enabled <id> <new value>", 2)
     @CheckPermission("command.edit")
-    async editUserCooldown(
+    async editEnabled(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @Argument(BooleanConverter) value: boolean
@@ -142,7 +142,7 @@ class CommandCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("command delete", "<id>", 1)
+    @CommandHandler(/^(c|cmd|command) (delete|del)/, "command delete <id>", 1)
     @CheckPermission("command.delete")
     async delete(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,

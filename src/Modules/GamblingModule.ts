@@ -1,7 +1,7 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import {getLogger} from "../Utilities/Logger";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
@@ -9,15 +9,18 @@ import {setting} from "../Systems/Settings/decorators";
 import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {randomFloat, randomInt} from "../Utilities/RandomUtils";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
+import {randomFloat} from "../Utilities/RandomUtils";
 import CurrencyModule from "./CurrencyModule";
 import {array_rand} from "../Utilities/ArrayUtils";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Channel, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
 
 export const MODULE_INFO = {
     name: "Gambling",
-    version: "1.0.0",
+    version: "1.1.0",
     description: "Gamble your points away or take a chance at the slot machines!"
 };
 
@@ -50,25 +53,19 @@ class SlotsCommand extends Command {
 
      getRandomIndex(): number {
         const number = randomFloat();
-        if (number <= 0.075)
-            return 4;
-        else if (number <= 0.2)
-            return 3;
-        else if (number <= 0.45)
-            return 2;
-        else if (number <= 0.7)
-            return 1;
-        else
-            return 0;
+        if (number <= 0.075) return 4;
+        else if (number <= 0.2) return 3;
+        else if (number <= 0.45) return 2;
+        else if (number <= 0.7) return 1;
+        else return 0;
     }
 
-    async execute({ event, channel, response, sender }: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "slots",
-            permission: this.gamblingModule.playSlots,
-            price: await channel.getSetting(this.gamblingModule.slotsPrice)
-        }));
-        if (status !== ValidatorStatus.OK) return;
+    @CommandHandler("slots", "slots")
+    @CheckPermission("gambling.slots")
+    async handleCommand(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity
+    ): Promise<void> {
+        if (!await sender.charge(await channel.getSetting(this.gamblingModule.slotsPrice))) return;
 
         const emotes = await this.getEmotes(channel);
         const prizes = await this.getPrizes(channel);
@@ -76,8 +73,8 @@ class SlotsCommand extends Command {
         let message = await response.translate("gambling:slots.emotes", {
             username: sender.name, emote1: emotes[emote1], emote2: emotes[emote2], emote3: emotes[emote3]
         });
-        let winnings = 0;
 
+        let winnings = 0;
         if (emote1 === emote2 && emote2 === emote3) {
             winnings = prizes[emote1];
         } else if (emote1 === emote2) {
@@ -91,9 +88,9 @@ class SlotsCommand extends Command {
             message += " " + await response.translate("gambling:slots.win", {
                 amount: await CurrencyModule.formatAmount(winnings, channel)
             });
-            message += " " + array_rand(await response.getTranslation("gambling:win"));
+            message += " " + array_rand(await response.getTranslation<string[]>("gambling:win"));
         } else {
-            message += " " + array_rand(await response.getTranslation("gambling:loss"));
+            message += " " + array_rand(await response.getTranslation<string[]>("gambling:loss"));
         }
 
         return response.rawMessage(message);

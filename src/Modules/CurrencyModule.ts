@@ -31,7 +31,7 @@ import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "Currency",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "A points system used for granting the use of certain bot features"
 };
 
@@ -151,7 +151,7 @@ class BalanceCommand extends Command {
 }
 
 class PayCommand extends Command {
-    constructor(private currencyModule: CurrencyModule) {
+    constructor() {
         super("pay", "<user> <amount>");
     }
 
@@ -204,7 +204,7 @@ export default class CurrencyModule extends AbstractModule {
 
     @command bankCommand = new BankCommand(this.makeConfirmation);
     @command balanceCommand = new BalanceCommand();
-    @command payCommand = new PayCommand(this);
+    @command payCommand = new PayCommand();
 
     @permission payUser = new Permission("currency.pay", Role.NORMAL);
     @permission getBalance = new Permission("currency.balance", Role.NORMAL);
@@ -233,20 +233,14 @@ export default class CurrencyModule extends AbstractModule {
         clearInterval(this.tickInterval);
     }
 
-    async tickHandler(): Promise<void[]> {
-        const ops = [];
-        for (const channel of this.channelManager.getAll()) {
-            if (this.isDisabled(channel)) continue;
-            const amount = channel.online.get() ?
-                await channel.getSetting(this.onlineGain) :
-                await channel.getSetting(this.offlineGain);
-
-            for (const chatter of channel.getChatters()) {
-                let balance = chatter.balance;
-                if (typeof balance === undefined) balance = 0;
-                ops.push(chatter.deposit(amount));
-            }
-        }
-        return Promise.all(ops);
+    async tickHandler(): Promise<void[][]> {
+        return Promise.all(
+            this.channelManager.getAll()
+                .filter(channel => !this.isDisabled(channel))
+                .map(async channel => {
+                    const amount = await channel.getSetting(channel.online.get() ? this.onlineGain : this.offlineGain);
+                    return Promise.all(channel.getChatters().map(chatter => chatter.deposit(amount)));
+                })
+        );
     }
 }

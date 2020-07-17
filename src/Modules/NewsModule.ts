@@ -30,7 +30,7 @@ import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "News",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "Automated messages that are sent periodically"
 };
 

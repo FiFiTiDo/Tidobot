@@ -12,22 +12,22 @@ import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import {FloatConverter} from "../Systems/Commands/Validation/Float";
-import {ChatterConverter} from "../Systems/Commands/Validation/Chatter";
+import {FloatArg} from "../Systems/Commands/Validation/Float";
+import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {getLogger} from "../Utilities/Logger";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
-import {BooleanConverter} from "../Systems/Commands/Validation/Boolean";
+import {BooleanArg} from "../Systems/Commands/Validation/Boolean";
 import {command} from "../Systems/Commands/decorators";
 import ConnectedEvent from "../Chat/Events/ConnectedEvent";
 import {EventHandler} from "../Systems/Event/decorators";
-import Timeout = NodeJS.Timeout;
 import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Argument, Channel, MessageArg, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import Message from "../Chat/Message";
+import Timeout = NodeJS.Timeout;
 
 export const MODULE_INFO = {
     name: "Currency",
@@ -46,7 +46,7 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.give")
     async give(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new ChatterConverter()) chatter: ChatterEntity, @Argument(new FloatConverter({ min: 1 })) amount: number
+        @Argument(new ChatterArg()) chatter: ChatterEntity, @Argument(new FloatArg({ min: 1 })) amount: number
     ): Promise<void> {
         return chatter.deposit(amount)
             .then(async () => response.message("currency:give", {
@@ -59,8 +59,8 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.give-all")
     async giveAll(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new FloatConverter({ min: 1 })) amount: number,
-        @Argument(BooleanConverter, "only-active", false) onlyActive: boolean
+        @Argument(new FloatArg({ min: 1 })) amount: number,
+        @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
         const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
         return Promise.all(chatters.map(chatter => chatter.deposit(amount)))
@@ -73,8 +73,8 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.take")
     async take(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new ChatterConverter()) chatter: ChatterEntity,
-        @Argument(new FloatConverter({ min: 1 })) amount: number
+        @Argument(new ChatterArg()) chatter: ChatterEntity,
+        @Argument(new FloatArg({ min: 1 })) amount: number
     ): Promise<void> {
         return chatter.withdraw(amount)
             .then(async () => response.message("currency:take", {
@@ -87,8 +87,8 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.take-all")
     async takeAll(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new FloatConverter({ min: 1 })) amount: number,
-        @Argument(BooleanConverter, "only-active", false) onlyActive: boolean
+        @Argument(new FloatArg({ min: 1 })) amount: number,
+        @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
         const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
         return Promise.all(chatters.map(chatter => chatter.withdraw(amount)))
@@ -101,7 +101,7 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.balance")
     async balance(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new ChatterConverter()) chatter: ChatterEntity
+        @Argument(new ChatterArg()) chatter: ChatterEntity
     ): Promise<void> {
         return response.message("currency:balance-other", {username: chatter.name, balance: await chatter.formattedBalance});
     }
@@ -110,7 +110,7 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.reset")
     async reset(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new ChatterConverter()) chatter: ChatterEntity
+        @Argument(new ChatterArg()) chatter: ChatterEntity
     ): Promise<void> {
         chatter.balance = 0;
         return chatter.save()
@@ -159,8 +159,8 @@ class PayCommand extends Command {
     @CheckPermission("currency.pay")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
-        @Argument(new ChatterConverter()) chatter: ChatterEntity,
-        @Argument(new FloatConverter({ min: 1 })) amount: number
+        @Argument(new ChatterArg()) chatter: ChatterEntity,
+        @Argument(new FloatArg({ min: 1 })) amount: number
     ): Promise<void> {
         const successful = await sender.charge(amount);
         if (successful === false) {

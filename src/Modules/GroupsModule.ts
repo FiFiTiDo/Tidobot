@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import GroupsEntity from "../Database/Entities/GroupsEntity";
 import GroupMembersEntity from "../Database/Entities/GroupMembersEntity";
@@ -10,24 +10,29 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {chatter as chatterConverter} from "../Systems/Commands/Validation/Chatter";
-import {string} from "../Systems/Commands/Validation/String";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
-import {entity} from "../Systems/Commands/Validation/Entity";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
+import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
+import {StringArg} from "../Systems/Commands/Validation/String";
+import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "Group",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "Assign users groups to allow for granting permissions to groups of people rather than individually"
 };
 
 const logger = getLogger(MODULE_INFO.name);
+const GroupArg = new EntityArg(GroupsEntity, {msgKey: "groups:error.unknown", optionKey: "group"});
 
 class GroupCommand extends Command {
     private readonly confirmationFactory: ConfirmationFactory;
@@ -38,228 +43,103 @@ class GroupCommand extends Command {
         this.confirmationFactory = groupsModule.makeConfirmation;
     }
 
-    @Subcommand("add")
-    async addMember({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group add <group> <user>",
-            subcommand: "add",
-            arguments: tuple(
-                entity({
-                    name: "group",
-                    entity: GroupsEntity,
-                    required: true,
-                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
-                }),
-                chatterConverter({ name: "user", required: true })
-            ),
-            permission: this.groupsModule.addToGroup
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [group, chatter] = args;
-
-        GroupMembersEntity.create(chatter.userId, group)
+    @CommandHandler(/^g(roup)? add/, "group add <group> <user>")
+    @CheckPermission("group.add")
+    async addMember(
+        event: CommandEvent, @ResponseArg response: Response,
+        @Argument(GroupArg) group: GroupsEntity, @Argument(new ChatterArg()) chatter: ChatterEntity
+    ): Promise<void> {
+        return GroupMembersEntity.create(chatter.userId, group)
             .then(added => response.message(added ? "groups:user.added" : "groups:user.already", {
                 username: chatter.name,
                 group: group.name
-            })).catch((e) => {
-            logger.error("Unable to add user to group");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
-        });
+            }))
+            .catch((e) => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("remove", "rem")
-    async removeMember({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group remove <group> <user>",
-            subcommand: "remove",
-            arguments: tuple(
-                entity({
-                    name: "group",
-                    entity: GroupsEntity,
-                    required: true,
-                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
-                }),
-                chatterConverter({ name: "user", required: true })
-            ),
-            permission: this.groupsModule.removeFromGroup
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [group, chatter] = args;
-
+    @CommandHandler(/^g(roup)? rem(ove)?/, "group remove <group> <user>")
+    @CheckPermission("group.remove")
+    async removeMember(
+        event: CommandEvent, @ResponseArg response: Response,
+        @Argument(GroupArg) group: GroupsEntity, @Argument(new ChatterArg()) chatter: ChatterEntity
+    ): Promise<void> {
         try {
             const member = await GroupMembersEntity.findByUser(chatter, group);
             if (member === null)
-                return response.message("groups:user.not", {username: chatter.name, group: group.name});
-            await member.delete();
-            return response.message("groups:user.removed", {username: chatter.name, group: group.name});
+                return await response.message("groups:user.not", {username: chatter.name, group: group.name});
+            await member?.delete();
+            return await response.message("groups:user.removed", {username: chatter.name, group: group.name});
         } catch (e) {
-            logger.error("Unable to remove user from the group");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
+            return await response.genericErrorAndLog(e, logger);
         }
     }
 
-    @Subcommand("create")
-    async createGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group create <group>",
-            subcommand: "create",
-            arguments: tuple(
-                string({ name: "group name", required: true })
-            ),
-            permission: this.groupsModule.createGroup
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [name] = args;
-
-        try {
-            const group = await GroupsEntity.create(name, msg.getChannel());
-            return response.message(group === null ? "groups:error.exists" : "groups:created", {group: name});
-        } catch (e) {
-            logger.error("Unable to create the group");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
-        }
+    @CommandHandler(/^g(roup)? create/, "group create <name>")
+    @CheckPermission("group.create")
+    async createGroup(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(StringArg) name: string
+    ): Promise<void> {
+        return GroupsEntity.create(name, channel)
+            .then(group => response.message(group === null ? "groups:error.exists" : "groups:created", {group: name}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("delete", "del")
-    async deleteGroup({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group delete <group>",
-            subcommand: "delete",
-            arguments: tuple(
-                entity({
-                    name: "group",
-                    entity: GroupsEntity,
-                    required: true,
-                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
-                })
-            ),
-            permission: this.groupsModule.deleteGroup
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [group] = args;
-
-        const confirmation = await this.confirmationFactory(msg, await response.translate("groups:delete-confirm", {
-            group: group.name
-        }), 30);
-        confirmation.addListener(ConfirmedEvent, async () => {
-            try {
-                await group.delete();
-                return response.message("groups:deleted", {group: group.name});
-            } catch (e) {
-                logger.error("Unable to delete the group");
-                logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                return response.genericError();
-            }
-        });
+    @CommandHandler(/^g(roup)? del(ete)?/, "group delete <group>")
+    @CheckPermission("group.delete")
+    async deleteGroup(
+        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        @Argument(GroupArg) group: GroupsEntity
+    ): Promise<void> {
+        const confirmMsg = await response.translate("groups:delete-confirm", {group: group.name});
+        const confirmation = await this.confirmationFactory(msg, confirmMsg, 30);
+        confirmation.addListener(ConfirmedEvent, async () => group.delete()
+            .then(() => response.message("groups:deleted", {group: group.name}))
+            .catch(e => response.genericErrorAndLog(e, logger))
+        );
         confirmation.run();
     }
 
-    @Subcommand("grant")
-    async grantPerm({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group grant <group> <permission>",
-            subcommand: "grant",
-            arguments: tuple(
-                entity({
-                    name: "group",
-                    entity: GroupsEntity,
-                    required: true,
-                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
-                }),
-                string({ name: "permission", required: true })
-            ),
-            permission: "permission.grant"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [group, permission] = args;
-
-        await GroupPermissionsEntity.update(group, permission, true)
+    @CommandHandler(/^g(roup)? grant/, "group grant <group> <permission>")
+    @CheckPermission("permission.grant")
+    async grantPerm(
+        event: CommandEvent, @ResponseArg response: Response,
+        @Argument(GroupArg) group: GroupsEntity, @Argument(StringArg) permission: string
+    ): Promise<void> {
+        return GroupPermissionsEntity.update(group, permission, true)
             .then(() => response.message("groups:permission.granted", {permission, group: group.name}))
-            .catch(e => {
-                logger.error("Unable to grant permission to group");
-                logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                return response.genericError();
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("deny")
-    async denyPerm({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group deny <group> <permission>",
-            subcommand: "deny",
-            arguments: tuple(
-                entity({
-                    name: "group",
-                    entity: GroupsEntity,
-                    required: true,
-                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
-                }),
-                string({ name: "permission", required: true })
-            ),
-            permission: "permission.deny"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [group, permission] = args;
-
-        await GroupPermissionsEntity.update(group, permission, false)
+    @CommandHandler(/^g(roup)? deny/, "group deny <group> <permission>")
+    @CheckPermission("permission.deny")
+    async denyPerm(
+        event: CommandEvent, @ResponseArg response: Response,
+        @Argument(GroupArg) group: GroupsEntity, @Argument(StringArg) permission: string
+    ): Promise<void> {
+        return GroupPermissionsEntity.update(group, permission, false)
             .then(() => response.message("groups:permission.denied", {group: group.name, permission}))
-            .catch(e => {
-                logger.error("Unable to deny permission for group");
-                logger.error("Caused by: " + e.message);
-                logger.error(e.stack);
-                return response.genericError();
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("reset")
-    async resetPerms({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group reset <group> [permission]",
-            subcommand: "reset",
-            arguments: tuple(
-                entity({
-                    name: "group",
-                    entity: GroupsEntity,
-                    required: true,
-                    error: {msgKey: "groups:error.unknown", optionKey: "group"}
-                }),
-                string({ name: "permission", required: false, defaultValue: undefined })
-            ),
-            permission: "permission.reset"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [group, permission] = args;
-
-        if (permission) {
-            await GroupPermissionsEntity.delete(group, permission)
+    @CommandHandler(/^g(roup)? reset/, "group reset <group> [permission]")
+    @CheckPermission("permission.reset")
+    async resetPerms(
+        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        @Argument(GroupArg) group: GroupsEntity, @Argument(StringArg, "permission", false) permission: string
+    ): Promise<void> {
+        if (permission) { // Reset specific permission
+            return GroupPermissionsEntity.delete(group, permission)
                 .then(() => response.message("groups:permission.delete.specific", {group: group.name, permission}))
-                .catch(e => {
-                    logger.error("Unable to deny permission for group");
-                    logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                    return response.genericError();
-                });
-        } else {
-            const confirmation = await this.confirmationFactory(msg, await response.translate("groups:permission.delete.confirm"), 30);
-            confirmation.addListener(ConfirmedEvent, () => {
-                return GroupPermissionsEntity.clear(group)
-                    .then(() => response.message("groups:permission.delete.all", {group: group.name}))
-                    .catch(e => {
-                        logger.error("Unable to deny permission for group");
-                        logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                        return response.genericError();
-                    });
-            });
-            confirmation.run();
+                .catch(e => response.genericErrorAndLog(e, logger));
+        } else { // Reset all permissions for the group
+            const confirmMsg = await response.translate("groups:permission.delete.confirm");
+            const confirm = await this.confirmationFactory(msg, confirmMsg, 30);
+            confirm.addListener(ConfirmedEvent, () => GroupPermissionsEntity.clear(group)
+                .then(() => response.message("groups:permission.delete.all", {group: group.name}))
+                .catch(e => response.genericErrorAndLog(e, logger))
+            );
+            confirm.run();
         }
     }
 }
@@ -276,10 +156,10 @@ export default class GroupsModule extends AbstractModule {
 
     @command groupCommand = new GroupCommand(this);
 
-    @permission addToGroup = new Permission("permission.group.add", Role.MODERATOR);
-    @permission removeFromGroup = new Permission("permission.group.remove", Role.MODERATOR);
-    @permission createGroup = new Permission("permission.group.create", Role.MODERATOR);
-    @permission deleteGroup = new Permission("permission.group.delete", Role.BROADCASTER);
+    @permission addToGroup = new Permission("group.add", Role.MODERATOR);
+    @permission removeFromGroup = new Permission("group.remove", Role.MODERATOR);
+    @permission createGroup = new Permission("group.create", Role.MODERATOR);
+    @permission deleteGroup = new Permission("group.delete", Role.BROADCASTER);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {

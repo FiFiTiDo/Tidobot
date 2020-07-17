@@ -95,7 +95,7 @@ export function string(opts: SingleStringOptions|MultipleStringOptions): ValueCo
     }
 }
 
-export class StringConverter {
+export class StringArg {
     static type = "string";
     static convert(input: string, name: string, column: number, event: CommandEvent): string {
         return input;

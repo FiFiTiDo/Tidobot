@@ -7,8 +7,8 @@ import {Role} from "../Systems/Permissions/Role";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import {StringConverter} from "../Systems/Commands/Validation/String";
-import {FloatConverter} from "../Systems/Commands/Validation/Float";
+import {StringArg} from "../Systems/Commands/Validation/String";
+import {FloatArg} from "../Systems/Commands/Validation/Float";
 import {getLogger} from "../Utilities/Logger";
 import {setting} from "../Systems/Settings/decorators";
 import {permission} from "../Systems/Permissions/decorators";
@@ -40,8 +40,8 @@ class BetCommand extends Command {
     @CheckPermission("bet.place")
     async place(
         event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
-        @Argument(StringConverter) option: string,
-        @Argument(new FloatConverter({ min: 1 })) amount: number
+        @Argument(StringArg) option: string,
+        @Argument(new FloatArg({ min: 1 })) amount: number
     ): Promise<void> {
         try {
             const resp = await this.betService.placeBet(sender, option, amount, channel);
@@ -66,7 +66,7 @@ class BetCommand extends Command {
     @CheckPermission("bet.open")
     async open(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(StringConverter) title: string,
+        @Argument(StringArg) title: string,
         @RestArguments() options: string[]
     ): Promise<void> {
         if (this.betService.openBet(title, options, channel)) {
@@ -80,7 +80,7 @@ class BetCommand extends Command {
     @CheckPermission("bet.close")
     async close(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(StringConverter, "winning option") option: string
+        @Argument(StringArg, "winning option") option: string
     ): Promise<void> {
         const game = this.betService.getGame(channel);
         if (!game?.isOpen()) return response.message("bet:error.not-open");

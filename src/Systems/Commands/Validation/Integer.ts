@@ -32,7 +32,7 @@ interface Constraints {
     max?: number;
 }
 
-export class IntegerConverter implements ArgumentConverter<number> {
+export class IntegerArg implements ArgumentConverter<number> {
     type = "integer";
 
     constructor(private constraints: Constraints = {}) {}

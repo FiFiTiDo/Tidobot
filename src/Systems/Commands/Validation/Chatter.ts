@@ -24,7 +24,7 @@ export function chatter(opts: ChatterOptions): ValueConverterInfo<ChatterEntity|
         return chatter;
     });
 }
-export class ChatterConverter implements ArgumentConverter<ChatterEntity> {
+export class ChatterArg implements ArgumentConverter<ChatterEntity> {
     constructor(private active: boolean = false) {}
 
     type = "chatter";

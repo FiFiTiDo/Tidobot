@@ -12,7 +12,7 @@ import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import FilterSystem from "../Systems/Filter/FilterSystem";
-import {ChatterConverter} from "../Systems/Commands/Validation/Chatter";
+import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {StringEnumConverter} from "../Systems/Commands/Validation/String";
 import Adapter from "../Adapters/Adapter";
 import {getLogger, logError} from "../Utilities/Logger";
@@ -88,7 +88,7 @@ class PermitCommand extends Command {
     @CheckPermission("filter.permit")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new ChatterConverter()) chatter: ChatterEntity
+        @Argument(new ChatterArg()) chatter: ChatterEntity
     ): Promise<void> {
         FilterSystem.getInstance().permitUser(chatter);
         await response.message("filter:permit", {
@@ -105,7 +105,7 @@ class PardonCommand extends Command {
     @CommandHandler("pardon", "pardon <user>")
     @CheckPermission("filter.pardon")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterConverter()) chatter: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: ChatterEntity
     ): Promise<void> {
         FilterSystem.getInstance().pardonUser(chatter);
         return response.message("filter:strikes-cleared", {username: chatter.name});
@@ -121,7 +121,7 @@ class PurgeCommand extends Command {
     @CheckPermission("filter.purge")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity,
-        @Argument(new ChatterConverter()) chatter: ChatterEntity
+        @Argument(new ChatterArg()) chatter: ChatterEntity
     ): Promise<void> {
         await this.filterModule.adapter.tempbanChatter(chatter,
             await channel.getSetting(this.filterModule.purgeLength),

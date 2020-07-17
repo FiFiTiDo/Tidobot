@@ -8,7 +8,7 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import {string, StringConverter} from "../Systems/Commands/Validation/String";
+import {string, StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
@@ -20,10 +20,10 @@ import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response"
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {EntityConverter} from "../Systems/Commands/Validation/Entity";
-import {IntegerConverter} from "../Systems/Commands/Validation/Integer";
-import {FloatConverter} from "../Systems/Commands/Validation/Float";
-import {BooleanConverter} from "../Systems/Commands/Validation/Boolean";
+import {EntityArg} from "../Systems/Commands/Validation/Entity";
+import {IntegerArg} from "../Systems/Commands/Validation/Integer";
+import {FloatArg} from "../Systems/Commands/Validation/Float";
+import {BooleanArg} from "../Systems/Commands/Validation/Boolean";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
@@ -32,7 +32,7 @@ export const MODULE_INFO = {
 };
 
 const logger = getLogger(MODULE_INFO.name);
-const CommandConverter = new EntityConverter(CommandEntity, { msgKey: "command:error.unknown", optionKey: "id" });
+const CommandConverter = new EntityArg(CommandEntity, { msgKey: "command:error.unknown", optionKey: "id" });
 
 class CommandCommand extends Command {
     constructor() {
@@ -43,7 +43,7 @@ class CommandCommand extends Command {
     @CheckPermission("command.add")
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(StringConverter) trigger: string,
+        @Argument(StringArg) trigger: string,
         @RestArguments(true, true) resp: string
     ): Promise<void> {
         CommandEntity.create(trigger, resp, channel)
@@ -95,7 +95,7 @@ class CommandCommand extends Command {
     async editPrice(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @Argument(new FloatConverter({ min: 0 })) value: number
+        @Argument(new FloatArg({ min: 0 })) value: number
     ): Promise<void> {
         command.price = value;
         command.save()
@@ -108,7 +108,7 @@ class CommandCommand extends Command {
     async editGlobalCooldown(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @Argument(new IntegerConverter({ min: 0 })) value: number
+        @Argument(new IntegerArg({ min: 0 })) value: number
     ): Promise<void> {
         command.globalCooldown = value;
         command.save()
@@ -121,7 +121,7 @@ class CommandCommand extends Command {
     async editUserCooldown(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @Argument(new IntegerConverter({ min: 0 })) value: number
+        @Argument(new IntegerArg({ min: 0 })) value: number
     ): Promise<void> {
         command.userCooldown = value;
         command.save()
@@ -134,7 +134,7 @@ class CommandCommand extends Command {
     async editEnabled(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @Argument(BooleanConverter) value: boolean
+        @Argument(BooleanArg) value: boolean
     ): Promise<void> {
         command.enabled = value;
         command.save()

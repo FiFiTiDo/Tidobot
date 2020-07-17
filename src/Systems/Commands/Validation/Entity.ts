@@ -38,7 +38,7 @@ interface ErrorInfo {
     optionKey: string;
 }
 
-export class EntityConverter<T extends ConvertibleEntity<T>> implements ArgumentConverter<T> {
+export class EntityArg<T extends ConvertibleEntity<T>> implements ArgumentConverter<T> {
     type: string;
 
     constructor(private entity: T, private error?: ErrorInfo) {

@@ -6,9 +6,9 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import {IntegerConverter} from "../Systems/Commands/Validation/Integer";
-import {StringConverter} from "../Systems/Commands/Validation/String";
-import {EntityConverter} from "../Systems/Commands/Validation/Entity";
+import {IntegerArg} from "../Systems/Commands/Validation/Integer";
+import {StringArg} from "../Systems/Commands/Validation/String";
+import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import Message from "../Chat/Message";
@@ -28,7 +28,7 @@ export const MODULE_INFO = {
 };
 
 const logger = getLogger(MODULE_INFO.name);
-const CounterConverter = new EntityConverter(CountersEntity, {msgKey: "counter:unknown", optionKey: "counter"});
+const CounterConverter = new EntityArg(CountersEntity, {msgKey: "counter:unknown", optionKey: "counter"});
 
 class CounterCommand extends Command {
     constructor() {
@@ -47,7 +47,7 @@ class CounterCommand extends Command {
     @CheckPermission("counter.change")
     async increment(
         event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerConverter({ min: 1 }), "amount", false) amount: number = 1
+        @Argument(new IntegerArg({ min: 1 }), "amount", false) amount: number = 1
     ): Promise<void> {
         counter.value += amount;
         return counter.save()
@@ -59,7 +59,7 @@ class CounterCommand extends Command {
     @CheckPermission("counter.change")
     async decrement(
         event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerConverter({ min: 1 }), "amount", false) amount: number = 1
+        @Argument(new IntegerArg({ min: 1 }), "amount", false) amount: number = 1
     ): Promise<void> {
         counter.value -= amount;
         return counter.save()
@@ -71,7 +71,7 @@ class CounterCommand extends Command {
     @CheckPermission("counter.change")
     async set(
         event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerConverter({ min: 1 })) amount: number
+        @Argument(new IntegerArg({ min: 1 })) amount: number
     ): Promise<void> {
         counter.value = amount;
         return counter.save()
@@ -83,7 +83,7 @@ class CounterCommand extends Command {
     @CheckPermission("counter.create")
     async create(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(StringConverter, "counter name") name: string
+        @Argument(StringArg, "counter name") name: string
     ): Promise<void> {
         return CountersEntity.make({channel}, {name, value: 0})
             .then(entity => response.message(entity === null ? "counter:error.exists" : "counter:created", { counter: name }))

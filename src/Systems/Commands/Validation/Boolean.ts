@@ -19,7 +19,7 @@ export function boolean(opts: IntegerOptions): ValueConverterInfo<boolean> {
     });
 }
 
-export class BooleanConverter {
+export class BooleanArg {
     static type = "boolean";
     static convert(input: string, name: string, column: number): boolean {
         const boolean = parseBool(input);

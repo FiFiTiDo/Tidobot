@@ -4,5 +4,6 @@
     "edited": "Edited news item #{{id}}",
     "removed": "Deleted news item #{{id}}",
     "cleared": "Deleted all news items",
+    "clear-confirm": "Are you sure you want to clear all news items?",
     "reloaded": "Reloaded news from the database"
 }

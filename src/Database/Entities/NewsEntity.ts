@@ -17,4 +17,12 @@ export default class NewsEntity extends ChannelSpecificEntity<NewsEntity> {
     public static async create(value: string, channel: ChannelEntity): Promise<NewsEntity | null> {
         return NewsEntity.make({channel}, {value});
     }
+
+    public static async convert(raw: string, channel: ChannelEntity): Promise<NewsEntity|null> {
+        const id = parseInt(raw);
+        if (isNaN(id) || id < 0) return null;
+        return this.get(id, { channel });
+    }
+
+    public static readonly TYPE = "news item";
 }

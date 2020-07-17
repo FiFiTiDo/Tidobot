@@ -15,17 +15,18 @@ import {inject} from "inversify";
 import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {string} from "../Systems/Commands/Validation/String";
-import {integer} from "../Systems/Commands/Validation/Integer";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Adapter from "../Adapters/Adapter";
 import {getLogger} from "../Utilities/Logger";
 import {permission} from "../Systems/Permissions/decorators";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
 import {setting} from "../Systems/Settings/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import {EntityArg} from "../Systems/Commands/Validation/Entity";
+import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "News",
@@ -34,6 +35,7 @@ export const MODULE_INFO = {
 };
 
 const logger = getLogger(MODULE_INFO.name);
+const NewsItemArg = new EntityArg(NewsEntity, {msgKey: "news:unknown", optionKey: "id"});
 
 interface LastMessage {
     item: NewsEntity;
@@ -50,82 +52,47 @@ class NewsCommand extends Command {
         this.confirmationFactory = newsModule.makeConfirmation;
     }
 
-    @Subcommand("add")
-    async add({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "news add <message>",
-            subcommand: "add",
-            arguments: tuple(
-                string({ name: "message", required: true, greedy: true })
-            ),
-            permission: this.newsModule.addItem
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [value] = args;
-
-        try {
-            const item = await NewsEntity.create(value, msg.getChannel());
-            await response.message("news:added", {id: item.id});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to add news item");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler("news add", "news add <message>")
+    @CheckPermission("news.add")
+    async add(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @RestArguments(true, true) value: string
+    ): Promise<void> {
+        return NewsEntity.create(value, channel)
+            .then(item => response.message("news:added", {id: item.id}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("remove", "rem")
-    async remove({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "news remove <index>",
-            subcommand: "remove",
-            arguments: tuple(
-                integer({ name: "item id", required: true })
-            ),
-            permission: this.newsModule.removeItem
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [id] = args;
-
-        const item = await NewsEntity.get(id, {channel: msg.getChannel()});
-        if (item === null) {
-            await response.message("news:unknown", {id});
-            return;
-        }
-
-        try {
-            await item.delete();
-            await response.message("news:removed", {id});
-        } catch (e) {
-            await response.genericError();
-            logger.error("Failed to remove news item");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-        }
+    @CommandHandler(/^news rem(ove)?/, "news remove <id>")
+    @CheckPermission("news.remove")
+    async remove(event: CommandEvent, @ResponseArg response: Response, @Argument(NewsItemArg) item: NewsEntity): Promise<void> {
+        return item.delete()
+            .then(() => response.message("news:removed", {id: item.id}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("clear")
-    async clear({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "news clear",
-            subcommand: "clear",
-            permission: this.newsModule.clearItems
-        }));
-         if (status !== ValidatorStatus.OK) return;
+    @CommandHandler("news edit", "news edit <id> <message>")
+    @CheckPermission("news.edit")
+    async edit(
+        event: CommandEvent, @ResponseArg response: Response,
+        @Argument(NewsItemArg) item: NewsEntity, @RestArguments(true, true) newMsg: string
+    ): Promise<void> {
+        item.value = newMsg;
+        return item.save()
+            .then(() => response.message("news:edited", {id: item.id}))
+            .catch(e => response.genericErrorAndLog(e, logger));
+    }
 
-        const confirmation = await this.confirmationFactory(msg, "Are you sure you want to clear all news items?", 30);
-        confirmation.addListener(ConfirmedEvent, async () => {
-            try {
-                await NewsEntity.removeEntries({channel: msg.getChannel()});
-                await response.message("news:cleared");
-            } catch (e) {
-                await response.genericError();
-                logger.error("Failed to clear news items");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            }
-        });
-        confirmation.run();
+    @CommandHandler("news clear", "news clear")
+    @CheckPermission("news.clear")
+    async clear(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message): Promise<void> {
+        const confirmMsg = await response.translate("news:clear-confirm");
+        const confirm = await this.confirmationFactory(msg, confirmMsg, 30);
+        confirm.addListener(ConfirmedEvent, async () => NewsEntity.removeEntries({ channel })
+            .then(() => response.message("news:cleared"))
+            .catch(e => response.genericErrorAndLog(e, logger))
+         );
+        confirm.run();
     }
 }
 
@@ -206,11 +173,7 @@ export default class NewsModule extends AbstractModule {
         }
         if (nextItem === null) nextItem = items[0];
 
-        this.lastMessage.set(channel.channelId, {
-            item: nextItem,
-            timestamp: moment(),
-            messageCount: 0
-        });
+        this.lastMessage.set(channel.channelId, {item: nextItem, timestamp: moment(), messageCount: 0});
         await this.adapter.sendMessage(nextItem.value, channel);
     }
 }

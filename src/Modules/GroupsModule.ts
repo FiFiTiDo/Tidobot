@@ -27,7 +27,7 @@ import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "Group",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Assign users groups to allow for granting permissions to groups of people rather than individually"
 };
 
@@ -43,7 +43,7 @@ class GroupCommand extends Command {
         this.confirmationFactory = groupsModule.makeConfirmation;
     }
 
-    @CommandHandler(/^g(roup)? add/, "group add <group> <user>")
+    @CommandHandler(/^g(roup)? add/, "group add <group> <user>", 1)
     @CheckPermission("group.add")
     async addMember(
         event: CommandEvent, @ResponseArg response: Response,
@@ -57,7 +57,7 @@ class GroupCommand extends Command {
             .catch((e) => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^g(roup)? rem(ove)?/, "group remove <group> <user>")
+    @CommandHandler(/^g(roup)? rem(ove)?/, "group remove <group> <user>", 1)
     @CheckPermission("group.remove")
     async removeMember(
         event: CommandEvent, @ResponseArg response: Response,
@@ -74,7 +74,7 @@ class GroupCommand extends Command {
         }
     }
 
-    @CommandHandler(/^g(roup)? create/, "group create <name>")
+    @CommandHandler(/^g(roup)? create/, "group create <name>", 1)
     @CheckPermission("group.create")
     async createGroup(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
@@ -85,7 +85,7 @@ class GroupCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^g(roup)? del(ete)?/, "group delete <group>")
+    @CommandHandler(/^g(roup)? del(ete)?/, "group delete <group>", 1)
     @CheckPermission("group.delete")
     async deleteGroup(
         event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
@@ -100,7 +100,7 @@ class GroupCommand extends Command {
         confirmation.run();
     }
 
-    @CommandHandler(/^g(roup)? grant/, "group grant <group> <permission>")
+    @CommandHandler(/^g(roup)? grant/, "group grant <group> <permission>", 1)
     @CheckPermission("permission.grant")
     async grantPerm(
         event: CommandEvent, @ResponseArg response: Response,
@@ -111,7 +111,7 @@ class GroupCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^g(roup)? deny/, "group deny <group> <permission>")
+    @CommandHandler(/^g(roup)? deny/, "group deny <group> <permission>", 1)
     @CheckPermission("permission.deny")
     async denyPerm(
         event: CommandEvent, @ResponseArg response: Response,
@@ -122,7 +122,7 @@ class GroupCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^g(roup)? reset/, "group reset <group> [permission]")
+    @CommandHandler(/^g(roup)? reset/, "group reset <group> [permission]", 1)
     @CheckPermission("permission.reset")
     async resetPerms(
         event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,

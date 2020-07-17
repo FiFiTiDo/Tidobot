@@ -17,7 +17,7 @@ import EventSystem from "../../Systems/Event/EventSystem";
 import ChannelManager from "../../Chat/ChannelManager";
 import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
-import {getLogger} from "../../Utilities/Logger";
+import {getLogger, logError} from "../../Utilities/Logger";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
@@ -148,9 +148,7 @@ export default class TwitchAdapter extends Adapter {
             try {
                 resp = await this.api.getUsers({login: channelName});
             } catch (e) {
-                TwitchAdapter.LOGGER.fatal("Unable to retrieve user from the API");
-                TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                TwitchAdapter.LOGGER.error(e.stack);
+                logError(TwitchAdapter.LOGGER, e, "Unable to retrieve user from the API", true);
                 process.exit(1);
             }
             const {id, login: name} = resp.data[0];
@@ -171,16 +169,34 @@ export default class TwitchAdapter extends Adapter {
         return channel;
     }
 
-    async unbanChatter(chatter: ChatterEntity): Promise<[string, string]> {
-        return this.client.unban(chatter.getChannel().name, chatter.name);
+    async unbanChatter(chatter: ChatterEntity): Promise<boolean> {
+        try {
+            await this.client.unban(chatter.getChannel().name, chatter.name);
+            return true;
+        } catch (e) {
+            logError(TwitchAdapter.LOGGER, e, "Tried to unban chatter " + chatter.name + " but was unable to");
+            return false;
+        }
     }
 
-    async banChatter(chatter: ChatterEntity, reason?: string): Promise<[string, string, string]> {
-        return this.client.ban(chatter.getChannel().name, chatter.name, reason);
+    async banChatter(chatter: ChatterEntity, reason?: string): Promise<boolean> {
+        try {
+            await this.client.ban(chatter.getChannel().name, chatter.name, reason);
+            return true;
+        } catch (e) {
+            logError(TwitchAdapter.LOGGER, e, "Tried to ban chatter " + chatter.name + " but was unable to");
+            return false;
+        }
     }
 
-    async tempbanChatter(chatter: ChatterEntity, length: number, reason?: string): Promise<[string, string, number, string]> {
-        return this.client.timeout(chatter.getChannel().name, chatter.name, length, reason);
+    async tempbanChatter(chatter: ChatterEntity, length: number, reason?: string): Promise<boolean> {
+        try {
+            await this.client.timeout(chatter.getChannel().name, chatter.name, length, reason);
+            return true;
+        } catch (e) {
+            logError(TwitchAdapter.LOGGER, e, "Tried to time out chatter " + chatter.name + " but was unable to");
+            return false;
+        }
     }
 
     getName(): string {

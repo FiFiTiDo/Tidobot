@@ -1,20 +1,26 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import {array_rand} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import {inject} from "inversify";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
 import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
 import Adapter from "../Adapters/Adapter";
 import {getLogger} from "../Utilities/Logger";
 import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
+import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import ChatterEntity from "../Database/Entities/ChatterEntity";
+import {randomFloat} from "../Utilities/RandomUtils";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 
 export const MODULE_INFO = {
     name: "Fun",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "Just a bunch of fun things that don't fit in their own module"
 };
 
@@ -25,31 +31,22 @@ class RouletteCommand extends Command {
         super("roulette", null);
     }
 
-    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
+    @CommandHandler("roulette", "roulette")
+    @CheckPermission("fun.roulette")
+    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity): Promise<void> {
         const {status} = await event.validate(new StandardValidationStrategy({
             usage: "roulette",
             permission: this.funModule.playRoulette
         }));
          if (status !== ValidatorStatus.OK) return;
 
-        await response.action("fun:roulette.lead_up", {
-            username: msg.getChatter().name
-        });
+        await response.action("fun:roulette.lead_up", {username: sender.name});
         setTimeout(async () => {
-            if (Math.random() > 1 / 6) {
-                await response.message("fun:roulette.safe", {
-                    username: msg.getChatter().name
-                });
+            if (randomFloat() > 1/6) {
+                await response.message("fun:roulette.safe", {username: sender.name});
             } else {
-                await response.message("fun:roulette.hit", {
-                    username: msg.getChatter().name
-                });
-                try {
-                    await this.funModule.adapter.tempbanChatter(msg.getChatter(), 60, await response.translate("fun:roulette.reason"));
-                } catch (e) {
-                    logger.warn(msg.getChatter().name + " tried to play roulette but I couldn't tempban them", {cause: e});
-                    return response.message("error.bot-not-permitted");
-                }
+                await response.message("fun:roulette.hit", {username: sender.name});
+                await this.funModule.adapter.tempbanChatter(sender, 60, await response.translate("fun:roulette.reason"));
             }
         }, 1000);
     }
@@ -60,35 +57,23 @@ class SeppukuCommand extends Command {
         super("seppuku", null);
     }
 
-    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "seppuku",
-            permission: this.funModule.playSeppuku
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        try {
-            return this.funModule.adapter.tempbanChatter(msg.getChatter(), 30, await response.translate("fun:seppuku.reason"));
-        } catch (e) {
-            logger.warn(msg.getChatter().name + " tried to commit seppuku but I couldn't tempban them", {cause: e});
-            return response.message("error.bot-not-permitted");
-        }
+    @CommandHandler("seppuku", "seppuku")
+    @CheckPermission("fun.seppuku")
+    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity): Promise<void> {
+        const successful = await this.funModule.adapter.tempbanChatter(sender, 30, await response.translate("fun:seppuku.reason"));
+        if (!successful) await response.message("error.bot-not-permitted");
     }
 }
 
 class Magic8BallCommand extends Command {
-    constructor(private funModule: FunModule) {
+    constructor() {
         super("8ball", null);
     }
 
-    async execute({event, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "8ball",
-            permission: this.funModule.play8Ball
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const resp = array_rand(await response.getTranslation("fun:8ball.responses"));
+    @CommandHandler("8ball", "8ball")
+    @CheckPermission("fun.8ball")
+    async handleCommand(event: CommandEvent, @ResponseArg response: Response): Promise<void> {
+        const resp = array_rand(await response.getTranslation<string[]>("fun:8ball.responses"));
         await response.message("fun:8ball.response", {response: resp});
     }
 }
@@ -102,7 +87,7 @@ export default class FunModule extends AbstractModule {
 
     @command rouletteCommand = new RouletteCommand(this);
     @command seppukuCommand = new SeppukuCommand(this);
-    @command magic8BallCommand = new Magic8BallCommand(this);
+    @command magic8BallCommand = new Magic8BallCommand();
 
     @permission playRoulette = new Permission("fun.roulette", Role.NORMAL);
     @permission playSeppuku = new Permission("fun.seppuku", Role.NORMAL);

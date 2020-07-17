@@ -1,215 +1,113 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import ListsEntity from "../Database/Entities/ListsEntity";
-import ListEntity from "../Database/Entities/ListEntity";
-import {tuple} from "../Utilities/ArrayUtils";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import CommandSystem from "../Systems/Commands/CommandSystem";
-import {CommandEvent, CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
-import {integer} from "../Systems/Commands/Validation/Integer";
-import {string} from "../Systems/Commands/Validation/String";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import {entity} from "../Systems/Commands/Validation/Entity";
+import {IntegerArg} from "../Systems/Commands/Validation/Integer";
+import {string, StringArg} from "../Systems/Commands/Validation/String";
+import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {permission} from "../Systems/Permissions/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
 
 export const MODULE_INFO = {
     name: "List",
-    version: "1.0.2",
+    version: "1.1.0",
     description: "Keep lists of different things like quotes or gifs"
 };
 
 const logger = getLogger(MODULE_INFO.name);
+const ListArg = new EntityArg(ListsEntity, {msgKey: "lists:unknown", optionKey: "list"});
 
 class ListCommand extends Command {
     constructor(private listModule: ListModule) {
         super("list", "<create|delete|add|edit|remove>");
     }
 
-    async execute(eventArgs: CommandEventArgs): Promise<void> {
-        if (await super.executeSubcommands(eventArgs)) return;
-
-        const {event, message: msg, response} = eventArgs;
-
-        const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, number]>({
-            usage: "list <list name> [item number]",
-            arguments: tuple(
-                entity({
-                    name: "list name",
-                    entity: ListsEntity,
-                    required: true,
-                    error: {msgKey: "lists:unknown", optionKey: "list"}
-                }),
-                integer({name: "item number", required: false})
-            ),
-            permission: args => args.length > 1 ? "list.view.specific" : "list.view.random"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const list = args[0];
-
-        let item: ListEntity;
-        if (args.length > 1) {
-            const itemNum = args[1];
-
-            item = await list.getItem(itemNum);
-            if (item === null) {
-                await response.message("lists:item.unknown", {number: itemNum});
-                return;
-            }
-        } else {
-            item = await list.getRandomItem();
-
-            if (item === null) {
-                await msg.getResponse().message("lists:empty", {list: list.name});
-                return;
-            }
-        }
-
-        await msg.getResponse().message("#" + item.id + ": " + item.value);
+    @CommandHandler(/^list (?!create|delete|del|add|edit|remove|rem)/, "list <list> [item number]")
+    @CheckPermission(event => event.getArgumentCount() > 1 ? "list.view.specific" : "list.view.random")
+    async handleCommand(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
+        @Argument(new IntegerArg({ min: 0 }), "item number", false) itemNum: number = null
+    ): Promise<void> {
+        const random = itemNum === null;
+        const item = random ? await list.getRandomItem() : await list.getItem(itemNum);
+        if (random) return await response.message(random ? "lists:empty" : "lists:item.unknown", {
+            number: itemNum, list: list.name
+        });
+        return await response.rawMessage("#" + item.id + ": " + item.value);
     }
 
-    @Subcommand("create")
-    async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {status, args} = await event.validate(new StandardValidationStrategy({
-            usage: "list create <list name>",
-            subcommand: "create",
-            arguments: tuple(
-                string({name: "list name", required: true})
-            ),
-            permission: "list.create"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [name] = args;
+    @CommandHandler("list create", "list create <name>")
+    @CheckPermission("list.create")
+    async create(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Argument(StringArg) name: string
+    ): Promise<void> {
+        return ListsEntity.create(name, channel)
+            .then(list => response.message(list === null ? "lists:exists" : "lists:created", {list: name}))
+            .catch(e => response.genericErrorAndLog(e, logger));
+    }
 
+    @CommandHandler(/^list del(ete)?/, "list delete <name>")
+    @CheckPermission("list.delete")
+    async delete(event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity): Promise<void> {
+        return list.delete()
+            .then(() => response.message("lists:deleted", {list: list.name}))
+            .catch(e => response.genericErrorAndLog(e, logger));
+    }
+
+    @CommandHandler("list add", "list add <list> <value>")
+    @CheckPermission("list.add")
+    async add(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
+        @RestArguments(true, true) value: string
+    ): Promise<void> {
+        return list.addItem(value)
+            .then(item => item === null ? response.genericError() : response.message("lists:item.added", {number: item.id}))
+            .catch(e => response.genericErrorAndLog(e, logger));
+    }
+
+    @CommandHandler("list edit", "list edit <list> <item> <new value>")
+    @CheckPermission("list.edit")
+    async edit(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
+        @Argument(new IntegerArg({ min: 0 }), "item number") itemNum: number,
+        @RestArguments(true, true) value: string
+    ): Promise<void> {
         try {
-            const list = await ListsEntity.create(name, msg.getChannel());
-            await response.message(list === null ? "lists:exists" : "lists:created", {list: name});
+            const item = await list.getItem(itemNum);
+            if (item === null) return await response.message("lists:item.unknown", {number: itemNum});
+            item.value = value;
+            return item.save()
+                .then(() => response.message("lists:item.edited", {number: item.id}))
+                .catch(e => response.genericErrorAndLog(e, logger));
         } catch (e) {
-            await response.genericError();
+            return await response.genericErrorAndLog(e, logger);
         }
     }
 
-    @Subcommand("delete", "del")
-    async delete({event, response}: CommandEventArgs): Promise<void> {
-        const {status, args} = await event.validate(new StandardValidationStrategy({
-            usage: "list delete <list name>",
-            subcommand: "delete",
-            arguments: tuple(
-                entity({
-                    name: "list name",
-                    entity: ListsEntity,
-                    required: true,
-                    error: {msgKey: "lists:unknown", optionKey: "list"}
-                }),
-            ),
-            permission: "list.delete"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const list: ListsEntity = args[0];
-
-        try {
-            await list.delete();
-            await response.message("lists:deleted", {list: name});
-        } catch (e) {
-            await response.genericError();
-        }
-    }
-
-    @Subcommand("add")
-    async add({event, response}: CommandEventArgs): Promise<void> {
-        const {status, args} = await event.validate(new StandardValidationStrategy<[ListsEntity, string]>({
-            usage: "list add <list name> <item>",
-            subcommand: "add",
-            arguments: tuple(
-                entity({
-                    name: "list name",
-                    entity: ListsEntity,
-                    required: true,
-                    error: {msgKey: "lists:unknown", optionKey: "list"}
-                }),
-                string({name: "value", required: true, greedy: true})
-            ),
-            permission: "list.delete"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [list, value] = args;
-        const item = await list.addItem(value);
-        if (item === null) {
-            await response.genericError();
-        } else {
-            await response.message("lists:item.added", {number: item.id});
-        }
-    }
-
-    @Subcommand("edit")
-    async edit({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy<[ListsEntity, number, string]>({
-            usage: "list edit <list name> <item number> <new value>",
-            subcommand: "edit",
-            arguments: tuple(
-                entity({
-                    name: "list name",
-                    entity: ListsEntity,
-                    required: true,
-                    error: {msgKey: "lists:unknown", optionKey: "list"}
-                }),
-                integer({name: "item number", required: true}),
-                string({name: "new value", required: true, greedy: true})
-            ),
-            permission: "list.edit"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [list, itemNum, value] = args;
+    @CommandHandler(/^list rem(ove)?/, "list remove <list> <item number>")
+    @CheckPermission("list.remove")
+    async remove(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
+        @Argument(new IntegerArg({ min: 0 }), "item number") itemNum: number
+    ): Promise<void> {
         const item = await list.getItem(itemNum);
-        if (item === null) {
-            await response.message("lists:item.unknown", {number: itemNum});
-        } else {
-            try {
-                item.value = value;
-                await item.save();
-                await response.message("lists:item.edited", {number: item.id});
-            } catch (e) {
-                await response.genericError();
-            }
-        }
-    }
-
-    @Subcommand("remove", "rem")
-    async remove({event, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "list remove <list name> <item number>",
-            subcommand: "remove",
-            arguments: tuple(
-                entity({
-                    name: "list name",
-                    entity: ListsEntity,
-                    required: true,
-                    error: {msgKey: "lists:unknown", optionKey: "list"}
-                }),
-                integer({name: "item number", required: true})
-            ),
-            permission: "list.add"
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [list, itemNum] = args;
-        const item = await list.getItem(itemNum);
-        if (item === null) {
-            await response.message("lists:item.unknown", {number: itemNum});
-        } else {
-            try {
-                await item.delete();
-                await response.message("lists:item.deleted", {number: item.id});
-            } catch (e) {
-                await response.genericError();
-            }
-        }
+        if (item === null) return await response.message("lists:item.unknown", {number: itemNum});
+        return item.delete()
+            .then(() => response.message("lists:item.deleted", {number: item.id}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
@@ -244,8 +142,8 @@ export default class ListModule extends AbstractModule {
                         if (origArgs.length < 1) {
                             args.push(listName);
                         } else {
-                            const subcmd = origArgs[0];
-                            switch (subcmd.toLowerCase()) {
+                            const subCmd = origArgs[0].toLowerCase();
+                            switch (subCmd) {
                                 case "create":
                                 case "delete":
                                     resolve("Cannot create or delete list using alias");
@@ -253,7 +151,7 @@ export default class ListModule extends AbstractModule {
                                 case "add":
                                 case "edit":
                                 case "remove":
-                                    args.push(subcmd);
+                                    args.push(subCmd);
                                     args.push(listName);
                                     args = args.concat(origArgs.slice(1));
                                     break;

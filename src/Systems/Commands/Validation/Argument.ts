@@ -1,6 +1,5 @@
 import {addPropertyMetadata, getPropertyMetadata} from "../../../Utilities/DecoratorUtils";
 import {CommandEvent} from "../CommandEvent";
-import Message from "../../../Chat/Message";
 import {AsyncResolvable, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError, MissingRequiredArgumentError} from "./ValidationErrors";
 
@@ -24,23 +23,23 @@ interface ConverterArgument<T> extends ArgumentMeta {
 }
 
 interface EventReducerArgument<T> extends ArgumentMeta {
-    reducer: (event: CommandEvent) => AsyncResolvable<T>;
+    reducer: (event: CommandEvent) => AsyncResolvable<void, T>;
 }
 
 export interface ArgumentConverter<T> {
     type: string;
-    convert(input: string, name: string, column: number, event: CommandEvent): AsyncResolvable<T>;
+    convert(input: string, name: string, column: number, event: CommandEvent): AsyncResolvable<void, T>;
 }
 
-export function Argument<T>(converter: ArgumentConverter<T>, name?: string = null, required: boolean = true): ParameterDecorator {
+export function Argument<T>(converter: ArgumentConverter<T>, name: string = null, required: boolean = true): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
         addPropertyMetadata<ConverterArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, { parameterIndex, converter, name: name ?? propertyKey, required })
     }
 }
 
-export function makeEventReducer<T>(reducer: (event: CommandEvent) => AsyncResolvable<T>): ParameterDecorator {
+export function makeEventReducer<T>(reducer: (event: CommandEvent) => AsyncResolvable<void, T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<EventReducerArgument<Message>>(ARGUMENT_META_KEY, target, propertyKey, { parameterIndex, reducer })
+        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, { parameterIndex, reducer })
     }
 }
 
@@ -55,11 +54,11 @@ export function RestArguments(required: boolean = true, join: boolean = false): 
     }
 }
 
-function isConverter(o: Object): o is ConverterArgument {
+function isConverter(o: Object): o is ConverterArgument<any> {
     return "converter" in o;
 }
 
-function isReducer(o: Object): o is EventReducerArgument {
+function isReducer(o: Object): o is EventReducerArgument<any> {
     return "reducer" in o;
 }
 
@@ -106,3 +105,5 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
 
     return args;
 }
+
+

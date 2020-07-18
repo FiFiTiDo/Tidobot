@@ -38,10 +38,10 @@ interface ErrorInfo {
     optionKey: string;
 }
 
-export class EntityArg<T extends ConvertibleEntity<T>> implements ArgumentConverter<T> {
+export class EntityArg<T extends Entity<T>> implements ArgumentConverter<T> {
     type: string;
 
-    constructor(private entity: T, private error?: ErrorInfo) {
+    constructor(private entity: ConvertibleEntity<T>, private error?: ErrorInfo) {
         this.type = entity.TYPE;
     }
 
@@ -55,7 +55,7 @@ export class EntityArg<T extends ConvertibleEntity<T>> implements ArgumentConver
             if (this.error)
                 throw new InvalidInputError(await response.translate(this.error.msgKey, {[this.error.optionKey]: input}));
             else
-                throw new InvalidArgumentError(this.name, this.entity.TYPE, input, column);
+                throw new InvalidArgumentError(name, this.entity.TYPE, input, column);
         }
         return entity;
     }

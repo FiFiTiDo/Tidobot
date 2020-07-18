@@ -5,7 +5,7 @@ import {addMetadata, getMetadata} from "../../../Utilities/DecoratorUtils";
 const COMMAND_HANDLER_META_KEY = "command:handler";
 
 export interface CommandHandlerFunction {
-    (event: CommandEvent, ...args: any[]): Promise<boolean>;
+    (event: CommandEvent, ...args: any[]): Promise<boolean|void>;
 }
 
 export function getCommandHandlers(target: any): string[] {

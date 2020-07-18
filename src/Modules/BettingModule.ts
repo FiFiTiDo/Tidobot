@@ -21,7 +21,7 @@ import {BetService, PlaceBetResponse} from "../Services/BetService";
 
 export const MODULE_INFO = {
     name: "Betting",
-    version: "1.1.1",
+    version: "1.1.2",
     description: "Place bets using points on a specific options, the total points is divided among those who bet for the winning option."
 };
 
@@ -98,7 +98,7 @@ class BetCommand extends Command {
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
     ): Promise<void> {
         const parts = [];
-        const totals = this.betService.getTotals(channel);
+        const totals = await this.betService.getTotals(channel);
         if (totals === null) return response.message("bet:error.no-recent");
         const {grandTotal, optionTotals} = totals;
         for (const [option, total] of optionTotals)

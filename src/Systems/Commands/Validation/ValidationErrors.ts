@@ -46,6 +46,18 @@ export class MissingRequiredArgumentError extends InvalidInputError {
     }
 }
 
+export class MissingRequiredCliArgumentError extends InvalidInputError {
+    constructor(private argument: string, private type: string) {
+        super(`Expected argument ${argument} of type ${type}`);
+    }
+
+    async getMessage(message: Message, usage: string): Promise<string> {
+        return message.getResponse().translate("command:error.expected-cli-argument", {
+            argument: this.argument, type: this.type
+        })
+    }
+}
+
 export class InvalidArgumentError extends InvalidInputError {
     constructor(private argument: string, private type: string, private given: string, private column: number) {
         super(`Expected arg ${argument} to be of type ${type} but was given ${given} at ${column}`);

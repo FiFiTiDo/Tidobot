@@ -1,5 +1,5 @@
 import {CommandEvent} from "../CommandEvent";
-import {resolveArguments} from "./Argument";
+import {resolveArguments, resolveCliArguments} from "./Argument";
 import {addMetadata, getMetadata} from "../../../Utilities/DecoratorUtils";
 
 const COMMAND_HANDLER_META_KEY = "command:handler";
@@ -12,7 +12,7 @@ export function getCommandHandlers(target: any): string[] {
     return getMetadata(COMMAND_HANDLER_META_KEY, target.constructor);
 }
 
-export function CommandHandler(match: string|RegExp, usage: string, shiftArgs: number = 0, silent: boolean = false) {
+export function CommandHandler(match: string|RegExp, usage: string, shiftArgs: number = 0, silent: boolean = false, cli: boolean = false) {
     return function (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<CommandHandlerFunction>) {
         const originalMethod = descriptor.value;
         descriptor.value = async function (event: CommandEvent) {
@@ -24,7 +24,9 @@ export function CommandHandler(match: string|RegExp, usage: string, shiftArgs: n
 
             const newEvent = event.clone();
             for (let i = 0; i < shiftArgs; i++) newEvent.shiftArgument();
-            const args = await resolveArguments(newEvent, target, propertyKey, usage, silent);
+            const args = cli ?
+                await resolveCliArguments(newEvent, target, propertyKey, usage, silent) :
+                await resolveArguments(newEvent, target, propertyKey, usage, silent);
             if (args === null) return false;
             originalMethod.apply(this, args);
             return true;

@@ -30,7 +30,7 @@ import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "News",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Automated messages that are sent periodically"
 };
 
@@ -52,7 +52,7 @@ class NewsCommand extends Command {
         this.confirmationFactory = newsModule.makeConfirmation;
     }
 
-    @CommandHandler("news add", "news add <message>")
+    @CommandHandler("news add", "news add <message>", 1)
     @CheckPermission("news.add")
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
@@ -63,7 +63,7 @@ class NewsCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^news rem(ove)?/, "news remove <id>")
+    @CommandHandler(/^news rem(ove)?/, "news remove <id>", 1)
     @CheckPermission("news.remove")
     async remove(event: CommandEvent, @ResponseArg response: Response, @Argument(NewsItemArg) item: NewsEntity): Promise<void> {
         return item.delete()
@@ -71,7 +71,7 @@ class NewsCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("news edit", "news edit <id> <message>")
+    @CommandHandler("news edit", "news edit <id> <message>", 1)
     @CheckPermission("news.edit")
     async edit(
         event: CommandEvent, @ResponseArg response: Response,
@@ -83,7 +83,7 @@ class NewsCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("news clear", "news clear")
+    @CommandHandler("news clear", "news clear", 1)
     @CheckPermission("news.clear")
     async clear(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message): Promise<void> {
         const confirmMsg = await response.translate("news:clear-confirm");

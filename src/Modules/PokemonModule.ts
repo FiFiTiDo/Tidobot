@@ -1,6 +1,6 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting";
@@ -8,23 +8,26 @@ import TrainerEntity from "../Database/Entities/TrainerEntity";
 import PokemonEntity, {formatStats} from "../Database/Entities/PokemonEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {randomChance} from "../Utilities/RandomUtils";
-import {array_rand, tuple} from "../Utilities/ArrayUtils";
+import {array_rand} from "../Utilities/ArrayUtils";
 import {Response} from "../Chat/Response";
 import ChannelManager from "../Chat/ChannelManager";
-import {chatter, chatter as chatterConverter} from "../Systems/Commands/Validation/Chatter";
-import {string} from "../Systems/Commands/Validation/String";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
+import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
+import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, makeEventReducer, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {InvalidInputError} from "../Systems/Commands/Validation/ValidationErrors";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
 
 export const MODULE_INFO = {
     name: "Pokemon",
-    version: "1.0.2",
+    version: "1.1.0",
     description: "Play pokemon using other users as your team's pokemon"
 };
 
@@ -67,188 +70,118 @@ function decayer(channelManager: ChannelManager): void {
     setTimeout(() => runDecay(channelManager).then(() => decayer(channelManager)), MS_PER_DAY / 2);
 }
 
+interface TrainerData {
+    chatter: ChatterEntity;
+    trainer: TrainerEntity;
+    team: PokemonEntity[];
+}
+
+const TrainerSender = makeEventReducer(async event => {
+    const chatter = event.getMessage().getChatter();
+    const trainer = await TrainerEntity.getByChatter(event.getMessage().getChatter());
+    const team = await trainer?.team() ?? [];
+    return {chatter, trainer, team}
+});
+class TrainerDataArg {
+    private static chatterArg = new ChatterArg();
+
+    static type = "trainer";
+    static async convert(input: string, name: string, column: number, event: CommandEvent): Promise<TrainerData> {
+        const response = event.getMessage().getResponse();
+        const chatter = await this.chatterArg.convert(input, name, column, event);
+        const trainer = await TrainerEntity.getByChatter(chatter);
+        if (trainer === null)
+            throw new InvalidInputError(await response.translate("pokemon:error.no-trainer", {username: input}));
+        const team = await trainer.team();
+        return {trainer, team, chatter};
+    }
+}
+
 class PokemonCommand extends Command {
     constructor(private pokemonModule: PokemonModule) {
         super("pokemon", "<team|throw|release|release-all|fight|stats|top>", ["poke", "pm"]);
     }
 
-    async getTrainerData(sender: ChatterEntity, response: Response): Promise<{ trainer: TrainerEntity, team: PokemonEntity[] }> {
-        try {
-            const trainer = await TrainerEntity.getByChatter(sender);
-            const team = await trainer.team();
-            return {trainer, team};
-        } catch (e) {
-            logger.error("Unable to retrieve user's team");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            await response.genericError();
-            return {trainer: null, team: []};
-        }
+    @CommandHandler(/^(pokemon|poke|pm) team$/, "pokemon team", 1)
+    @CheckPermission("pokemon.play")
+    async team(event: CommandEvent, @ResponseArg response: Response, @Sender sender, @TrainerSender {team}: TrainerData): Promise<void> {
+        return response.message("pokemon:team", {username: sender.name, team: team.map(pkmn => pkmn.toString())});
     }
 
-    @Subcommand("team")
-    async team({event, sender, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon team",
-            subcommand: "team",
-            permission: this.pokemonModule.playPokemon
-        }));
-        if (status !== ValidatorStatus.OK) return;
-
-        const trainer = await TrainerEntity.getByChatter(sender);
-        const teamArr = await trainer.team();
-        const team = teamArr.map(pkmn => pkmn.toString());
-        return response.message("pokemon:team", {username: sender.name, team});
-    }
-
-    @Subcommand("throw")
-    async throw({event, sender, channel, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon throw [user]",
-            subcommand: "throw",
-            arguments: tuple(
-                chatterConverter({name: "user", required: true})
-            ),
-            permission: this.pokemonModule.playPokemon
-        }));
-        if (status !== ValidatorStatus.OK) return;
-
-        const {trainer, team} = await this.getTrainerData(sender, response);
-        if (trainer === null) return;
-
+    @CommandHandler(/^(pokemon|poke|pm) throw/, "pokemon throw [target]", 1)
+    @CheckPermission("pokemon.play")
+    async throw(
+        event: CommandEvent, @ResponseArg response, @Channel channel: ChannelEntity, @TrainerSender {trainer, team}: TrainerData,
+        @Argument(new ChatterArg(), "target", false) chatter: ChatterEntity = null, @Sender sender: ChatterEntity
+    ): Promise<void> {
         const maxTeamSize = await channel.getSetting(this.pokemonModule.maxTeamSize);
         if (team.length >= maxTeamSize) return response.message("pokemon:error.full");
 
         const stats = await PokemonEntity.generateStats(trainer);
-        if (args[0]) {
-            const chatter = args[0] as ChatterEntity;
+        if (chatter !== null) {
             stats.name = chatter.name;
 
-            for (const pkmn of team)
-                if (pkmn.name === chatter.name)
-                    return response.message("pokemon:error.already-caught");
+            if (team.some(pkmn => pkmn.name === chatter.name))
+                return response.message("pokemon:error.already-caught");
         }
 
         const baseChance = await channel.getSetting(this.pokemonModule.baseCatchChance);
-        if (!randomChance(baseChance - (stats.level / 1000.0)))
-            return response.message("pokemon:catch.full", {
-                username: sender.name,
-                pokemon: formatStats(stats),
-                result: array_rand(await response.getTranslation("pokemon:catch.failed"))
-            });
-
-        let pokemon;
-        try {
-            pokemon = await PokemonEntity.fromStats(trainer, stats);
-        } catch (e) {
-            logger.error("Failed to generate pokemon entity from stats");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
-        }
-
-        return response.message("pokemon:catch.full", {
+        if (!randomChance(baseChance - (stats.level / 1000.0))) return response.message("pokemon:catch.full", {
             username: sender.name,
-            pokemon: pokemon.toFullString(),
-            result: await response.translate("pokemon:catch.success", {
-                nature: pokemon.nature
-            })
+            pokemon: formatStats(stats),
+            result: array_rand(await response.getTranslation("pokemon:catch.failed"))
         });
+
+        return PokemonEntity.fromStats(trainer, stats).then(async pkmn => response.message("pokemon:catch.full", {
+            username: sender.name,
+            pokemon: pkmn.toFullString(),
+            result: await response.translate("pokemon:catch.success", {
+                nature: pkmn.nature
+            })
+        })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("release", "rel")
-    async release({event, response, sender}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon release [pokemon]",
-            subcommand: "release",
-            arguments: tuple(
-                string({name: "pokemon name", required: false, defaultValue: undefined})
-            ),
-            permission: this.pokemonModule.playPokemon
-        }));
-        if (status !== ValidatorStatus.OK) return;
-
-        const {trainer, team} = await this.getTrainerData(sender, response);
-        if (trainer === null) return;
-
+    @CommandHandler(/^(pokemon|poke|pm) rel(ease)?/, "pokemon release [pokemon]", 1)
+    @CheckPermission("pokemon.play")
+    async release(
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity,
+        @TrainerSender {trainer, team}: TrainerData, @Argument(StringArg, "pokemon", false) name: string = null
+    ): Promise<void> {
         let pokemon = null;
-        if (args[0]) {
-            for (const pkmn of team)
-                if (pkmn.name.toLowerCase() === (args[0] as string).toLowerCase()) {
-                    pokemon = pkmn;
-                    break;
-                }
-            if (pokemon === null)
-                return response.message("pokemon:error.not-caught");
+        if (name !== null) {
+            pokemon = team.find(pkmn => pkmn.name.toLowerCase() === name.toLowerCase());
+            if (pokemon === undefined) return response.message("pokemon:error.not-caught");
         } else {
-            if (team.length < 1)
-                return response.message("pokemon:error.empty");
+            if (team.length < 1) return response.message("pokemon:error.empty");
             pokemon = array_rand(team);
         }
 
-        try {
-            await pokemon.delete();
-            await response.message("pokemon:released", {
-                username: sender.name,
-                pokemon: pokemon.toFullString()
-            })
-        } catch (e) {
-            logger.error("Unable to delete pokemon from database");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
-        }
+        return pokemon.delete().then(() => response.message("pokemon:released", {
+            username: sender.name,
+            pokemon: pokemon.toFullString()
+        })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("release-all", "rel-all")
-    async releaseAll({event, sender, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon release-all",
-            subcommand: "release-all",
-            permission: this.pokemonModule.playPokemon
-        }));
-        if (status !== ValidatorStatus.OK) return;
-
-        const {trainer, team} = await this.getTrainerData(sender, response);
-        if (trainer === null) return;
-
-        try {
-            const names = [];
-            const ops = [];
-            for (const pkmn of team) {
-                names.push(pkmn.name);
-                ops.push(pkmn.delete());
-            }
-            await Promise.all(ops);
-            await response.message("pokemon.released", {
-                username: sender.name,
-                pokemon: names.join(", ")
-            });
-        } catch (e) {
-            logger.error("Unable to delete all pokemon from a team");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            await response.genericError();
-        }
+    @CommandHandler(/^(pokemon|poke|pm) rel(ease)?-all/, "pokemon release-all", 1)
+    @CheckPermission("pokemon.play")
+    async releaseAll(
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity,
+        @TrainerSender {team}: TrainerData
+    ): Promise<void> {
+        const pokemon = team.map(pkmn => pkmn.name).join(", ");
+        return Promise.all(team.map(pkmn => pkmn.delete()))
+            .then(() => response.message("pokemon.released", {username: sender.name, pokemon}))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("fight")
-    async fight({event, sender, response, channel}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon fight <trainer>",
-            subcommand: "fight",
-            arguments: tuple(
-                chatterConverter({name: "trainer", required: true, active: true})
-            ),
-            permission: this.pokemonModule.playPokemon
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [chatter] = args;
+    @CommandHandler(/^(pokemon|poke|pm) fight/, "pokemon fight <trainer>", 1)
+    @CheckPermission("pokemon.play")
+    async fight(
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
+        @TrainerSender self: TrainerData, @Argument(TrainerDataArg,"trainer") target: TrainerData
+    ): Promise<void> {
 
-        if (sender.is(chatter)) return response.message("pokemon:error.self");
-
-        const self = await this.getTrainerData(sender, response);
-        const target = await this.getTrainerData(chatter, response);
+        if (sender.is(target.chatter)) return response.message("pokemon:error.self");
 
         if (self.team.length < 1) return response.message("pokemon:error.no-team-self");
         if (target.team.length < 1) return response.message("pokemon:error.no-team-target");
@@ -288,10 +221,7 @@ class PokemonCommand extends Command {
             await self.trainer.save();
             await target.trainer.save();
         } catch (e) {
-            logger.error("Unable to save trainer data");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
+            return await response.genericErrorAndLog(e, logger);
         }
 
         try {
@@ -307,53 +237,33 @@ class PokemonCommand extends Command {
             if (levelUp.length > 0)
                 result += " " + await response.translate("pokemon:battle.level-up", {pokemon: levelUp.join(", ")});
         } catch (e) {
-            logger.error("Unable to save pokemon data");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
+            return await response.genericErrorAndLog(e, logger);
         }
 
         await response.message("pokemon:battle.base", {
             self: sender.name,
             selfMon: selfMon.toString(),
-            target: chatter.name,
+            target: target.chatter.name,
             targetMon: targetMon.toString(),
             result
         })
     }
 
-    @Subcommand("stats")
-    async stats({event, sender, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon stats",
-            subcommand: "stats",
-            arguments: tuple(
-                chatter({ name: "trainer", required: false })
-            ),
-            permission: args => args[0] === null ? this.pokemonModule.viewStats : this.pokemonModule.viewOthersStats
-        }));
-        if (status !== ValidatorStatus.OK) return;
-
-        const user = args[0] === null ? sender : args[0];
-        let {trainer} = await this.getTrainerData(user, response);
-        if (trainer === null) return;
-
-        const {won, lost, draw} = trainer;
+    @CommandHandler(/^(pokemon|poke|pm) stats/, "pokemon stats [trainer]", 1)
+    @CheckPermission(event => event.getArgumentCount() < 1 ? "pokemon.stats" : "pokemon.stats.other")
+    async stats(
+        event: CommandEvent, @ResponseArg response: Response, @TrainerSender sender: TrainerData,
+        @Argument(TrainerDataArg, "trainer", false) target: TrainerData = null
+    ): Promise<void> {
+        const {chatter, trainer: {won, lost, draw}} = target ?? sender;
         let ratio = ((won / (won + lost + draw)) * 100);
         if (isNaN(ratio)) ratio = 0;
-
-        return response.message("pokemon:stats", {username: user.name, ratio, won, lost, draw})
+        return response.message("pokemon:stats", {username: chatter.name, ratio, won, lost, draw})
     }
 
-    @Subcommand("top")
-    async top({event, channel, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "pokemon top",
-            subcommand: "top",
-            permission: this.pokemonModule.viewStats
-        }));
-        if (status !== ValidatorStatus.OK) return;
-
+    @CommandHandler(/^(pokemon|poke|pm) top/, "pokemon top", 1)
+    @CheckPermission("pokemon.stats")
+    async top(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         const names = [];
         const data = {};
         const levels = {};
@@ -366,10 +276,7 @@ class PokemonCommand extends Command {
                 levels[chatter.name] = trainerData.team.reduce((prev, pkmn) => prev + pkmn.level, 0);
             }
         } catch (e) {
-            logger.error("Unable to get all trainer data");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
+            return await response.genericErrorAndLog(e, logger);
         }
 
         const sorted = names.sort((a, b) => levels[b] - levels[a]);

@@ -24,7 +24,7 @@ import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction"
 
 export const MODULE_INFO = {
     name: "List",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Keep lists of different things like quotes or gifs"
 };
 
@@ -36,7 +36,7 @@ class ListCommand extends Command {
         super("list", "<create|delete|add|edit|remove>");
     }
 
-    @CommandHandler(/^list (?!create|delete|del|add|edit|remove|rem)/, "list <list> [item number]")
+    @CommandHandler(/^list (?!create|delete|del|add|edit|remove|rem)/, "list <list> [item number]", 1)
     @CheckPermission(event => event.getArgumentCount() > 1 ? "list.view.specific" : "list.view.random")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
@@ -50,7 +50,7 @@ class ListCommand extends Command {
         return await response.rawMessage("#" + item.id + ": " + item.value);
     }
 
-    @CommandHandler("list create", "list create <name>")
+    @CommandHandler("list create", "list create <name>", 1)
     @CheckPermission("list.create")
     async create(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Argument(StringArg) name: string
@@ -60,7 +60,7 @@ class ListCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^list del(ete)?/, "list delete <name>")
+    @CommandHandler(/^list del(ete)?/, "list delete <name>", 1)
     @CheckPermission("list.delete")
     async delete(event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity): Promise<void> {
         return list.delete()
@@ -68,7 +68,7 @@ class ListCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("list add", "list add <list> <value>")
+    @CommandHandler("list add", "list add <list> <value>", 1)
     @CheckPermission("list.add")
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
@@ -79,7 +79,7 @@ class ListCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler("list edit", "list edit <list> <item> <new value>")
+    @CommandHandler("list edit", "list edit <list> <item> <new value>", 1)
     @CheckPermission("list.edit")
     async edit(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
@@ -98,7 +98,7 @@ class ListCommand extends Command {
         }
     }
 
-    @CommandHandler(/^list rem(ove)?/, "list remove <list> <item number>")
+    @CommandHandler(/^list rem(ove)?/, "list remove <list> <item number>", 1)
     @CheckPermission("list.remove")
     async remove(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,

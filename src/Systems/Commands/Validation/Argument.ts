@@ -1,9 +1,6 @@
 import {addPropertyMetadata, getPropertyMetadata} from "../../../Utilities/DecoratorUtils";
 import {CommandEvent} from "../CommandEvent";
-import {Response} from "../../../Chat/Response";
 import Message from "../../../Chat/Message";
-import ChatterEntity from "../../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../../Database/Entities/ChannelEntity";
 import {AsyncResolvable, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError, MissingRequiredArgumentError} from "./ValidationErrors";
 
@@ -27,7 +24,7 @@ interface ConverterArgument<T> extends ArgumentMeta {
 }
 
 interface EventReducerArgument<T> extends ArgumentMeta {
-    reducer: (event: CommandEvent) => T;
+    reducer: (event: CommandEvent) => AsyncResolvable<T>;
 }
 
 export interface ArgumentConverter<T> {
@@ -41,16 +38,16 @@ export function Argument<T>(converter: ArgumentConverter<T>, name?: string = nul
     }
 }
 
-function makeReducer<T>(reducer: (event: CommandEvent) => T): ParameterDecorator {
+export function makeEventReducer<T>(reducer: (event: CommandEvent) => AsyncResolvable<T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
         addPropertyMetadata<EventReducerArgument<Message>>(ARGUMENT_META_KEY, target, propertyKey, { parameterIndex, reducer })
     }
 }
 
-export const MessageArg = makeReducer(event => event.getMessage());
-export const ResponseArg = makeReducer(event => event.getMessage().getResponse());
-export const Sender = makeReducer(event => event.getMessage().getChatter());
-export const Channel = makeReducer(event => event.getMessage().getChannel());
+export const MessageArg = makeEventReducer(event => event.getMessage());
+export const ResponseArg = makeEventReducer(event => event.getMessage().getResponse());
+export const Sender = makeEventReducer(event => event.getMessage().getChatter());
+export const Channel = makeEventReducer(event => event.getMessage().getChannel());
 
 export function RestArguments(required: boolean = true, join: boolean = false): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
@@ -98,7 +95,7 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
                 }
             }
         } else if (isReducer(arg)) {
-            args[arg.parameterIndex] = arg.reducer(event);
+            args[arg.parameterIndex] = await resolveAsync(arg.reducer(event));
         }
     }
 

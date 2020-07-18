@@ -25,7 +25,7 @@ import {logWarningOnFail, validateFunction} from "../Utilities/ValidateFunction"
 
 export const MODULE_INFO = {
     name: "Permission",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Change the minimum role required for predefined permissions or make your own"
 };
 
@@ -47,7 +47,7 @@ class PermissionCommand extends Command {
         super("permission", "<create|delete|set|reset>", ["perm"]);
     }
 
-    @CommandHandler(/^perm(ission)? create/, "permission create <permission> <default role>")
+    @CommandHandler(/^perm(ission)? create/, "permission create <permission> <default role>", 1)
     @CheckPermission("permission.create")
     async create(
         event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message, @Channel channel: ChannelEntity,
@@ -62,7 +62,7 @@ class PermissionCommand extends Command {
         ).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^perm(ission)? del(ete)?/, "permission delete <permission>")
+    @CommandHandler(/^perm(ission)? del(ete)?/, "permission delete <permission>", 1)
     @CheckPermission("permission.delete")
     async delete(
         event: CommandEvent, @ResponseArg response: Response, @Argument(PermissionArg) permission: PermissionEntity
@@ -74,7 +74,7 @@ class PermissionCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^perm(ission)? set/, "permission set <permission> <role>")
+    @CommandHandler(/^perm(ission)? set/, "permission set <permission> <role>", 1)
     @CheckPermission("permission.set")
     async set(
         event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
@@ -88,7 +88,7 @@ class PermissionCommand extends Command {
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^perm(ission)? reset (.+)$/, "permission reset <permission>")
+    @CommandHandler(/^perm(ission)? reset (.+)$/, "permission reset <permission>", 1)
     @CheckPermission("permission.reset")
     async reset(
         event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,

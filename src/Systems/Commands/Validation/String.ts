@@ -102,7 +102,7 @@ export class StringArg {
     }
 }
 
-export class StringEnumConverter implements ArgumentConverter<string> {
+export class StringEnumArg implements ArgumentConverter<string> {
     type: string;
 
     constructor(private accepted: string[]) {}

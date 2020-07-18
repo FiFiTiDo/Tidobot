@@ -7,7 +7,8 @@
         "empty-other": "{{username}} does not have any pokemon on their team",
         "self": "You cannot battle yourself",
         "no-team-target": "Wow rude, you are trying to attack a poor defenseless trainer?",
-        "no-team-self": "You cannot engage in a battle without any pokemon"
+        "no-team-self": "You cannot engage in a battle without any pokemon",
+        "no-trainer": "{{username}} is not a trainer!"
     },
     "team": "{{username}}'s team: {{team}}",
     "catch": {

@@ -13,7 +13,7 @@ import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import FilterSystem from "../Systems/Filter/FilterSystem";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
-import {StringEnumConverter} from "../Systems/Commands/Validation/String";
+import {StringEnumArg} from "../Systems/Commands/Validation/String";
 import Adapter from "../Adapters/Adapter";
 import {getLogger, logError} from "../Utilities/Logger";
 import {removePrefix} from "../Utilities/StringUtils";
@@ -131,7 +131,7 @@ class PurgeCommand extends Command {
     }
 }
 
-const ListConverter = new StringEnumConverter(["domains", "badWords", "emotes"]);
+const ListConverter = new StringEnumArg(["domains", "badWords", "emotes"]);
 class FilterCommand extends Command {
     constructor(private filterModule: FilterModule) {
         super("filter", "<add|remove|reset>");

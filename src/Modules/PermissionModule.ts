@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import PermissionEntity from "../Database/Entities/PermissionEntity";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
@@ -6,190 +6,108 @@ import Permission from "../Systems/Permissions/Permission";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {onePartConverter} from "../Systems/Commands/Validation/Converter";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {InvalidArgumentError} from "../Systems/Commands/Validation/ValidationErrors";
-import {string} from "../Systems/Commands/Validation/String";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
-import {entity} from "../Systems/Commands/Validation/Entity";
+import {StringArg} from "../Systems/Commands/Validation/String";
+import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {logWarningOnFail, validateFunction} from "../Utilities/ValidateFunction";
 
 export const MODULE_INFO = {
     name: "Permission",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "Change the minimum role required for predefined permissions or make your own"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
-const roleConverter = (name) => onePartConverter(name, "role", true, Role.OWNER, (part, column, message) => {
-    const role = parseRole(part);
-    if (role === null)
-        throw new InvalidArgumentError(name, "role", part, column);
-    return role;
-});
+class RoleArg {
+    static type = "role";
+    static convert(input: string, name: string, column: number): Role {
+        const role = parseRole(input);
+        if (role === null)
+            throw new InvalidArgumentError(name, "role", input, column);
+        return role;
+    }
+}
+const PermissionArg = new EntityArg(PermissionEntity, {msgKey: "permission:error.unknown", optionKey: "permission"});
 
 class PermissionCommand extends Command {
-    constructor(private readonly permissionModule: PermissionModule) {
+    constructor() {
         super("permission", "<create|delete|set|reset>", ["perm"]);
     }
 
-    @Subcommand("create")
-    async create({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "permission create <permission> <default-level>",
-            subcommand: "create",
-            arguments: tuple(
-                string({name: "permission", required: true}),
-                roleConverter("default role")
-            ),
-            permission: this.permissionModule.createPerm
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [perm_str, role] = args;
-
-        if (!await msg.checkPermission(perm_str)) {
-            await response.message("permission:error.not-permitted");
-            return;
-        }
-
-        try {
-            const permission = await PermissionEntity.make({channel: msg.getChannel()}, {
-                permission: perm_str,
-                role: Role[role],
-                default_role: Role[role],
-                module_defined: "false"
-            });
-
-            if (permission === null)
-                await response.message("permission:error.already-exists");
-            else
-                await response.message("permission:created", {permission: perm_str, role: Role[role]});
-        } catch (e) {
-            logger.error("Unable to create new permission");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            return response.genericError();
-        }
+    @CommandHandler(/^perm(ission)? create/, "permission create <permission> <default role>")
+    @CheckPermission("permission.create")
+    async create(
+        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message, @Channel channel: ChannelEntity,
+        @Argument(StringArg, "permission") permission: string, @Argument(RoleArg, "default role") role: Role
+    ): Promise<void> {
+        if (!(await msg.checkPermission(permission))) return response.message("permission:error.not-permitted");
+        return PermissionEntity.make({channel}, {
+            permission, role: Role[role], default_role: Role[role], module_defined: "false"
+        }).then(async perm => perm === null ?
+            await response.message("permission:error.already-exists") :
+            await response.message("permission:created", {permission: permission, role: Role[role]})
+        ).catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("delete", "del")
-    async delete({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "permission delete [permission]",
-            subcommand: "delete",
-            arguments: tuple(
-                entity({
-                    name: "permission",
-                    entity: PermissionEntity,
-                    required: true,
-                    error: {msgKey: "permission:error.unknown", optionKey: "permission"}
-                })
-            ),
-            permission: this.permissionModule.deletePerm
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [permission] = args;
-
+    @CommandHandler(/^perm(ission)? del(ete)?/, "permission delete <permission>")
+    @CheckPermission("permission.delete")
+    async delete(
+        event: CommandEvent, @ResponseArg response: Response, @Argument(PermissionArg) permission: PermissionEntity
+    ): Promise<void> {
         if (permission.moduleDefined)
             return response.message("permission:error.module-defined", {permission: permission.permission});
-
-        permission.delete()
+        return permission.delete()
             .then(() => response.message("permission:deleted", {permission: permission.permission}))
-            .catch(e => {
-                response.genericError();
-                logger.error("Unable to delete custom permission");
-                logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("set")
-    async set({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "permission set <permission> <level>",
-            subcommand: "set",
-            arguments: tuple(
-                entity({
-                    name: "permission",
-                    entity: PermissionEntity,
-                    required: true,
-                    error: {msgKey: "permission:error.unknown", optionKey: "permission"}
-                }),
-                roleConverter("level")
-            ),
-            permission: this.permissionModule.setPerm
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [permission, role] = args;
-
-        if (!await msg.checkPermission(permission.permission)) {
-            await response.message("permission:error.not-permitted");
-            return;
-        }
-
+    @CommandHandler(/^perm(ission)? set/, "permission set <permission> <role>")
+    @CheckPermission("permission.set")
+    async set(
+        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        @Argument(PermissionArg) permission: PermissionEntity, @Argument(RoleArg) role: Role
+    ): Promise<void> {
+        if (!(await msg.checkPermission(permission.permission)))
+            return response.message("permission:error.not-permitted");
         permission.role = role;
         permission.save()
             .then(() => response.message("permission:set", {permission: permission.permission, role: Role[role]}))
-            .catch(e => {
-                response.genericError();
-                logger.error("Unable to set permission level");
-                logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("reset")
-    async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "permission reset [permission]",
-            subcommand: "reset",
-            arguments: tuple(
-                entity({
-                    name: "permission",
-                    entity: PermissionEntity,
-                    required: true,
-                    error: {msgKey: "permission:error.unknown", optionKey: "permission"}
-                })
-            ),
-            permission: this.permissionModule.resetPerm
-        }));
-        if (status !== ValidatorStatus.OK) return;
-        const [permission] = args;
+    @CommandHandler(/^perm(ission)? reset (.+)$/, "permission reset <permission>")
+    @CheckPermission("permission.reset")
+    async reset(
+        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        @Argument(PermissionArg, "permission") permission: PermissionEntity = null
+    ): Promise<void> {
+        if (!(await msg.checkPermission(permission.permission)))
+            return response.message("permission:error.not-permitted");
+        permission.role = permission.defaultRole;
+        return permission.save()
+            .then(() => response.message("permissions:reset", {permission: permission.permission}))
+            .catch(e => response.genericErrorAndLog(e, logger));
+    }
 
-        if (permission) {
-            if (!(await msg.checkPermission(permission.permission)))
-                await response.message("permission:error.not-permitted");
-
-            permission.role = permission.defaultRole;
-            await permission.save()
-                .then(() => response.message("permissions:reset", {permission: permission.permission}))
-                .catch(e => {
-                    response.genericError();
-                    logger.error("Unable to reset permission");
-                    logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                });
-        } else {
-            if (!(await msg.checkPermission(this.permissionModule.resetAllPerms)))
-                await response.message("permission:error.not-permitted");
-
-            PermissionSystem.getInstance().resetChannelPermissions(msg.getChannel())
-                .then(() => response.message("permission:reset-all"))
-                .catch(e => {
-                    response.genericError();
-                    logger.error("Unable to reset all permissions");
-                    logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                });
-        }
+    @CommandHandler(/^perm(ission)? reset$/, "permission reset")
+    @CheckPermission("permission.reset-all")
+    async resetAll(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity) {
+        return PermissionSystem.getInstance().resetChannelPermissions(channel)
+            .then(() => response.message("permission:reset-all"))
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
@@ -203,7 +121,7 @@ export default class PermissionModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    @command permissionCommand = new PermissionCommand(this);
+    @command permissionCommand = new PermissionCommand();
 
     @permission createPerm = new Permission("permission.create", Role.MODERATOR);
     @permission deletePerm = new Permission("permission.delete", Role.MODERATOR);
@@ -217,27 +135,14 @@ export default class PermissionModule extends AbstractModule {
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             sender: {
-                isA: async (input: string): Promise<boolean> => {
-                    const role = parseRole(input);
-                    if (role === null) {
-                        logger.warn("User input an invalid role: " + input);
-                        return false;
-                    }
+                isA: validateFunction(async (role: Role) => {
                     return await getMaxRole(await msg.getUserRoles()) >= role;
-                },
-                can: async (permStr: string): Promise<boolean> => {
-                    if (!permStr) return false;
-                    try {
-                        return await msg.checkPermission(permStr);
-                    } catch (e) {
-                        logger.error("Unable to check permission");
-                        logger.error("Caused by: " + e.message);
-                        logger.error(e.stack);
-                        return false;
-                    }
-                }
+                }, ["role|required"], logWarningOnFail(logger, Promise.resolve(false))),
+                can: validateFunction(async (permission: string) => {
+                    return await msg.checkPermission(permission);
+                }, ["string|required"], logWarningOnFail(logger, Promise.resolve(false)))
             }
-        }
+        };
     }
 
     @EventHandler(NewChannelEvent)

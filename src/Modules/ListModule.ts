@@ -8,7 +8,7 @@ import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
-import {string, StringArg} from "../Systems/Commands/Validation/String";
+import {StringArg} from "../Systems/Commands/Validation/String";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
 import {command} from "../Systems/Commands/decorators";
@@ -20,6 +20,7 @@ import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Argument, Channel, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
 
 export const MODULE_INFO = {
     name: "List",
@@ -133,8 +134,7 @@ export default class ListModule extends AbstractModule {
     expressionContextResolver(msg: Message) {
         return {
             list: {
-                command: async (listName: unknown): Promise<string> => {
-                    if (typeof listName !== "string") return "Invalid parameter, expected a string";
+                command: validateFunction(async (listName: string): Promise<string> => {
                     const prefix = await CommandSystem.getPrefix(msg.getChannel());
                     const origArgs = msg.getParts().slice(1);
                     return new Promise((resolve) => {
@@ -165,7 +165,7 @@ export default class ListModule extends AbstractModule {
                         const event = new CommandEvent(command, args, msg.extend(raw, resolve), this.listCommand);
                         this.listCommand.execute(event.getEventArgs());
                     });
-                }
+                }, ["string|required"], returnErrorAsync())
             }
         }
     }

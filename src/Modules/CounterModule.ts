@@ -20,6 +20,7 @@ import {Argument, Channel, ResponseArg} from "../Systems/Commands/Validation/Arg
 import {Response} from "../Chat/Response";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
 
 export const MODULE_INFO = {
     name: "Counter",
@@ -125,40 +126,28 @@ export default class CounterModule extends AbstractModule {
     resolveExpressionContext(msg: Message): ExpressionContext {
         return {
             counters: {
-                get: async (name: unknown): Promise<object | string> => {
-                    if (typeof name !== "string") return "Expected a string for argument 1";
+                get: validateFunction(async (name: string): Promise<object | string> => {
                     const counter = await CountersEntity.findByName(name, msg.getChannel());
-                    const couldNotFindCounter = "Could not find counter";
-                    const expectedANumber = "Expected a number for argument 1";
-
+                    if (counter === null) return "Could not find counter";
                     return {
-                        value: counter === null ? couldNotFindCounter : counter.value,
-                        add: async (amt: unknown): Promise<string | number> => {
-                            if (counter === null) return couldNotFindCounter;
-                            if (typeof amt != "number") return expectedANumber;
-
+                        value: counter.value,
+                        add: validateFunction(async (amt: number): Promise<string | number> => {
                             counter.value += amt;
                             await counter.save();
                             return counter.value;
-                        },
-                        sub: async (amt: unknown): Promise<string | number> => {
-                            if (counter === null) return couldNotFindCounter;
-                            if (typeof amt != "number") return expectedANumber;
-
+                        }, ["number|required|min:1"], returnErrorAsync()),
+                        sub: validateFunction(async (amt: number): Promise<string | number> => {
                             counter.value -= amt;
                             await counter.save();
                             return counter.value;
-                        },
-                        set: async (amt: unknown): Promise<string | number> => {
-                            if (counter === null) return couldNotFindCounter;
-                            if (typeof amt != "number") return expectedANumber;
-
+                        }, ["number|required|min:1"], returnErrorAsync()),
+                        set: validateFunction(async (amt: number): Promise<string | number> => {
                             counter.value = amt;
                             await counter.save();
                             return counter.value;
-                        }
+                        }, ["number|required|min:1"], returnErrorAsync())
                     };
-                }
+                }, ["string|required"], returnErrorAsync())
             }
         }
     }

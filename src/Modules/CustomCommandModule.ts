@@ -8,7 +8,7 @@ import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import {string, StringArg} from "../Systems/Commands/Validation/String";
+import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
@@ -24,6 +24,7 @@ import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
 import {FloatArg} from "../Systems/Commands/Validation/Float";
 import {BooleanArg} from "../Systems/Commands/Validation/Boolean";
+import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
@@ -173,15 +174,12 @@ export default class CustomCommandModule extends AbstractModule {
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
-            alias: async (command: unknown): Promise<string> => new Promise(resolve => {
-                if (typeof command !== "string") return msg.getResponse().translate("expression:error.argument", {
-                    expected: msg.getResponse().translate("expression:types.string")
-                });
+            alias: validateFunction(async (command: string): Promise<string> => new Promise(resolve => {
                 if (msg.checkLoopProtection(command)) return msg.getResponse().translate("expression:error.infinite-loop");
                 const newMsg = msg.extend(`${command} ${msg.getParts().slice(1).join(" ")}`, resolve);
                 newMsg.addToLoopProtection(command);
                 this.handleMessage({event: new MessageEvent(newMsg)});
-            })
+            }), ["string|required"], returnErrorAsync())
         };
     }
 

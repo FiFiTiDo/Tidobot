@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -21,6 +21,7 @@ import {permission} from "../Systems/Permissions/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
+import {logErrorOnFail, validateFunction} from "../Utilities/ValidateFunction";
 
 export const MODULE_INFO = {
     name: "Settings",
@@ -127,11 +128,9 @@ export default class SettingsModule extends AbstractModule {
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             settings: {
-                get: async <T>(key: string, defVal?: T): Promise<ConvertedSetting | T | null> => {
-                    if (defVal === undefined) defVal = null;
-                    const value = msg.getChannel().getSetting(key);
-                    return value === null ? defVal : value;
-                }
+                get: validateFunction(async <T>(key: string, defVal?: T = null): Promise<ConvertedSetting | T | null> => {
+                    return msg.getChannel().getSetting(key) ?? defVal;
+                }, ["string|required", ""], logErrorOnFail(logger, Promise.resolve(null)))
             }
         }
     }

@@ -18,6 +18,7 @@ import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {MessageArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
+import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
 
 export const MODULE_INFO = {
     name: "General",
@@ -116,10 +117,10 @@ export default class GeneralModule extends AbstractModule {
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
-            datetime: async (format = "Y-m-d h:i:s"): Promise<string> => {
+            datetime: validateFunction(async (format: string = "Y-m-d h:i:s"): Promise<string> => {
                 const timezone = await msg.getChannel().getSetting(this.timezone);
                 return moment().tz(timezone.name).format(format);
-            }
+            }, ["string"], returnErrorAsync())
         }
     }
 }

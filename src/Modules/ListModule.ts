@@ -72,7 +72,7 @@ class ListCommand extends Command {
     @CheckPermission("list.add")
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
-        @RestArguments(true, true) value: string
+        @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         return list.addItem(value)
             .then(item => item === null ? response.genericError() : response.message("lists:item.added", {number: item.id}))
@@ -84,7 +84,7 @@ class ListCommand extends Command {
     async edit(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
         @Argument(new IntegerArg({ min: 0 }), "item number") itemNum: number,
-        @RestArguments(true, true) value: string
+        @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         try {
             const item = await list.getItem(itemNum);

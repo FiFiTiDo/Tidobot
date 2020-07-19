@@ -53,7 +53,7 @@ class NukeCommand extends Command {
     @CheckPermission("filter.nuke")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @RestArguments(true, true) match: string
+        @RestArguments(true, {join: " "}) match: string
     ): Promise<void> {
         const { newString, removed } = removePrefix("--regex ", match);
         const regex = removed ? new RegExp(newString) : picomatch.compileRe(picomatch.parse(newString, {}) as any);
@@ -141,7 +141,7 @@ class FilterCommand extends Command {
     @CheckPermission("filter.list.add")
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(ListConverter) list: string, @RestArguments(true, true) item: string
+        @Argument(ListConverter) list: string, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         const lists = await channel.getFilters();
         if (!array_add(item, lists[list])) return response.message("filter:list.exists", {list, item});
@@ -154,7 +154,7 @@ class FilterCommand extends Command {
     @CheckPermission("filter.list.remove")
     async remove(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(ListConverter) list: string, @RestArguments(true, true) item: string
+        @Argument(ListConverter) list: string, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         const lists = await channel.getFilters();
         if (!array_remove(item, lists[list])) return response.message("filter:list.unknown", {list, item});

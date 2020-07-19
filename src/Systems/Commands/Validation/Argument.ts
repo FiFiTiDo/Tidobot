@@ -7,10 +7,16 @@ import minimist = require("minimist-string");
 const ARGUMENT_META_KEY = "command:argument";
 const REST_META_KEY = "command:rest_args";
 
+interface RestSettings {
+    join?: string;
+    min?: number;
+    max?: number;
+}
+
 interface RestMeta {
     parameterIndex: number;
     required: boolean;
-    join: boolean;
+    settings: RestSettings;
 }
 
 interface ArgumentMeta {
@@ -49,9 +55,9 @@ export const ResponseArg = makeEventReducer(event => event.getMessage().getRespo
 export const Sender = makeEventReducer(event => event.getMessage().getChatter());
 export const Channel = makeEventReducer(event => event.getMessage().getChannel());
 
-export function RestArguments(required: boolean = true, join: boolean = false): ParameterDecorator {
+export function RestArguments(required: boolean = true, settings: RestSettings = {}): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, { parameterIndex, required, join })
+        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, { parameterIndex, required, settings })
     }
 }
 
@@ -99,9 +105,23 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
         }
     }
 
+
+    const restArgs = rawArgs.slice();
     const restArgsInfo = getPropertyMetadata<RestMeta[]>(REST_META_KEY, target, propertyKey) || [];
     for (const arg of restArgsInfo) {
-        args[arg.parameterIndex] = (arg.join) ? rawArgs.join(" ") : rawArgs;
+        let value: string|string[] = restArgs.slice();
+
+        if (arg.settings.min && value.length < arg.settings.min) {
+            return null;
+        }
+
+        if (arg.settings.max && value.length > arg.settings.max) {
+            return null;
+        }
+
+        if (arg.settings.join) value = (value as string[]).join(arg.settings.join);
+
+        args[arg.parameterIndex] = value;
     }
 
     return args;
@@ -144,7 +164,19 @@ export async function resolveCliArguments(event: CommandEvent, target: any, prop
     const restArgs = rawArgs._ || [];
     const restArgsInfo = getPropertyMetadata<RestMeta[]>(REST_META_KEY, target, propertyKey) || [];
     for (const arg of restArgsInfo) {
-        args[arg.parameterIndex] = (arg.join) ? restArgs.join(" ") : restArgs;
+        let value: string|string[] = restArgs.slice();
+
+        if (arg.settings.min && value.length < arg.settings.min) {
+            return null;
+        }
+
+        if (arg.settings.max && value.length > arg.settings.max) {
+            return null;
+        }
+
+        if (arg.settings.join) value = (value as string[]).join(arg.settings.join);
+
+        args[arg.parameterIndex] = value;
     }
 
     return args;

@@ -45,7 +45,7 @@ class RawCommand extends Command {
 
     @CommandHandler("raw", "raw <text>")
     @CheckPermission("general.raw")
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, true) text: string): Promise<void> {
+    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, {join: " "}) text: string): Promise<void> {
         return response.rawMessage(text);
     }
 }
@@ -57,7 +57,7 @@ class EchoCommand extends Command {
 
     @CommandHandler("echo", "echo <message>")
     @CheckPermission("general.echo")
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, true) message: string): Promise<void> {
+    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, {join: " "}) message: string): Promise<void> {
         return  response.rawMessage(">> " + message);
     }
 }
@@ -71,7 +71,7 @@ class EvalCommand extends Command {
     @CheckPermission("general.eval")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
-        @RestArguments(true, true) rawExpr: string
+        @RestArguments(true, {join: " "}) rawExpr: string
     ): Promise<void> {
         await response.rawMessage(">> " + await msg.evaluateExpression(rawExpr));
     }

@@ -45,7 +45,7 @@ class CommandCommand extends Command {
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
         @Argument(StringArg) trigger: string,
-        @RestArguments(true, true) resp: string
+        @RestArguments(true, {join: " "}) resp: string
     ): Promise<void> {
         CommandEntity.create(trigger, resp, channel)
             .then(entity => response.message("command:added", {id: entity.id}))
@@ -57,7 +57,7 @@ class CommandCommand extends Command {
     async editTrigger(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @RestArguments(true, true) value: string
+        @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.trigger = value;
         command.save()
@@ -70,7 +70,7 @@ class CommandCommand extends Command {
     async editCondition(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @RestArguments(true, true) value: string
+        @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.condition = value;
         command.save()
@@ -83,7 +83,7 @@ class CommandCommand extends Command {
     async editResponse(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @RestArguments(true, true) value: string
+        @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.response = value;
         command.save()

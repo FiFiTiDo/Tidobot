@@ -56,7 +56,7 @@ class NewsCommand extends Command {
     @CheckPermission("news.add")
     async add(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @RestArguments(true, true) value: string
+        @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         return NewsEntity.create(value, channel)
             .then(item => response.message("news:added", {id: item.id}))
@@ -75,7 +75,7 @@ class NewsCommand extends Command {
     @CheckPermission("news.edit")
     async edit(
         event: CommandEvent, @ResponseArg response: Response,
-        @Argument(NewsItemArg) item: NewsEntity, @RestArguments(true, true) newMsg: string
+        @Argument(NewsItemArg) item: NewsEntity, @RestArguments(true, {join: " "}) newMsg: string
     ): Promise<void> {
         item.value = newMsg;
         return item.save()

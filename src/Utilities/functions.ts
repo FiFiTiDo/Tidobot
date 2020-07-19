@@ -79,3 +79,5 @@ export async function getOrSetProp<T>(obj: object, key: string, f: () => T | Pro
 export function forceCast<T>(object: unknown): T {
     return object as T;
 }
+
+export const wait = ms => new Promise(resolve => setTimeout(resolve, ms));

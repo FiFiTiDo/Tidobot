@@ -1,6 +1,7 @@
 {
     "error": {
-        "not-running": "There is no poll running, type {{prefix}}poll start <option 1> <option 2> ... [option n]",
+        "not-running": "There is no poll running, to start one type {{prefix}}poll start <option 1> <option 2> ... [option n]",
+        "no-recent": "There are no recent polls, to start one type {{prefix}}poll start <option 1> <option 2> ... [option n]",
         "already-running": "There is already a poll running, type {{prefix}}poll stop to stop the current poll.",
         "already-voted": "You already put in your vote!"
     },

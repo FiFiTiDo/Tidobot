@@ -24,19 +24,19 @@ export default class Optional<T> {
         return this._present;
     }
 
-    public filter(fun: (T) => boolean): Optional<T> {
+    public filter(fun: (value: T) => boolean): Optional<T> {
         return this._present && fun(this._value) ? Optional.of(this._value) : Optional.empty();
     }
 
-    public flatMap<U>(fun: (T) => Optional<U>): Optional<U> {
+    public flatMap<U>(fun: (value: T) => Optional<U>): Optional<U> {
         return this._present ? fun(this._value) : Optional.empty();
     }
 
-    public ifPresent(fun: (T) => void): void {
+    public ifPresent(fun: (value: T) => void): void {
         if (this._present) fun(this._value);
     }
 
-    public map<U>(fun: (T) => U): Optional<U> {
+    public map<U>(fun: (value: T) => U): Optional<U> {
         if (!this._present) return Optional.empty();
         const value = fun(this._value);
         if (value === null) return Optional.empty();

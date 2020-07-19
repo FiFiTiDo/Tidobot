@@ -84,19 +84,15 @@ export class PollService {
     }
 
     getOpenPoll(channel: ChannelEntity): Optional<Poll> {
-        const poll = this.getPoll(channel);
-        if (!poll.present) return Optional.empty();
-        return poll.value.isOpen() ? poll : Optional.empty();
+        return this.getPoll(channel).filter(poll => poll.isOpen());
     }
 
     getClosedPoll(channel: ChannelEntity): Optional<Poll> {
-        const poll = this.getPoll(channel);
-        if (!poll.present) return Optional.empty();
-        return poll.value.isOpen() ? Optional.empty() : poll;
+        return this.getPoll(channel).filter(poll => !poll.isOpen());
     }
 
     createPoll(options: string[], channel: ChannelEntity): Optional<Poll> {
-        if (this.getOpenPoll(channel) !== null) return Optional.empty();
+        if (this.getOpenPoll(channel).present) return Optional.empty();
 
         const poll = new Poll(options, channel);
         this.polls.set(channel, poll);
@@ -104,9 +100,7 @@ export class PollService {
     }
 
     addVote(option: Optional<string>, chatter: ChatterEntity, channel: ChannelEntity): Optional<boolean> {
-        const poll = this.getOpenPoll(channel);
-        if (!option.present) return Optional.empty();
-        return Optional.of(poll.value.addVote(option.value, chatter));
+        return this.getOpenPoll(channel).map(poll => option.present ? poll.addVote(option.value, chatter) : null);
     }
 
     closePoll(channel: ChannelEntity): Optional<string> {
@@ -117,15 +111,10 @@ export class PollService {
     }
 
     getResults(channel: ChannelEntity): Optional<string> {
-        const poll = this.getPoll(channel);
-        if (!poll.present) return Optional.empty();
-        return Optional.of(poll.value.formatResults());
+        return this.getPoll(channel).map(poll => poll.formatResults());
     }
 
     getOption(optionNum: number, channel: ChannelEntity): Optional<string> {
-        const poll = this.getOpenPoll(channel);
-        if (!poll.present) return Optional.empty();
-        const option = poll.value.getOption(optionNum);
-        return option === null ? Optional.empty() : Optional.of(option);
+        return this.getPoll(channel).map(poll => poll.getOption(optionNum));
     }
 }

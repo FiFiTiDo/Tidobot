@@ -20,7 +20,7 @@ import {JoinQueueResponse, QueueService} from "../Services/QueueService";
 
 export const MODULE_INFO = {
     name: "Queue",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Users can enter a queue to be selected for some purpose"
 };
 
@@ -29,11 +29,11 @@ const logger = getLogger(MODULE_INFO.name);
 class QueueCommand extends Command {
     private queueService: QueueService = new QueueService();
 
-    constructor(private queueModule: QueueModule) {
+    constructor() {
         super("queue", "<join|leave|check|pop|peek|clear|open|close>");
     }
 
-    @CommandHandler("queue join", "queue join")
+    @CommandHandler("queue join", "queue join", 1)
     @CheckPermission("queue.join")
     async join(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity
@@ -50,7 +50,7 @@ class QueueCommand extends Command {
         }
     }
 
-    @CommandHandler("queue leave", "queue leave")
+    @CommandHandler("queue leave", "queue leave", 1)
     @CheckPermission("queue.leave")
     async leave(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity
@@ -60,7 +60,7 @@ class QueueCommand extends Command {
          return result.value ? await response.message("queue:left") : await response.message("queue:error.not-in");
     }
 
-    @CommandHandler("queue check", "queue check [user]")
+    @CommandHandler("queue check", "queue check [user]", 1)
     @CheckPermission(event => event.getArgumentCount() < 1 ? "queue.check" : "queue.check.other")
     async check(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity,
@@ -73,7 +73,7 @@ class QueueCommand extends Command {
             await response.message("queue:check", { username: chatter.name, position: appendOrdinal(pos) });
     }
 
-    @CommandHandler("queue pop", "queue pop")
+    @CommandHandler("queue pop", "queue pop", 1)
     @CheckPermission("queue.pop")
     async pop(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         const chatter = this.queueService.removeNext(channel);
@@ -81,7 +81,7 @@ class QueueCommand extends Command {
         return response.message("queue:next", { username: chatter.value.name })
     }
 
-    @CommandHandler("queue peek", "queue peek")
+    @CommandHandler("queue peek", "queue peek", 1)
     @CheckPermission("queue.peek")
     async peek(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         const chatter = this.queueService.getNext(channel);
@@ -89,14 +89,14 @@ class QueueCommand extends Command {
         return response.message("queue:next", { username: chatter.value.name })
     }
 
-    @CommandHandler("queue clear", "queue clear")
+    @CommandHandler("queue clear", "queue clear", 1)
     @CheckPermission("queue.clear")
     async clear(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         this.queueService.clearQueue(channel);
         return response.message("queue:emptied");
     }
 
-    @CommandHandler("queue open", "queue open")
+    @CommandHandler("queue open", "queue open", 1)
     @CheckPermission("queue.open")
     async open(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         return this.queueService.openQueue(channel).present ?
@@ -104,7 +104,7 @@ class QueueCommand extends Command {
             await response.message("queue:error.open");
     }
 
-    @CommandHandler("queue close", "queue close")
+    @CommandHandler("queue close", "queue close", 1)
     @CheckPermission("queue.close")
     async close(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         return this.queueService.closeQueue(channel).present ?
@@ -120,7 +120,7 @@ export default class QueueModule extends AbstractModule {
         super(QueueModule);
     }
 
-    @command queueCommand = new QueueCommand(this);
+    @command queueCommand = new QueueCommand();
 
     @permission joinQueue = new Permission("queue.join", Role.NORMAL);
     @permission checkPos = new Permission("queue.check", Role.NORMAL);

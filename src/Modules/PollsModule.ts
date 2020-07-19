@@ -25,7 +25,7 @@ import {wait} from "../Utilities/functions";
 
 export const MODULE_INFO = {
     name: "Poll",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Run polls to get user input on a question"
 };
 
@@ -148,7 +148,7 @@ class PollCommand extends Command {
         });
     }
 
-    @CommandHandler("poll stop", "poll stop")
+    @CommandHandler("poll stop", "poll stop", 1)
     @CheckPermission("polls.stop")
     async stop(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
@@ -163,7 +163,7 @@ class PollCommand extends Command {
         await response.message("polls:results", {results});
     }
 
-    @CommandHandler(/^poll res(ults)?/, "poll results")
+    @CommandHandler(/^poll res(ults)?/, "poll results", 1)
     @CheckPermission("polls.results")
     async results(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity

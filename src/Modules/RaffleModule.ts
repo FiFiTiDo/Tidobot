@@ -21,7 +21,7 @@ import {Response} from "../Chat/Response";
 
 export const MODULE_INFO = {
     name: "Raffle",
-    version: "1.1.0",
+    version: "1.1.1",
     description: "Run a raffle to randomly select users from the chat who entered the specified keyword"
 };
 
@@ -33,7 +33,7 @@ class RaffleCommand extends Command {
         super("raffle", "<open|close|reset|pull>");
     }
 
-    @CommandHandler("raffle open", "raffle open <keyword>")
+    @CommandHandler("raffle open", "raffle open <keyword>", 1)
     @CheckPermission("raffle.open")
     async open(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
@@ -50,19 +50,19 @@ class RaffleCommand extends Command {
             await response.message("raffle:error.already-open");
     }
 
-    @CommandHandler("raffle close", "raffle close")
+    @CommandHandler("raffle close", "raffle close", 1)
     @CheckPermission("raffle.close")
     async close(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         this.raffleModule.raffleService.closeRaffle(channel).ifPresent(() => response.message("raffle:closed"));
     }
 
-    @CommandHandler("raffle reset", "raffle reset")
+    @CommandHandler("raffle reset", "raffle reset", 1)
     @CheckPermission("raffle.reset")
     async reset(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         this.raffleModule.raffleService.resetRaffle(channel).ifPresent(() => response.message("raffle:reset"));
     }
 
-    @CommandHandler(/^raffle (pull|draw)/, "raffle pull")
+    @CommandHandler(/^raffle (pull|draw)/, "raffle pull", 1)
     @CheckPermission("raffle.pull")
     async pull(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         this.raffleModule.raffleService.pullWinner(channel).ifPresent(async value => {

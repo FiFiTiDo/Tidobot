@@ -12,6 +12,10 @@ export default class Optional<T> {
         return value === null ? Optional.empty() : Optional.of(value);
     }
 
+    public static ofUndefable<T>(value: T|undefined): Optional<T> {
+        return value === undefined ? Optional.empty() : Optional.of(value);
+    }
+
     public static empty(): Optional<never> {
         return new Optional<never>();
     }

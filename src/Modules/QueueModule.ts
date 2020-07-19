@@ -1,213 +1,115 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import EntityStateList from "../Database/EntityStateList";
 import {appendOrdinal} from "../Utilities/NumberUtils";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
-import {chatter as chatterConverter} from "../Systems/Commands/Validation/Chatter";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
+import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {getLogger} from "../Utilities/Logger";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import {JoinQueueResponse, QueueService} from "../Services/QueueService";
 
 export const MODULE_INFO = {
     name: "Queue",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "Users can enter a queue to be selected for some purpose"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
-class Queue {
-    private chatters: ChatterEntity[] = [];
-    private _open = false;
-
-    public open(): void {
-        this._open = true;
-    }
-
-    public close(): void {
-        this._open = false;
-    }
-
-    public isOpen(): boolean {
-        return this._open;
-    }
-
-    public pop(): ChatterEntity|undefined {
-        return this.chatters.shift();
-    }
-
-    public push(chatter: ChatterEntity): number {
-        this.chatters.push(chatter);
-        return this.chatters.length - 1;
-    }
-
-    public peek(): ChatterEntity|undefined {
-        return this.chatters.length < 1 ? undefined : this.chatters[0];
-    }
-
-    public find(chatter: ChatterEntity): number {
-        for (let i = 0; i < this.chatters.length; i++)
-            if (chatter.is(this.chatters[i]))
-                return i;
-        return -1;
-    }
-
-    public remove(chatter: ChatterEntity): void {
-        const i = this.find(chatter);
-        if (i < 0) return;
-        this.chatters.splice(i, 1);
-    }
-
-    public clear(): void {
-        this.chatters = [];
-    }
-
-    public size(): number {
-        return this.chatters.length;
-    }
-}
-
 class QueueCommand extends Command {
-    private queues: EntityStateList<ChannelEntity, Queue> = new EntityStateList(() => new Queue());
+    private queueService: QueueService = new QueueService();
 
     constructor(private queueModule: QueueModule) {
         super("queue", "<join|leave|check|pop|peek|clear|open|close>");
     }
 
-    @Subcommand("join")
-    async join({event, message, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue join",
-            subcommand: "join",
-            permission: this.queueModule.joinQueue
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        if (!queue.isOpen()) return response.message("queue:error.closed");
-        if (queue.find(message.getChatter()) >= 0) return response.message("queue:error.in");
-        const maxSize = await message.getChannel().getSetting(this.queueModule.maxSize);
-        if (queue.size() >= maxSize) return response.message("queue:error.full");
-        const position = appendOrdinal(queue.push(message.getChatter()) + 1);
-        await response.message("queue:joined", { position });
+    @CommandHandler("queue join", "queue join")
+    @CheckPermission("queue.join")
+    async join(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity
+    ): Promise<void> {
+        const result = await this.queueService.joinQueue(sender, channel);
+        if (typeof result === "number") {
+            return await response.message("queue:joined", { position: appendOrdinal(result) });
+        } else {
+            switch (result) {
+                case JoinQueueResponse.CLOSED: return response.message("queue:error.closed");
+                case JoinQueueResponse.FULL: return response.message("queue:error.full");
+                case JoinQueueResponse.ALREADY_IN: return response.message("queue:error.in");
+            }
+        }
     }
 
-    @Subcommand("leave")
-    async leave({event, response, message}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue leave",
-            subcommand: "leave",
-            permission: this.queueModule.joinQueue
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        if (!queue.isOpen()) return response.message("queue:error.closed");
-        if (queue.find(message.getChatter()) < 0) return response.message("queue:error.not-in");
-        queue.remove(message.getChatter());
-        await response.message("queue:left");
+    @CommandHandler("queue leave", "queue leave")
+    @CheckPermission("queue.leave")
+    async leave(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity
+    ): Promise<void> {
+         const result = this.queueService.leaveQueue(sender, channel);
+         if (!result.present) return response.message("queue:error.closed");
+         return result.value ? await response.message("queue:left") : await response.message("queue:error.not-in");
     }
 
-    @Subcommand("check")
-    async check({ event, message, response }: CommandEventArgs): Promise<void> {
-        const {status, args} = await event.validate(new StandardValidationStrategy({
-            usage: "queue check [user]",
-            subcommand: "check",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: false })
-            ),
-            permission: args => args[0] !== null ? this.queueModule.checkPosOther : this.queueModule.checkPos
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        const index = queue.find(args[0] !== null ? args[0] : message.getChatter()) + 1;
-        if (index < 1) return response.message("queue:error.not-in");
-        const position = appendOrdinal(index);
-        await response.message("queue:check", { username: message.getChatter().name, position });
+    @CommandHandler("queue check", "queue check [user]")
+    @CheckPermission(event => event.getArgumentCount() < 1 ? "queue.check" : "queue.check.other")
+    async check(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity,
+        @Argument(new ChatterArg(), "user", false) target: ChatterEntity = null
+    ): Promise<void> {
+        const chatter = target ?? sender;
+        const pos = this.queueService.getPosition(chatter, channel);
+        return pos < 0 ?
+            await response.message("queue:error.not-in"):
+            await response.message("queue:check", { username: chatter.name, position: appendOrdinal(pos) });
     }
 
-    @Subcommand("pop")
-    async pop({event, message, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue pop",
-            subcommand: "pop",
-            permission: this.queueModule.popQueue
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        const chatter = queue.pop();
-        if (chatter === undefined) return response.message("queue:error.empty");
-        return response.message("queue:next", { username: chatter.name })
+    @CommandHandler("queue pop", "queue pop")
+    @CheckPermission("queue.pop")
+    async pop(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+        const chatter = this.queueService.removeNext(channel);
+        if (!chatter.present) return response.message("queue:error.empty");
+        return response.message("queue:next", { username: chatter.value.name })
     }
 
-    @Subcommand("peek")
-    async peek({event, response, message} : CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue peek",
-            subcommand: "peek",
-            permission: this.queueModule.peekQueue
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        const chatter = queue.peek();
-        if (chatter === undefined) return response.message("queue:error.empty");
-        return response.message("queue:next", { username: chatter.name })
+    @CommandHandler("queue peek", "queue peek")
+    @CheckPermission("queue.peek")
+    async peek(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+        const chatter = this.queueService.getNext(channel);
+        if (!chatter.present) return response.message("queue:error.empty");
+        return response.message("queue:next", { username: chatter.value.name })
     }
 
-    @Subcommand("clear")
-    async clear({event, response, message}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue clear",
-            subcommand: "clear",
-            permission: this.queueModule.clearQueue
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        queue.clear();
+    @CommandHandler("queue clear", "queue clear")
+    @CheckPermission("queue.clear")
+    async clear(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+        this.queueService.clearQueue(channel);
         return response.message("queue:emptied");
     }
 
-    @Subcommand("open")
-    async open({ event, message, response }: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue open",
-            subcommand: "open",
-            permission: this.queueModule.openQueue
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        if (queue.isOpen()) return response.message("queue:error.open");
-        queue.open();
-        return response.message("queue:opened", { prefix: await CommandSystem.getPrefix(message.getChannel()) })
+    @CommandHandler("queue open", "queue open")
+    @CheckPermission("queue.open")
+    async open(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+        return this.queueService.openQueue(channel).present ?
+            await response.message("queue:opened", { prefix: await CommandSystem.getPrefix(channel) }) :
+            await response.message("queue:error.open");
     }
 
-    @Subcommand("close")
-    async close({ event, message, response }: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "queue close",
-            subcommand: "close",
-            permission: this.queueModule.closeQueue
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const queue = this.queues.get(message.getChannel());
-        if (!queue.isOpen()) return response.message("queue:error.closed");
-        queue.close();
-        return response.message("queue:closed");
+    @CommandHandler("queue close", "queue close")
+    @CheckPermission("queue.close")
+    async close(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+        return this.queueService.closeQueue(channel).present ?
+            await response.message("queue:closed") :
+            await response.message("queue:error.closed");
     }
 }
 

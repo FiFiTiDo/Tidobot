@@ -10,74 +10,59 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {string} from "../Systems/Commands/Validation/String";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
-import {getLogger, logError} from "../Utilities/Logger";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
+import {StringArg} from "../Systems/Commands/Validation/String";
+import {getLogger} from "../Utilities/Logger";
 import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {logErrorOnFail, validateFunction} from "../Utilities/ValidateFunction";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
 
 export const MODULE_INFO = {
     name: "Settings",
-    version: "1.0.0",
+    version: "1.1.0",
     description: "Manage the channel's settings to change the functionality of the bot"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
 class SetCommand extends Command {
-    constructor(private readonly settingsModule: SettingsModule) {
+    constructor() {
         super("set", "<setting> <value>");
     }
 
-    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "set <setting> <value>",
-            arguments: tuple(
-                string({ name: "setting", required: true }),
-                string({ name: "value", required: true, greedy: true })
-            ),
-            permission: this.settingsModule.setSetting
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [key, value] = args;
-
-        msg.getChannel().getSettings().set(key, value)
+    @CommandHandler("set", "set <key> <value>")
+    @CheckPermission("settings.set")
+    async handleCommand(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(StringArg) key: string, @RestArguments(true, { join: " " }) value: string
+    ): Promise<void> {
+        return channel.getSettings().set(key, value)
             .then(() => response.message("setting:set", {setting: key, value}))
-            .catch(e => {
-                response.genericError();
-                logError(logger, e, "Unable to set setting");
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
 class UnsetCommand extends Command {
-    constructor(private readonly settingsModule: SettingsModule) {
+    constructor() {
         super("unset", "<setting>");
     }
 
-    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "unset <setting>",
-            arguments: tuple(
-                string({ name: "setting", required: true })
-            ),
-            permission: this.settingsModule.resetSetting
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const key = args[0];
-        msg.getChannel().getSettings().unset(key)
+    @CommandHandler("unset", "unset <key>")
+    @CheckPermission("settings.reset")
+    async handleCommand(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Argument(StringArg) key: string
+    ): Promise<void> {
+        return channel.getSettings().unset(key)
             .then(() => response.message("setting:unset", {setting: key}))
-            .catch(e => {
-                response.genericError();
-                logError(logger, e, "Unable to unset setting");
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
@@ -86,23 +71,18 @@ class ResetCommand extends Command {
         super("reset", "");
     }
 
-    async execute({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "reset-settings",
-            permission: this.settingsModule.resetAllSettings
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
-        const confirmation = await this.settingsModule.makeConfirmation(msg, await response.translate("setting:confirm-reset"), 30);
-        confirmation.addListener(ConfirmedEvent, () => {
-            msg.getChannel().getSettings().reset()
-                .then(() => response.message("setting:reset"))
-                .catch((e) => {
-                    response.genericError();
-                    logError(logger, e, "Unable to reset the channel's settings");
-                });
-        });
-        confirmation.run();
+    @CommandHandler("reset", "reset")
+    @CheckPermission("settings.reset.all")
+    async handleCommand(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message
+    ): Promise<void> {
+        const confirmMsg = await response.translate("setting:confirm-reset");
+        const confirm = await this.settingsModule.makeConfirmation(msg, confirmMsg, 30);
+        confirm.addListener(ConfirmedEvent, () => channel.getSettings().reset()
+            .then(() => response.message("setting:reset"))
+            .catch(e => response.genericErrorAndLog(e, logger))
+        );
+        confirm.run();
     }
 }
 
@@ -116,8 +96,8 @@ export default class SettingsModule extends AbstractModule {
         this.coreModule = true;
     }
 
-    @command setCommand = new SetCommand(this);
-    @command unsetCommand = new UnsetCommand(this);
+    @command setCommand = new SetCommand();
+    @command unsetCommand = new UnsetCommand();
     @command resetCommand = new ResetCommand(this);
 
     @permission setSetting = new Permission("settings.set", Role.MODERATOR);
@@ -128,7 +108,7 @@ export default class SettingsModule extends AbstractModule {
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             settings: {
-                get: validateFunction(async <T>(key: string, defVal?: T = null): Promise<ConvertedSetting | T | null> => {
+                get: validateFunction(async <T>(key: string, defVal: T = null): Promise<ConvertedSetting | T | null> => {
                     return msg.getChannel().getSetting(key) ?? defVal;
                 }, ["string|required", ""], logErrorOnFail(logger, Promise.resolve(null)))
             }

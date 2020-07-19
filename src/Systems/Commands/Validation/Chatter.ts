@@ -24,8 +24,14 @@ export function chatter(opts: ChatterOptions): ValueConverterInfo<ChatterEntity|
         return chatter;
     });
 }
+
+interface ChatterSettings {
+    active?: boolean;
+    senderDefault?: boolean;
+}
+
 export class ChatterArg implements ArgumentConverter<ChatterEntity> {
-    constructor(private active: boolean = false) {}
+    constructor(private settings: ChatterSettings = {}) {}
 
     type = "chatter";
     async convert(input: string, name: string, column: number, event: CommandEvent): Promise<ChatterEntity> {
@@ -34,10 +40,11 @@ export class ChatterArg implements ArgumentConverter<ChatterEntity> {
         const response = msg.getResponse();
         let chatter = channel.findChatterByName(input);
 
-        if (this.active === true && chatter === null)
+        if (this.settings.active === true && chatter === null)
             throw new InvalidInputError(await response.translate("user:inactive", {username: input}));
 
         if (chatter === null) chatter = await ChatterEntity.findByName(input.toLowerCase(), channel);
+        if (chatter === null && this.settings.senderDefault === true) return event.getMessage().getChatter();
         if (chatter === null)
             throw new InvalidInputError(await response.translate("user:unknown", {username: input}));
 

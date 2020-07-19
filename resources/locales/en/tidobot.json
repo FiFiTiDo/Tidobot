@@ -1,0 +1,4 @@
+{
+    "version": "Tidobot v{{version}} by FiFiTiDo",
+    "about": "Hi, {{username}}! My name is tidobot, I'm your friendly neighborhood robot here to enhance your chatting experience! To learn more visit https://www.fifitido.net/tidobot/"
+}

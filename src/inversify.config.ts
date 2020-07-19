@@ -31,7 +31,7 @@ container.bind<TranslationProvider>(symbols.TranslateFunc).toProvider<TFunction>
         return await i18next.use(Backend).init({
             ns: [
                 "bet", "command", "confirmation", "counter", "default", "expression", "filter", "fun", "groups", "lists",
-                "news", "permission", "poll", "raffle", "setting", "user", "queue", "pokemon"
+                "news", "permission", "poll", "raffle", "setting", "user", "queue", "pokemon", "tidobot"
             ],
             defaultNS: "default",
             lng: process.env.LANGUAGE,

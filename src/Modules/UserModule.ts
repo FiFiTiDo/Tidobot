@@ -1,4 +1,4 @@
-import AbstractModule, {ModuleInfo, Symbols, Systems} from "./AbstractModule";
+import AbstractModule, {Symbols} from "./AbstractModule";
 import UserPermissionsEntity from "../Database/Entities/UserPermissionsEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
@@ -7,18 +7,21 @@ import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEve
 import {inject} from "inversify";
 import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
-import {CommandEventArgs} from "../Systems/Commands/CommandEvent";
-import {chatter as chatterConverter} from "../Systems/Commands/Validation/Chatter";
-import {string} from "../Systems/Commands/Validation/String";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {tuple} from "../Utilities/ArrayUtils";
+import {CommandEvent} from "../Systems/Commands/CommandEvent";
+import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
+import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
-import {command, Subcommand} from "../Systems/Commands/decorators";
+import {command} from "../Systems/Commands/decorators";
+import {Argument, Channel, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
+import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
+import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import Message from "../Chat/Message";
 
 export const MODULE_INFO = {
     name: "User",
-    version: "1.0.1",
+    version: "1.1.0",
     description: "Managing users in your channel including granting/denying permissions"
 };
 
@@ -29,90 +32,47 @@ class UserCommand extends Command {
         super("user", "<grant|deny|reset>", ["u"]);
     }
 
-    @Subcommand("grant")
-    async grant({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "user grant <group> <permission>",
-            subcommand: "grant",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true }),
-                string({ name: "permission", required: true})
-            ),
-            permission: "permission.grant"
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [user, permission] = args;
-
-        await UserPermissionsEntity.update(user, permission, true, msg.getChannel())
+    @CommandHandler(/^u(ser)? grant/, "user grant <user> <permission>")
+    @CheckPermission("permission.grant")
+    async grant(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new ChatterArg()) user: ChatterEntity, @Argument(StringArg) permission: string
+    ): Promise<void> {
+        return  UserPermissionsEntity.update(user, permission, true, channel)
             .then(() => response.message("user:permission.granted", {permission, username: user.name}))
-            .catch(e => {
-                response.genericError();
-                logger.error("Unable to grant permission to user");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("grant")
-    async deny({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "user deny <group> <permission>",
-            subcommand: "deny",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true }),
-                string({ name: "permission", required: true})
-            ),
-            permission: "permission.deny"
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [user, permission] = args;
-
-        await UserPermissionsEntity.update(user, permission, false, msg.getChannel())
+    @CommandHandler(/^u(ser)? deny/, "user deny <user> <permission>")
+    @CheckPermission("permission.deny")
+    async deny(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        @Argument(new ChatterArg()) user: ChatterEntity, @Argument(StringArg) permission: string
+    ): Promise<void> {
+        return  UserPermissionsEntity.update(user, permission, false, channel)
             .then(() => response.message("user:permission.denied", {username: user.name, permission}))
-            .catch(e => {
-                response.genericError();
-                logger.error("Unable to deny permission for user");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-            });
+            .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @Subcommand("reset")
-    async reset({event, message: msg, response}: CommandEventArgs): Promise<void> {
-        const {args, status} = await event.validate(new StandardValidationStrategy({
-            usage: "group reset <group> [permission]",
-            subcommand: "reset",
-            arguments: tuple(
-                chatterConverter({ name: "user", required: true }),
-                string({ name: "permission", required: false, defaultValue: undefined })
-            ),
-            permission: "permission.reset"
-        }));
-         if (status !== ValidatorStatus.OK) return;
-        const [user, permission] = args;
-
-        if (permission) {
-            await UserPermissionsEntity.delete(user, permission)
+    @CommandHandler(/^u(ser)? reset/, "user reset <user> [permission>]")
+    @CheckPermission("permission.reset")
+    async reset(
+        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        @Argument(new ChatterArg()) user: ChatterEntity,
+        @Argument(StringArg, "permission", false) permission: string = null
+    ): Promise<void> {
+        if (permission !== null) {
+            return UserPermissionsEntity.delete(user, permission)
                 .then(() => response.message("user:permission.delete.specific", {username: user.name, permission}))
-                .catch(e => {
-                    response.genericError();
-                    logger.error("Unable to deny permission for user");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                });
+                .catch(e => response.genericErrorAndLog(e, logger));
         } else {
-            const confirmation = await this.userModule.makeConfirmation(msg, await response.translate("user:permission.delete.confirm", {username: user.name}), 30);
-            confirmation.addListener(ConfirmedEvent, () => {
-                return UserPermissionsEntity.clear(user)
-                    .then(() => response.message("user:permission.delete.all", {username: user.name}))
-                    .catch(e => {
-                        response.genericError();
-                        logger.error("Unable to deny permission for user");
-            logger.error("Caused by: " + e.message);
-            logger.error(e.stack);
-                    });
-            });
-            confirmation.run();
+            const confirmMsg = await response.translate("user:permission.delete.confirm", {username: user.name});
+            const confirm = await this.userModule.makeConfirmation(msg, confirmMsg, 30);
+            confirm.addListener(ConfirmedEvent, () => UserPermissionsEntity.clear(user)
+                .then(() => response.message("user:permission.delete.all", {username: user.name}))
+                .catch(e => response.genericErrorAndLog(e, logger))
+            );
+            confirm.run();
         }
     }
 }

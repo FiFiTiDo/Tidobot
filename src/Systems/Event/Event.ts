@@ -17,11 +17,11 @@ export interface EventArguments<T extends Event<T>> {
 export default abstract class Event<T extends Event<T>> {
     private readonly name: string;
     private metadata: EventMetadata = new Dictionary();
-    private propagate: boolean;
+    private cancelled: boolean;
 
-    protected constructor(name: string) {
-        this.name = name;
-        this.propagate = true;
+    protected constructor(EventConstructor: EventConstructor<T>) {
+        this.name = EventConstructor.NAME;
+        this.cancelled = true;
     }
 
     public getEventArgs(): EventArguments<T> {
@@ -40,15 +40,11 @@ export default abstract class Event<T extends Event<T>> {
         return this.metadata.getOrDefault(key, defaultValue) as T;
     }
 
-    public getAllMetadata(): GenericObject {
-        return this.metadata.all();
+    public cancel() {
+        this.cancelled = false;
     }
 
-    public stopPropagation() {
-        this.propagate = false;
-    }
-
-    public isPropagationStopped() {
-        return !this.propagate;
+    public isCancelled() {
+        return this.cancelled;
     }
 }

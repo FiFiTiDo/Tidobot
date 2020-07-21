@@ -23,7 +23,7 @@ export class ConfirmedEvent extends Event<ConfirmedEvent> {
     public static readonly NAME = "confirmed";
 
     constructor() {
-        super(ConfirmedEvent.NAME);
+        super(ConfirmedEvent);
     }
 }
 
@@ -31,7 +31,7 @@ export class ExpiredEvent extends Event<ExpiredEvent> {
     public static readonly NAME = "expired";
 
     constructor() {
-        super(ExpiredEvent.NAME);
+        super(ExpiredEvent);
     }
 }
 

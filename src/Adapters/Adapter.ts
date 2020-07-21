@@ -3,6 +3,7 @@ import ChannelEntity from "../Database/Entities/ChannelEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import EventSystem from "../Systems/Event/EventSystem";
 import {injectable} from "inversify";
+import TimerSystem, {TimeUnit} from "../Systems/Timer/TimerSystem";
 
 export type AdapterOptions = {
     identity: string;
@@ -14,10 +15,10 @@ export type AdapterOptions = {
 @injectable()
 export default abstract class Adapter {
     public run(options: AdapterOptions): void {
-        setInterval(() => {
-            EventSystem.getInstance().dispatch(new TickEvent());
-        }, 1000);
+        TimerSystem.getInstance().startTimer(() => EventSystem.getInstance().dispatch(new TickEvent()), TimeUnit.Seconds(1));
     }
+
+    public abstract stop(): void|Promise<void>;
 
     public abstract getName(): string;
 

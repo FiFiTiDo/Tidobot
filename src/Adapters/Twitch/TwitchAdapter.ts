@@ -93,6 +93,10 @@ export default class TwitchAdapter extends Adapter {
         super.run(options);
     }
 
+    async stop(): Promise<void> {
+        await this.client.disconnect();
+    }
+
     async sendMessage(message: string, channel: ChannelEntity): Promise<[string]> {
         return this.client.say(channel.name, message);
     }

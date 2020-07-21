@@ -10,7 +10,7 @@ export default class MessageEvent extends Event<MessageEvent> {
     private readonly message: Message;
 
     constructor(message: Message) {
-        super(MessageEvent.NAME);
+        super(MessageEvent);
 
         this.message = message;
     }

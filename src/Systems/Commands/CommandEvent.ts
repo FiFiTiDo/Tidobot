@@ -16,8 +16,10 @@ export interface CommandEventArgs {
 }
 
 export class CommandEvent extends Event<CommandEvent> {
+    static NAME = "chat_command";
+
     constructor(private readonly trigger: string, private readonly args: string[], private readonly msg: Message, private readonly command: Command|CommandEntity) {
-        super(CommandEvent.name);
+        super(CommandEvent);
     }
 
     public getEventArgs(): CommandEventArgs {

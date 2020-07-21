@@ -6,7 +6,6 @@ import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import Bot from "../Application/Bot";
 import {command} from "../Systems/Commands/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
@@ -19,12 +18,17 @@ import {MessageArg, ResponseArg, RestArguments, Sender} from "../Systems/Command
 import {Response} from "../Chat/Response";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
+import Application from "../Application/Application";
+import {inject} from "inversify";
+import {getLogger} from "../Utilities/Logger";
 
 export const MODULE_INFO = {
     name: "General",
     version: "1.1.0",
     description: "General bot commands that don't fit in other modules"
 };
+
+const logger = getLogger(MODULE_INFO.name);
 
 class PingCommand extends Command {
     constructor() {
@@ -78,23 +82,25 @@ class EvalCommand extends Command {
 }
 
 class ShutdownCommand extends Command {
-    constructor() {
+    constructor(private readonly generalModule: GeneralModule) {
         super("shutdown", null);
     }
 
     @CommandHandler("shutdown", "shutdown")
     @CheckPermission("general.shutdown")
     async handleCommand(event: CommandEvent, @ResponseArg response: Response): Promise<void> {
-        await response.broadcast(array_rand(await response.getTranslation<string[]>("shutdown")));
-        Bot.LOGGER.info("Shutting down...");
-        process.exit();
+        return this.generalModule.app.shutdown()
+            .then(async successful => successful ?
+                await response.broadcast(array_rand(await response.getTranslation<string[]>("shutdown"))) :
+                await response.message("shutdown-cancelled")
+            ).catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
 export default class GeneralModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
 
-    constructor() {
+    constructor(@inject(Application) public readonly app: Application) {
         super(GeneralModule);
 
         this.coreModule = true;
@@ -104,7 +110,7 @@ export default class GeneralModule extends AbstractModule {
     @command rawCommand = new RawCommand();
     @command echoCommand = new EchoCommand();
     @command evalCommand = new EvalCommand();
-    @command shutdownCommand = new ShutdownCommand();
+    @command shutdownCommand = new ShutdownCommand(this);
 
     @permission ping = new Permission("general.ping", Role.MODERATOR);
     @permission raw = new Permission("general.raw", Role.OWNER);

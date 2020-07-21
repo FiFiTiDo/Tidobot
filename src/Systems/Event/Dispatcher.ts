@@ -35,7 +35,7 @@ export default class Dispatcher {
             else
                 value = listener.func.call(listener.thisArg, event.getEventArgs());
             if (value instanceof Promise) value = await value;
-            if (event.isPropagationStopped()) break;
+            if (event.isCancelled()) break;
         }
     }
 }

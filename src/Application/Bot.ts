@@ -30,8 +30,8 @@ export default class Bot {
             const logger = msg.getChannel().logger;
             logger.addContext("channel-id", msg.getChannel().channelId);
             logger.info(util.format("[%s] %s: %s", msg.getChannel().name, msg.getChatter().name, msg.getRaw()));
-            if (await msg.getChatter().isIgnored()) event.stopPropagation();
-            if (msg.getChatter().banned) event.stopPropagation();
+            if (await msg.getChatter().isIgnored()) event.cancel();
+            if (msg.getChatter().banned) event.cancel();
         }, EventPriority.HIGHEST);
         dispatcher.addListener(JoinEvent, ({event}) => {
             const logger = event.getChannel().logger;
@@ -58,6 +58,10 @@ export default class Bot {
             logger.info(`New chatter joined the channel: ${chatter.name}`);
         });
         this.adapter.run(options);
+    }
+
+    async shutdown(): Promise<void> {
+        await this.adapter.stop();
     }
 
     async send(message: string, channel: ChannelEntity): Promise<void> {

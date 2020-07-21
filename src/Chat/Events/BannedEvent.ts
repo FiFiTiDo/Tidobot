@@ -6,7 +6,7 @@ export default class BannedEvent extends Event<BannedEvent> {
     public static readonly NAME = "chat_banned";
 
     constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity, private readonly duration: number, private readonly reason: string | null) {
-        super(BannedEvent.NAME);
+        super(BannedEvent);
     }
 
     getChatter(): ChatterEntity {

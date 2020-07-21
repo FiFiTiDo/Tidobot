@@ -5,7 +5,7 @@ export class NewChatterEvent extends Event<NewChatterEvent> {
     public static readonly NAME = "chatter:new";
 
     constructor(private readonly chatter: ChatterEntity) {
-        super(NewChatterEvent.NAME);
+        super(NewChatterEvent);
     }
 
     getEventArgs(): NewChatterEventArgs {

@@ -1,4 +1,4 @@
-import Event, {EventConstructor} from "./Event";
+import Event, {EventArguments, EventConstructor} from "./Event";
 import Listener from "./Listener";
 import EventSystem from "./EventSystem";
 import {EventPriority} from "./EventPriority";
@@ -9,7 +9,7 @@ const EVENT_META_KEY = "handler:events";
 interface EventHandler<T extends Event<T>> {
     event: EventConstructor<T>;
     priority: EventPriority;
-    func: Listener<T>;
+    func: Listener<T, EventArguments<T>>;
 }
 
 export function HandlesEvents() {
@@ -28,8 +28,8 @@ export function HandlesEvents() {
     }
 }
 
-export function EventHandler<T extends Event<T>>(event: EventConstructor<T>, priority = EventPriority.NORMAL): Function {
-    return function (target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<Listener<T>>): void {
+export function EventHandler<T extends Event<T>, TArgs extends EventArguments<T>>(event: EventConstructor<T>, priority = EventPriority.NORMAL): Function {
+    return function (target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<Listener<T, TArgs>>): void {
         addMetadata<EventHandler<T>>(EVENT_META_KEY, target.constructor, {event, priority, func: descriptor.value});
     };
 }

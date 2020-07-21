@@ -5,7 +5,7 @@ export class NewChannelEvent extends Event<NewChannelEvent> {
     public static readonly NAME = "channel:new";
 
     constructor(private readonly channel: ChannelEntity) {
-        super(NewChannelEvent.NAME);
+        super(NewChannelEvent);
     }
 
     getEventArgs(): NewChannelEventArgs {

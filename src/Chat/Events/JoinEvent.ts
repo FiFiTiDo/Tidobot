@@ -6,7 +6,7 @@ export default class JoinEvent extends Event<JoinEvent> {
     public static readonly NAME = "chat_join";
 
     constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity) {
-        super(JoinEvent.NAME);
+        super(JoinEvent);
     }
 
     getChatter(): ChatterEntity {

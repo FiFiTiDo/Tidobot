@@ -6,7 +6,7 @@ export default class LeaveEvent extends Event<LeaveEvent> {
     public static readonly NAME = "chat_leave";
 
     constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity) {
-        super(LeaveEvent.NAME);
+        super(LeaveEvent);
     }
 
     getChatter(): ChatterEntity {

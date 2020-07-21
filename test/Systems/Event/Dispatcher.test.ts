@@ -12,7 +12,7 @@ class TestEvent extends Event<TestEvent> {
     public static readonly NAME: string = "test_event";
 
     constructor() {
-        super(TestEvent.NAME);
+        super(TestEvent);
     }
 }
 
@@ -20,14 +20,14 @@ class TestEvent1 extends Event<TestEvent1> {
     public static readonly NAME: string = "test_event1";
 
     constructor() {
-        super(TestEvent1.NAME);
+        super(TestEvent1);
     }
 }
 class TestEvent2 extends Event<TestEvent2> {
     public static readonly NAME: string = "test_event2";
 
     constructor() {
-        super(TestEvent2.NAME);
+        super(TestEvent2);
     }
 }
 

@@ -4,7 +4,7 @@ import Message from "../../Chat/Message";
 import rp from "request-promise-native";
 import cheerio from "cheerio";
 import moment from "moment";
-import {format_duration} from "../../Utilities/functions";
+import {formatDuration} from "../../Utilities/TimeUtils";
 import prettyMilliseconds from "pretty-ms";
 import Application from "../../Application/Application";
 import lexer from "./Lexer";
@@ -130,7 +130,7 @@ export default class ExpressionSystem extends System {
                 const parsed = chrono.parseDate(timestring, Date.now(), {forwardDate: true});
                 const datetime = moment(parsed);
                 const dur = moment.duration(datetime.diff(moment()));
-                return longFormat ? format_duration(dur) : dur.humanize();
+                return longFormat ? formatDuration(dur) : dur.humanize();
             },
             timesince: async (timestring: unknown, longFormat = false): Promise<string> => {
                 if (typeof timestring !== "string") return await msg.getResponse().translate("expression:error.argument", {
@@ -140,7 +140,7 @@ export default class ExpressionSystem extends System {
                 const parsed = chrono.parseDate(timestring, Date.now(), {forwardDate: false});
                 const datetime = moment(parsed);
                 const dur = moment.duration(moment().diff(datetime));
-                return longFormat ? format_duration(dur) : dur.humanize();
+                return longFormat ? formatDuration(dur) : dur.humanize();
             },
             process: {
                 exit: async (): Promise<string> => await msg.getResponse().translate("expression:error.shutdown")

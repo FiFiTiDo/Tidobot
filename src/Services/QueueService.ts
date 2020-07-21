@@ -1,7 +1,7 @@
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import EntityStateList from "../Database/EntityStateList";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import Optional from "../Utilities/Optional";
+import Optional from "../Utilities/Patterns/Optional";
 
 class Queue {
     private chatters: ChatterEntity[] = [];

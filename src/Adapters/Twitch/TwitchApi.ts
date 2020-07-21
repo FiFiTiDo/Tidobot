@@ -1,5 +1,5 @@
 import Cache from "../../Systems/Cache/Cache";
-import {parse_duration} from "../../Utilities/functions";
+import {parseDuration} from "../../Utilities/TimeUtils";
 import {AccessToken} from "./ApiAuthentication";
 import axios, {AxiosInstance, AxiosPromise, AxiosRequestConfig} from "axios";
 import Config from "../../Systems/Config/Config";
@@ -8,7 +8,7 @@ import TwitchAdapter from "./TwitchAdapter";
 
 const CACHE_EXPIRY = async () => {
     const config = await Config.getInstance().getConfig(CacheConfig);
-    return parse_duration(config.length);
+    return parseDuration(config.length);
 };
 
 /**

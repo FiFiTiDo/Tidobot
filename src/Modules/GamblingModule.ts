@@ -11,7 +11,7 @@ import {permission} from "../Systems/Permissions/decorators";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {randomFloat} from "../Utilities/RandomUtils";
 import CurrencyModule from "./CurrencyModule";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {arrayRand} from "../Utilities/ArrayUtils";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Channel, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
@@ -88,9 +88,9 @@ class SlotsCommand extends Command {
             message += " " + await response.translate("gambling:slots.win", {
                 amount: await CurrencyModule.formatAmount(winnings, channel)
             });
-            message += " " + array_rand(await response.getTranslation<string[]>("gambling:win"));
+            message += " " + arrayRand(await response.getTranslation<string[]>("gambling:win"));
         } else {
-            message += " " + array_rand(await response.getTranslation<string[]>("gambling:loss"));
+            message += " " + arrayRand(await response.getTranslation<string[]>("gambling:loss"));
         }
 
         return response.rawMessage(message);

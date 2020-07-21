@@ -3,8 +3,8 @@ import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
-import {array_rand} from "../Utilities/ArrayUtils";
-import Optional from "../Utilities/Optional";
+import {arrayRand} from "../Utilities/ArrayUtils";
+import Optional from "../Utilities/Patterns/Optional";
 import Message from "../Chat/Message";
 
 enum RaffleState {
@@ -67,7 +67,7 @@ class Raffle {
         if (this.winners.length === Object.keys(this.userEntries).length && !this.settings.duplicateWins) return null;
         let winner;
         do {
-            winner = array_rand(this.entries);
+            winner = arrayRand(this.entries);
         } while (this.winners.indexOf(winner) >= 0 && !this.settings.duplicateWins);
         this.winners.push(winner);
         return winner;

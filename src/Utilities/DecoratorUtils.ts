@@ -13,7 +13,7 @@ export function setMetadata<T>(key: string, target: any, value: T): void {
 }
 
 export function setPropertyMetadata<T>(key: string, target: any, propertyKey: string, value: T): void {
-    Reflect.defineMetadata(key, target, propertyKey, value);
+    Reflect.defineMetadata(key, value, target, propertyKey);
 }
 
 interface KeyValuePair<T> {
@@ -50,10 +50,13 @@ export function addPropertyMetadata<T>(key: string, target: any, propertyKey: st
     setPropertyMetadata(key, target, propertyKey, data);
 }
 
-export type TYPE_CONSTRUCTORS = NumberConstructor|StringConstructor|ArrayBufferConstructor|ArrayConstructor|
-    BooleanConstructor|DateConstructor|ErrorConstructor|FunctionConstructor|GeneratorFunctionConstructor|MapConstructor|
-    ObjectConstructor|PromiseConstructor|RegExpConstructor|SetConstructor|SymbolConstructor;
-
-export function getPropertyType(target: any, property: string): TYPE_CONSTRUCTORS {
-    return Reflect.getMetadata("design:type", target, property);
+export async function getOrSetProp<T>(obj: object, key: string, f: () => T | Promise<T>): Promise<T> {
+    const varKey = "_" + key;
+    const prop = Object.getOwnPropertyDescriptor(obj, varKey);
+    if (!prop || !prop.value) {
+        let value = f();
+        if (value instanceof Promise) value = await value;
+        Object.defineProperty(obj, varKey, {value, configurable: true, enumerable: true});
+    }
+    return Object.getOwnPropertyDescriptor(obj, varKey).value;
 }

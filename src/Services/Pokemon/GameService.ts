@@ -1,8 +1,8 @@
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import TrainerEntity from "../../Database/Entities/TrainerEntity";
 import PokemonEntity, {NATURES, PokemonStats, PokemonTeam} from "../../Database/Entities/PokemonEntity";
-import Optional from "../../Utilities/Optional";
-import {array_contains, array_rand} from "../../Utilities/ArrayUtils";
+import Optional from "../../Utilities/Patterns/Optional";
+import {arrayContains, arrayRand} from "../../Utilities/ArrayUtils";
 import {SettingType} from "../../Systems/Settings/Setting";
 import {randomChance, randomInt} from "../../Utilities/RandomUtils";
 import {ExperienceService} from "./ExperienceService";
@@ -45,7 +45,7 @@ export class GameService {
     }
 
     public getRandomMon(team: PokemonTeam): Optional<PokemonEntity> {
-        return team.length < 1 ? Optional.empty() : Optional.of(array_rand(team));
+        return team.length < 1 ? Optional.empty() : Optional.of(arrayRand(team));
     }
 
     public async releaseTeam(team: PokemonTeam): Promise<void> {
@@ -55,8 +55,8 @@ export class GameService {
     public async generateRandomStats(data: TrainerData): Promise<Optional<PokemonStats>> {
         const channel = data.trainer.getChannel();
         const current = [data.chatter.name, ...data.team.map(pkmn => pkmn.name)];
-        const chatters = channel.getChatters().filter(chatter => array_contains(chatter.name, current));
-        const name = array_rand(chatters).name || PokemonEntity.GENERIC_NAME;
+        const chatters = channel.getChatters().filter(chatter => arrayContains(chatter.name, current));
+        const name = arrayRand(chatters).name || PokemonEntity.GENERIC_NAME;
         return this.generateStats(name, data);
     }
 
@@ -64,7 +64,7 @@ export class GameService {
         if (name !== PokemonEntity.GENERIC_NAME && team.some(pkmn => pkmn.name === name)) return Optional.empty();
 
         const channel = trainer.getChannel();
-        const nature = array_rand(NATURES);
+        const nature = arrayRand(NATURES);
         const shiny = randomChance(0.05) ? 1 : 0;
         const rus = randomChance(0.01) ? 1 : 0;
 
@@ -90,8 +90,8 @@ export class GameService {
 
     public async attemptFight(self: TrainerData, target: TrainerData): Promise<GameResults> {
         const channel = self.chatter.getChannel();
-        const selfMon = array_rand(self.team);
-        const targetMon = array_rand(target.team);
+        const selfMon = arrayRand(self.team);
+        const targetMon = arrayRand(target.team);
 
         const win = (Math.random() * 100) - ((targetMon.level - selfMon.level) / 2.1);
 

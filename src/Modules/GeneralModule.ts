@@ -1,6 +1,6 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import moment from "moment-timezone";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {arrayRand} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
@@ -91,7 +91,7 @@ class ShutdownCommand extends Command {
     async handleCommand(event: CommandEvent, @ResponseArg response: Response): Promise<void> {
         return this.generalModule.app.shutdown()
             .then(async successful => successful ?
-                await response.broadcast(array_rand(await response.getTranslation<string[]>("shutdown"))) :
+                await response.broadcast(arrayRand(await response.getTranslation<string[]>("shutdown"))) :
                 await response.message("shutdown-cancelled")
             ).catch(e => response.genericErrorAndLog(e, logger));
     }

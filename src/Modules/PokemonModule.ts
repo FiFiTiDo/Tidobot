@@ -7,7 +7,7 @@ import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting"
 import TrainerEntity from "../Database/Entities/TrainerEntity";
 import PokemonEntity, {formatStats} from "../Database/Entities/PokemonEntity";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {arrayRand} from "../Utilities/ArrayUtils";
 import {Response} from "../Chat/Response";
 import ChannelManager from "../Chat/ChannelManager";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
@@ -91,7 +91,7 @@ class PokemonCommand extends Command {
                 result = await response.translate("pokemon:catch.success", {nature: pkmn.nature});
             } else {
                 pokemon = formatStats(stats.value);
-                result = array_rand(await response.getTranslation("pokemon:catch.failed"));
+                result = arrayRand(await response.getTranslation("pokemon:catch.failed"));
             }
 
             return await response.message("pokemon:catch.full", {username: sender.name, pokemon, result});

@@ -1,5 +1,5 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {arrayRand} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import {inject} from "inversify";
@@ -66,7 +66,7 @@ class Magic8BallCommand extends Command {
     @CommandHandler("8ball", "8ball")
     @CheckPermission("fun.8ball")
     async handleCommand(event: CommandEvent, @ResponseArg response: Response): Promise<void> {
-        const resp = array_rand(await response.getTranslation<string[]>("fun:8ball.responses"));
+        const resp = arrayRand(await response.getTranslation<string[]>("fun:8ball.responses"));
         await response.message("fun:8ball.response", {response: resp});
     }
 }

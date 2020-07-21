@@ -2,7 +2,7 @@ import Filter from "./Filter";
 import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {SettingType} from "../../Settings/Setting";
-import {array_contains} from "../../../Utilities/ArrayUtils";
+import {arrayContains} from "../../../Utilities/ArrayUtils";
 import FiltersEntity from "../../../Database/Entities/FiltersEntity";
 import StrikeManager from "../StrikeManager";
 import PermissionSystem from "../../Permissions/PermissionSystem";
@@ -31,7 +31,7 @@ export default class UrlFilter extends Filter {
             const res = URL_PATTERN.exec(noDot);
             if (res === null) break;
             const url = new URL(res[0]);
-            const contains = array_contains(url.host, lists.domains);
+            const contains = arrayContains(url.host, lists.domains);
 
 
             if (whitelist ? !contains : contains ) {

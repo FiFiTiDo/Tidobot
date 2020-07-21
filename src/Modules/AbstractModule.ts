@@ -1,6 +1,5 @@
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {array_contains, array_remove} from "../Utilities/ArrayUtils";
-import {inject, injectable, unmanaged} from "inversify";
+import {arrayContains, arrayRemove} from "../Utilities/ArrayUtils";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
@@ -12,9 +11,6 @@ import {getPermissions} from "../Systems/Permissions/decorators";
 import Permission from "../Systems/Permissions/Permission";
 import {getCommands} from "../Systems/Commands/decorators";
 import Command from "../Systems/Commands/Command";
-import Adapter from "../Adapters/Adapter";
-import {ConfirmationFactory} from "./ConfirmationModule";
-import symbols from "../symbols";
 
 export interface ModuleInfo {
     name: string;
@@ -100,11 +96,11 @@ export default abstract class AbstractModule {
     async enable(channel: ChannelEntity): Promise<void> {
         if (this.coreModule) return;
         if (!this.isDisabled(channel)) return;
-        array_remove(this.getName(), channel.disabledModules);
+        arrayRemove(this.getName(), channel.disabledModules);
         return channel.save();
     }
 
     isDisabled(channel: ChannelEntity): boolean {
-        return !this.coreModule && array_contains(this.getName(), channel.disabledModules);
+        return !this.coreModule && arrayContains(this.getName(), channel.disabledModules);
     }
 }

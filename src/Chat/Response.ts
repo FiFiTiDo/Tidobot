@@ -2,7 +2,7 @@ import Adapter from "../Adapters/Adapter";
 import ChannelManager from "./ChannelManager";
 import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
-import {array_rand} from "../Utilities/ArrayUtils";
+import {arrayRand} from "../Utilities/ArrayUtils";
 import {TranslationProvider} from "../symbols";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {Logger} from "log4js";
@@ -62,7 +62,7 @@ export class Response {
 
     async genericError(): Promise<void> {
         const errors: string[] = await this.getTranslation<string[]>("generic-error");
-        const error = array_rand(errors);
+        const error = arrayRand(errors);
         return this.rawMessage(error);
     }
 

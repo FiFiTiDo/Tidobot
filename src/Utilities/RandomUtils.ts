@@ -1,10 +1,10 @@
-import {array_rand} from "./ArrayUtils";
+import {arrayRand} from "./ArrayUtils";
 
 export function generateRandomCode(length: number): string {
     let text = "";
     const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
 
-    for (let i = 0; i < length; i++) text += array_rand(possible);
+    for (let i = 0; i < length; i++) text += arrayRand(possible);
 
     return text;
 }

@@ -1,5 +1,5 @@
 import Dictionary from "../../Utilities/Structures/Dictionary";
-import {forceCast} from "../../Utilities/functions";
+import {forceCast} from "../../Utilities/TypeUtils";
 import GenericObject from "../../Utilities/Interfaces/GenericObject";
 
 export type EventMetadata = Dictionary;

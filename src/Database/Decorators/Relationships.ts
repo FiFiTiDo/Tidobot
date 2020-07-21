@@ -1,7 +1,6 @@
 import {where} from "../Where";
 import Entity, {EntityConstructor} from "../Entities/Entity";
-import {getOrSetProp} from "../../Utilities/functions";
-import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
+import {addMetadata, getMetadata, getOrSetProp} from "../../Utilities/DecoratorUtils";
 import {objectHasProperty} from "../../Utilities/ObjectUtils";
 
 const RELATIONSHIP_KEY = "entity:relationship";

@@ -1,4 +1,4 @@
-import {AsyncResolvable, Resolvable, resolve, resolveAsync} from "./Interfaces/Resolvable";
+import {AsyncResolvable, Resolvable, resolve, resolveAsync} from "../Interfaces/Resolvable";
 
 export default class Optional<T> {
     private constructor(private _value: T = null, private _present: boolean = false) {

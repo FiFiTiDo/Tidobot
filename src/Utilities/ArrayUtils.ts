@@ -1,28 +1,24 @@
-export function array_rand<T>(array: T[]): T {
+export function arrayRand<T>(array: T[]): T {
     return array[Math.floor(Math.random() * array.length)];
 }
 
-export function array_find<T>(needle: T, haystack: T[]): number {
+export function arrayFind<T>(needle: T, haystack: T[]): number {
     return haystack.indexOf(needle);
 }
 
-export function array_contains<T>(needle: T, haystack: T[]): boolean {
-    return array_find(needle, haystack) >= 0;
+export function arrayContains<T>(needle: T, haystack: T[]): boolean {
+    return arrayFind(needle, haystack) >= 0;
 }
 
-export function array_add<T>(value: T, arr: T[]): boolean {
-    if (array_contains(value, arr)) return false;
+export function arrayAdd<T>(value: T, arr: T[]): boolean {
+    if (arrayContains(value, arr)) return false;
     arr.push(value);
     return true;
 }
 
-export function array_remove<T>(value: T, arr: T[]): boolean {
-    const i = array_find(value, arr);
+export function arrayRemove<T>(value: T, arr: T[]): boolean {
+    const i = arrayFind(value, arr);
     if (i < 0) return false;
     arr.splice(i, 1);
     return true;
-}
-
-export function tuple<T extends any[]>(...arr: T): T {
-    return arr;
 }

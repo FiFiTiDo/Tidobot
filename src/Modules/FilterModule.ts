@@ -1,7 +1,7 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import FiltersEntity from "../Database/Entities/FiltersEntity";
-import {array_add, array_remove} from "../Utilities/ArrayUtils";
+import {arrayAdd, arrayRemove} from "../Utilities/ArrayUtils";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
@@ -144,7 +144,7 @@ class FilterCommand extends Command {
         @Argument(ListConverter) list: string, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         const lists = await channel.getFilters();
-        if (!array_add(item, lists[list])) return response.message("filter:list.exists", {list, item});
+        if (!arrayAdd(item, lists[list])) return response.message("filter:list.exists", {list, item});
         return lists.save()
             .then(() => response.message("filter:list.added", {item, list}))
             .catch(e => response.genericErrorAndLog(e, logger));
@@ -157,7 +157,7 @@ class FilterCommand extends Command {
         @Argument(ListConverter) list: string, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         const lists = await channel.getFilters();
-        if (!array_remove(item, lists[list])) return response.message("filter:list.unknown", {list, item});
+        if (!arrayRemove(item, lists[list])) return response.message("filter:list.unknown", {list, item});
         return lists.save()
             .then(() => response.message("filter:list.removed", {item, list}))
             .catch(e => response.genericErrorAndLog(e, logger));

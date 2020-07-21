@@ -1,5 +1,5 @@
 import PokemonEntity from "../../Database/Entities/PokemonEntity";
-import {MapExt} from "../../Utilities/Map";
+import {MapExt} from "../../Utilities/Structures/Map";
 import ChannelManager from "../../Chat/ChannelManager";
 import TrainerEntity from "../../Database/Entities/TrainerEntity";
 import {getLogger} from "../../Utilities/Logger";

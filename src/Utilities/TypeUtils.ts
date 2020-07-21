@@ -1,3 +1,3 @@
-export type ConstructorOf<T extends object> = {
-    new(...args: any): T;
+export function forceCast<T>(object: unknown): T {
+    return object as T;
 }

@@ -5,8 +5,6 @@ import {Role} from "../Systems/Permissions/Role";
 import {inject} from "inversify";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import StandardValidationStrategy from "../Systems/Commands/Validation/Strategies/StandardValidationStrategy";
-import {ValidatorStatus} from "../Systems/Commands/Validation/Strategies/ValidationStrategy";
 import Adapter from "../Adapters/Adapter";
 import {getLogger} from "../Utilities/Logger";
 import {command} from "../Systems/Commands/decorators";
@@ -17,6 +15,8 @@ import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {randomFloat} from "../Utilities/RandomUtils";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
+import {wait} from "../Utilities/functions";
+import {TimeUnit} from "../Systems/Timer/TimerSystem";
 
 export const MODULE_INFO = {
     name: "Fun",
@@ -34,21 +34,14 @@ class RouletteCommand extends Command {
     @CommandHandler("roulette", "roulette")
     @CheckPermission("fun.roulette")
     async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity): Promise<void> {
-        const {status} = await event.validate(new StandardValidationStrategy({
-            usage: "roulette",
-            permission: this.funModule.playRoulette
-        }));
-         if (status !== ValidatorStatus.OK) return;
-
         await response.action("fun:roulette.lead_up", {username: sender.name});
-        setTimeout(async () => {
-            if (randomFloat() > 1/6) {
-                await response.message("fun:roulette.safe", {username: sender.name});
-            } else {
-                await response.message("fun:roulette.hit", {username: sender.name});
-                await this.funModule.adapter.tempbanChatter(sender, 60, await response.translate("fun:roulette.reason"));
-            }
-        }, 1000);
+        await wait(TimeUnit.Seconds(1));
+        if (randomFloat() > 1/6) {
+            await response.message("fun:roulette.safe", {username: sender.name});
+        } else {
+            await response.message("fun:roulette.hit", {username: sender.name});
+            await this.funModule.adapter.tempbanChatter(sender, 60, await response.translate("fun:roulette.reason"));
+        }
     }
 }
 

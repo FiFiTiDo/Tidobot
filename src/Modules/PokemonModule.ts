@@ -21,7 +21,7 @@ import {setting} from "../Systems/Settings/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Argument, Channel, makeEventReducer, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
-import {InvalidInputError} from "../Systems/Commands/Validation/ValidationErrors";
+import {TranslateMessageInputError} from "../Systems/Commands/Validation/ValidationErrors";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {GameService, TrainerData, WinState} from "../Services/Pokemon/GameService";
 import {ExperienceService} from "../Services/Pokemon/ExperienceService";
@@ -51,8 +51,7 @@ class TrainerDataArg {
         const response = event.getMessage().getResponse();
         const chatter = await this.chatterArg.convert(input, name, column, event);
         const data = await this.gameService.getTrainerData(chatter);
-        const errMsg = await response.translate("pokemon:error.no-trainer", {username: input});
-        return data.orElseThrow(() => new InvalidInputError(errMsg));
+        return data.orElseThrow(() => new TranslateMessageInputError("pokemon:error.no-trainer", {username: input}));
     }
 }
 

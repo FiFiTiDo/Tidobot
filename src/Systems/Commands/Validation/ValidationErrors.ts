@@ -1,12 +1,7 @@
 import Message from "../../../Chat/Message";
+import {StringMap, TFunctionKeys, TFunctionResult} from "i18next";
 
 export class ValidationError extends Error {
-    constructor(message: string) {
-        super(message);
-    }
-}
-
-export class InvalidOptionError extends ValidationError {
     constructor(message: string) {
         super(message);
     }
@@ -22,15 +17,16 @@ export class InvalidInputError extends ValidationError {
     }
 }
 
-export class ExpectedTokenError extends InvalidInputError {
-    constructor(private tokenType: string, private token: string, private column: number) {
-        super(`Expected token ${tokenType} (${token}) at column ${column}`);
+export class TranslateMessageInputError<TResult extends TFunctionResult = string,
+    TKeys extends TFunctionKeys = string,
+    TInterpolationMap extends object = StringMap> extends InvalidInputError {
+
+    constructor(private key: TKeys, private opts?: TInterpolationMap) {
+        super(`Translated argument, translation key: ${key}`);
     }
 
     async getMessage(message: Message, usage: string): Promise<string> {
-        return message.getResponse().translate("command:error.expected-token", {
-            tokenType: this.tokenType, token: this.token, column: this.column
-        })
+        return message.getResponse().translate(this.key, this.opts);
     }
 }
 

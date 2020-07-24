@@ -14,32 +14,23 @@ interface TrainerData {
 }
 
 @Id
-@Table(({ service, channel }) => `${service}_${channel.name}_trainer`)
+@Table(({service, channel}) => `${service}_${channel.name}_trainer`)
 export default class TrainerEntity extends ChannelSpecificEntity<TrainerEntity> {
+    @Column({name: "user_id"})
+    public userId: string;
+    @Column({datatype: DataTypes.INTEGER})
+    public won: number;
+    @Column({datatype: DataTypes.INTEGER})
+    public lost: number;
+    @Column({datatype: DataTypes.INTEGER})
+    public draw: number;
+
     constructor(id: number, params: EntityParameters) {
         super(TrainerEntity, id, params);
     }
 
-    @Column({ name: "user_id" })
-    public userId: string;
-
-    @Column({ datatype: DataTypes.INTEGER })
-    public won: number;
-
-    @Column({ datatype: DataTypes.INTEGER })
-    public lost: number;
-
-    @Column({ datatype: DataTypes.INTEGER })
-    public draw: number;
-
-    @OneToOne(ChatterEntity, "user_id", "user_id")
-    public async chatter(): Promise<ChatterEntity> { return null; }
-
-    @OneToMany(PokemonEntity, "id", "trainer_id")
-    public async team(): Promise<PokemonEntity[]> { return []; }
-
     public static async getByChatter(chatter: ChatterEntity): Promise<TrainerEntity> {
-        return TrainerEntity.retrieveOrMake({ channel: chatter.getChannel() }, where().eq("user_id", chatter.userId), {
+        return TrainerEntity.retrieveOrMake({channel: chatter.getChannel()}, where().eq("user_id", chatter.userId), {
             user_id: chatter.userId,
             won: 0,
             lost: 0,
@@ -47,9 +38,19 @@ export default class TrainerEntity extends ChannelSpecificEntity<TrainerEntity> 
         });
     }
 
-    public static async *getAllTrainers(channel: ChannelEntity): AsyncIterableIterator<TrainerData> {
-        const trainers = await this.getAll({ channel });
+    public static async* getAllTrainers(channel: ChannelEntity): AsyncIterableIterator<TrainerData> {
+        const trainers = await this.getAll({channel});
         for (const trainer of trainers)
-            yield { trainer, team: await trainer.team() };
+            yield {trainer, team: await trainer.team()};
+    }
+
+    @OneToOne(ChatterEntity, "user_id", "user_id")
+    public async chatter(): Promise<ChatterEntity> {
+        return null;
+    }
+
+    @OneToMany(PokemonEntity, "id", "trainer_id")
+    public async team(): Promise<PokemonEntity[]> {
+        return [];
     }
 }

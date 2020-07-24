@@ -1,51 +1,37 @@
 import ChatterEntity from "../Database/Entities/ChatterEntity";
+import {MapExt} from "../Utilities/Structures/Map";
+import Optional from "../Utilities/Patterns/Optional";
 
 export default class ChatterList {
-    private readonly chatters: ChatterEntity[];
+    private readonly chatters: MapExt<string, ChatterEntity>;
 
     constructor() {
-        this.chatters = [];
+        this.chatters = new MapExt<string, ChatterEntity>();
     }
 
     has(chatter: ChatterEntity): boolean {
-        for (const chatter2 of this.chatters)
-            if (chatter.is(chatter2))
-                return true;
-        return false;
+        return this.chatters.has(chatter.userId);
     }
 
     add(chatter: ChatterEntity): boolean {
         if (this.has(chatter)) return false;
-        this.chatters.push(chatter);
+        this.chatters.set(chatter.userId, chatter);
         return true;
     }
 
     remove(chatter: ChatterEntity): boolean {
-        for (let i = 0; i < this.chatters.length; i++) {
-            const chatter2 = this.chatters[i];
-            if (chatter.is(chatter2)) {
-                this.chatters.splice(i, 1);
-                return true;
-            }
-        }
-        return false;
+        return this.chatters.delete(chatter.userId);
     }
 
     getAll(): ChatterEntity[] {
-        return this.chatters;
+        return [...this.chatters.values()];
     }
 
-    findById(id: string) {
-        for (const chatter of this.chatters)
-            if (chatter.userId === id)
-                return chatter;
-        return null;
+    findById(id: string): Optional<ChatterEntity> {
+        return Optional.ofUndefable(this.getAll().find(chatter => chatter.userId === id));
     }
 
-    findByName(name: string): ChatterEntity | null {
-        for (const chatter of this.chatters)
-            if (chatter.name.toLowerCase() === name.toLowerCase())
-                return chatter;
-        return null;
+    findByName(name: string): Optional<ChatterEntity> {
+        return Optional.ofUndefable(this.getAll().find(chatter => chatter.name === name));
     }
 }

@@ -6,19 +6,11 @@ export default class Cooldown {
     private readonly executedAt: moment.Moment;
 
     constructor(
-        private readonly command: Command|CommandEntity,
-        private readonly subcommand: string|undefined
+        private readonly command: Command | CommandEntity,
+        private readonly subcommand: string | undefined,
+        private readonly user: boolean
     ) {
         this.executedAt = moment();
-    }
-
-    /**
-     * Gets the cooldown length
-     *
-     * @returns Cooldown length in seconds
-     */
-    private getCooldown(): number {
-        return this.command instanceof Command ? this.command.getCooldown(this.subcommand) : this.command.userCooldown;
     }
 
     /**
@@ -38,7 +30,7 @@ export default class Cooldown {
      * @param command The command that was sent
      * @param subcommand The subcommand the was sent
      */
-    is(command: Command|CommandEntity|Cooldown, subcommand?: string): boolean {
+    is(command: Command | CommandEntity | Cooldown, subcommand?: string): boolean {
         if (command instanceof Cooldown) {
             return this.is(command.command, command.subcommand);
         }
@@ -50,5 +42,22 @@ export default class Cooldown {
             return command.is(this.command)
         }
         return false;
+    }
+
+    /**
+     * Gets the cooldown length
+     *
+     * @returns Cooldown length in seconds
+     */
+    private getCooldown(): number {
+        if (this.user) {
+            return this.command instanceof Command ?
+                this.command.getUserCooldown(this.subcommand) :
+                this.command.userCooldown;
+        } else {
+            return this.command instanceof Command ?
+                this.command.getGlobalCooldown(this.subcommand) :
+                this.command.globalCooldown;
+        }
     }
 }

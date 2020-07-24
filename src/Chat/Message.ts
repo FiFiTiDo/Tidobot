@@ -7,6 +7,7 @@ import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {Response, ResponseFactory} from "./Response";
 import Permission from "../Systems/Permissions/Permission";
+import {returnError, validateFunction} from "../Utilities/ValidateFunction";
 
 export default class Message {
     protected stripped: string;
@@ -47,18 +48,14 @@ export default class Message {
             },
             raw_arguments: this.parts.slice(1).join(" "),
             arguments: this.parts.slice(1),
-            to_user: (prepend: unknown, append: unknown): string => {
-                if (this.parts.length < 1) return "";
-
+            to_user: validateFunction((prepend?: string, append?: string): string => {
                 let resp = "";
-                if (typeof prepend === "string") resp += prepend;
-                let user = this.parts[1];
-                user = user.startsWith("@") ? user.substring(1) : user;
-                resp += user;
-                if (typeof append === "string") resp += append;
-
+                if (prepend) resp += prepend;
+                const name = this.parts.length < 2 ? this.chatter.name : this.parts[1];
+                resp += name.startsWith("@") ? name.substring(1) : name;
+                if (append) resp += append;
                 return resp;
-            },
+            }, ["string", "string"], returnError()),
         };
     }
 
@@ -66,7 +63,7 @@ export default class Message {
         return ExpressionSystem.getInstance().evaluate(expression, this);
     }
 
-    public async checkPermission(permission: string|Permission): Promise<boolean> {
+    public async checkPermission(permission: string | Permission): Promise<boolean> {
         return PermissionSystem.getInstance().check(permission, this.chatter, await this.getUserRoles());
     }
 

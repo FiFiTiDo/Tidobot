@@ -46,10 +46,6 @@ class Raffle {
         return this.state === RaffleState.OPEN;
     }
 
-    getState(): RaffleState {
-        return this.state;
-    }
-
     async canEnter(chatter: ChatterEntity, roles: Role[]): Promise<boolean> {
         if (!this.isOpen()) return false;
         if (this.userEntries.get(chatter) >= this.settings.maxEntries) return false;
@@ -91,10 +87,6 @@ export class RaffleService {
         return this.getRaffle(channel).filter(raffle => raffle.isOpen());
     }
 
-    getClosedRaffle(channel: ChannelEntity): Optional<Raffle> {
-        return this.getRaffle(channel).filter(raffle => !raffle.isOpen());
-    }
-
     openRaffle(keyword: string, channel: ChannelEntity, settings: RaffleSettings): Optional<Raffle> {
         if (this.getOpenRaffle(channel)) return Optional.empty();
 
@@ -112,7 +104,7 @@ export class RaffleService {
         return this.getRaffle(channel).map(raffle => raffle.reset());
     }
 
-    pullWinner(channel: ChannelEntity): Optional<string|false> {
+    pullWinner(channel: ChannelEntity): Optional<string | false> {
         return this.getRaffle(channel).map(raffle => raffle.pullWinner() ?? false);
     }
 

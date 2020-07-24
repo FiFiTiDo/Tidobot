@@ -20,18 +20,11 @@ import MessageCache from "./MessageCache";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import EntityStateList from "../../Database/EntityStateList";
 import {SettingType} from "../Settings/Setting";
+import RepetitionFilter from "./Filters/RepetitionFilter";
 
 @HandlesEvents()
 export default class FilterSystem extends System {
     private static instance: FilterSystem = null;
-
-    public static getInstance(): FilterSystem {
-        if (this.instance === null)
-            this.instance = new FilterSystem();
-
-        return this.instance;
-    }
-
     private readonly strikeManager: StrikeManager = new StrikeManager();
     private readonly permits: EntityStateList<ChatterEntity, moment.Moment> = new EntityStateList<ChatterEntity, moment.Moment>(null);
     private readonly filters: Filter[];
@@ -48,7 +41,8 @@ export default class FilterSystem extends System {
             new LongMessageFilter(this.strikeManager),
             new SpamFilter(this.strikeManager, this.messageCache),
             new SymbolFilter(this.strikeManager),
-            new UrlFilter(this.strikeManager)
+            new UrlFilter(this.strikeManager),
+            new RepetitionFilter(this.strikeManager)
         ];
 
         const perm = PermissionSystem.getInstance();
@@ -57,9 +51,16 @@ export default class FilterSystem extends System {
         this.logger.info("System initialized");
     }
 
+    public static getInstance(): FilterSystem {
+        if (this.instance === null)
+            this.instance = new FilterSystem();
+
+        return this.instance;
+    }
+
     @EventHandler(MessageEvent)
     async onMessage(eventArgs: MessageEventArgs): Promise<void> {
-        const { sender, channel, message } = eventArgs;
+        const {sender, channel, message} = eventArgs;
         await this.messageCache.add(message);
         if (await message.checkPermission("filter.ignore.all")) return;
         if (this.permits.has(sender)) {

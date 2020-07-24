@@ -9,21 +9,24 @@ export default class CooldownList {
         this.cooldowns = [];
     }
 
-    public find(command: Command|CommandEntity, subcommand?: string) {
+    public find(command: Command | CommandEntity, subcommand?: string) {
         for (const cooldown of this.cooldowns)
             if (cooldown.is(command, subcommand))
                 return cooldown;
         return null;
     }
 
-    public replace(newCooldown: Cooldown) {
-        for (let i = 0; i < this.cooldowns.length; i++) {
-            const cooldown = this.cooldowns[i];
-            if (cooldown.is(newCooldown)) {
-                this.cooldowns.splice(i, 1);
-                this.cooldowns.push(newCooldown);
-                break;
+    public replace(cooldown: Cooldown) {
+        const i = this.cooldowns.findIndex(other => other.is(cooldown));
+        if (i > 0)
+
+            for (let i = 0; i < this.cooldowns.length; i++) {
+                const cooldown = this.cooldowns[i];
+                if (cooldown.is(cooldown)) {
+                    this.cooldowns.splice(i, 1);
+                    this.cooldowns.push(cooldown);
+                    break;
+                }
             }
-        }
     }
 }

@@ -4,35 +4,37 @@ import Message from "../../Chat/Message";
 import Setting, {Integer, SettingType} from "../Settings/Setting";
 import SettingsSystem from "../Settings/SettingsSystem";
 import EntityStateList from "../../Database/EntityStateList";
+import SpamFilter from "./Filters/SpamFilter";
 
 export default class MessageCache {
+    private static MAX_CACHE = new Setting("filter.cache.amount", 30 as Integer, SettingType.INTEGER);
+
     private messages: EntityStateList<ChannelEntity, Message[]> = new EntityStateList<ChannelEntity, Message[]>([]);
 
     constructor() {
         const settings = SettingsSystem.getInstance();
-        settings.registerSetting(new Setting("filter.cache.amount", 30 as Integer, SettingType.INTEGER));
+        settings.registerSetting(MessageCache.MAX_CACHE);
     }
 
     async add(message: Message): Promise<void> {
         const channel = message.getChannel();
         const messages = this.messages.get(channel);
-        messages.push(message);
         const maxMessages = await this.getMaxMessages(channel);
-        while (messages.length > maxMessages)
-            messages.unshift();
+        messages.push(message);
+        messages.slice(Math.max(0, messages.length - maxMessages), Math.min(messages.length, maxMessages));
         this.messages.set(channel, messages);
     }
 
     async getMaxPercentage(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting<SettingType.INTEGER>("filter.spam.similarity");
+        return channel.getSetting(SpamFilter.SIMILARITY);
     }
 
     async getMaxMessages(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting<SettingType.INTEGER>("filter.cache.amount");
+        return channel.getSetting(MessageCache.MAX_CACHE);
     }
 
     async getMaxMatches(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting<SettingType.INTEGER>("filter.spam.amount");
+        return channel.getSetting(SpamFilter.AMOUNT);
     }
 
     getAll(channel: ChannelEntity): Message[] {

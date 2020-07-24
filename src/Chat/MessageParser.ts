@@ -3,10 +3,6 @@ enum State {
 }
 
 export default class MessageParser {
-    private static isBlank(char: string) {
-        return char.trim().length < 1;
-    }
-
     static parse(input: string): string[] {
         const parts: string[] = [];
         let state: State = State.TEXT;
@@ -99,5 +95,9 @@ export default class MessageParser {
         if (part.length > 0) parts.push(part);
 
         return parts;
+    }
+
+    private static isBlank(char: string) {
+        return char.trim().length < 1;
     }
 }

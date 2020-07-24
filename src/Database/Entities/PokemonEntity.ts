@@ -31,31 +31,29 @@ export function formatStats(stats: PokemonStats) {
 }
 
 @Id
-@Table(({ service, channel }) => `${service}_${channel.name}_pokemon`)
+@Table(({service, channel}) => `${service}_${channel.name}_pokemon`)
 export default class PokemonEntity extends ChannelSpecificEntity<PokemonEntity> {
     public static readonly GENERIC_NAME = "MissingNo.";
+    @Column({name: "trainer_id", datatype: DataTypes.INTEGER})
+    public trainerId: number;
+    @Column()
+    public name: string;
+    @Column({datatype: DataTypes.INTEGER})
+    public level: number;
+    @Column()
+    public nature: string;
+    @Column()
+    public shiny: boolean;
+    @Column()
+    public rus: boolean;
 
     constructor(id: number, params: EntityParameters) {
         super(PokemonEntity, id, params);
     }
 
-    @Column({ name: "trainer_id", datatype: DataTypes.INTEGER })
-    public trainerId: number;
-
-    @Column()
-    public name: string;
-
-    @Column({ datatype: DataTypes.INTEGER })
-    public level: number;
-
-    @Column()
-    public nature: string;
-
-    @Column()
-    public shiny: boolean;
-
-    @Column()
-    public rus: boolean;
+    public static fromStats(trainer: TrainerEntity, stats: PokemonStats): Promise<PokemonEntity> {
+        return PokemonEntity.make({channel: trainer.getChannel()}, stats);
+    }
 
     public toString(): string {
         return `${this.name}${this.shiny ? "?" : ""}${this.rus ? "^" : ""}[${this.level}]`;
@@ -63,10 +61,6 @@ export default class PokemonEntity extends ChannelSpecificEntity<PokemonEntity> 
 
     public toFullString(): string {
         return `${this.shiny ? "shiny " : ""}${this.rus ? "pokerus " : ""}level ${this.level} ${this.name}`;
-    }
-
-    public static fromStats(trainer: TrainerEntity, stats: PokemonStats): Promise<PokemonEntity> {
-        return PokemonEntity.make({ channel: trainer.getChannel() }, stats);
     }
 }
 

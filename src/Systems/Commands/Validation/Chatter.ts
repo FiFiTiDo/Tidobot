@@ -9,18 +9,22 @@ interface ChatterSettings {
 }
 
 export class ChatterArg implements ArgumentConverter<ChatterEntity> {
-    constructor(private settings: ChatterSettings = {}) {}
-
     type = "chatter";
+
+    constructor(private settings: ChatterSettings = {}) {
+    }
+
     async convert(input: string, name: string, column: number, event: CommandEvent): Promise<ChatterEntity> {
         const msg = event.getMessage();
         const channel = msg.getChannel();
-        let chatter = channel.findChatterByName(input);
+        let chatterOptional = channel.findChatterByName(input);
 
-        if (this.settings.active === true && chatter === null)
+        if (this.settings.active === true && !chatterOptional.present)
             throw new TranslateMessageInputError("user:inactive", {username: input});
 
-        if (chatter === null) chatter = await ChatterEntity.findByName(input.toLowerCase(), channel);
+        let chatter;
+        if (chatterOptional.present) chatter = chatterOptional.value;
+        else chatter = await ChatterEntity.findByName(input.toLowerCase(), channel);
         if (chatter === null && this.settings.senderDefault === true) return event.getMessage().getChatter();
         if (chatter === null) throw new TranslateMessageInputError("user:unknown", {username: input});
 

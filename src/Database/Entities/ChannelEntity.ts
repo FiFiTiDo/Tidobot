@@ -13,6 +13,7 @@ import Setting, {SettingType, SettingValueType} from "../../Systems/Settings/Set
 import FiltersEntity from "./FiltersEntity";
 import {Logger} from "log4js";
 import {getLogger} from "../../Utilities/Logger";
+import Optional from "../../Utilities/Patterns/Optional";
 
 @Id
 @Table(({service}) => `${service}_channels`)
@@ -24,9 +25,9 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
     @Column({name: "disabled_modules"})
     public disabledModules: string[];
     public online: Observable<boolean> = new Observable<boolean>(false);
+    public logger: Logger;
     private readonly settingsManager: ChannelSettings;
     private chatterList: ChatterList;
-    public logger: Logger;
 
     constructor(id: number, params: EntityParameters) {
         super(ChannelEntity, id, params);
@@ -39,10 +40,6 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
 
     static async findById(id: string, service: string): Promise<ChannelEntity | null> {
         return ChannelEntity.retrieve({service}, where().eq("channel_id", id));
-    }
-
-    static async findByName(name: string, service: string): Promise<ChannelEntity | null> {
-        return ChannelEntity.retrieve({service}, where().eq("name", name));
     }
 
     static async from(id: string, name: string, service: string): Promise<ChannelEntity | null> {
@@ -63,7 +60,7 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
         return this.settingsManager;
     }
 
-    getSetting<T extends SettingType>(key: string|Setting<T>): Promise<SettingValueType<T> | null> {
+    getSetting<T extends SettingType>(key: string | Setting<T>): Promise<SettingValueType<T> | null> {
         return this.getSettings().get(key);
     }
 
@@ -71,11 +68,11 @@ export default class ChannelEntity extends Entity<ChannelEntity> {
         return this.getSettings().set(key, value);
     }
 
-    findChatterById(id: string) {
+    findChatterById(id: string): Optional<ChatterEntity> {
         return this.chatterList.findById(id);
     }
 
-    findChatterByName(name: string): ChatterEntity | null {
+    findChatterByName(name: string): Optional<ChatterEntity> {
         return this.chatterList.findByName(name);
     }
 

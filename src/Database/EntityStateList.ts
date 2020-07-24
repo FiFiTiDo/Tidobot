@@ -53,11 +53,11 @@ export default class EntityStateList<TEntity extends Entity<TEntity>, TValue> {
         }
     }
 
-    public getAll(filter: (entry?: [TEntity, TValue], index?: number) => boolean = ()=>true): [TEntity, TValue][] {
+    public getAll(filter: (entry?: [TEntity, TValue], index?: number) => boolean = () => true): [TEntity, TValue][] {
         return this.entries().filter(filter)
     }
 
-    size(filter: (entry?: [TEntity, TValue], index?: number) => boolean = ()=>true) {
+    size(filter: (entry?: [TEntity, TValue], index?: number) => boolean = () => true) {
         return this.getAll(filter).length;
     }
 }

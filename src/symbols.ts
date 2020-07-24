@@ -1,5 +1,4 @@
 import {TFunction} from "i18next";
-import Adapter from "./Adapters/Adapter";
 
 export default {
     TranslateFunc: Symbol("Translation function"),
@@ -15,4 +14,3 @@ export default {
 };
 
 export type TranslationProvider = () => Promise<TFunction>;
-export type AdapterProvider = () => Promise<Adapter>;

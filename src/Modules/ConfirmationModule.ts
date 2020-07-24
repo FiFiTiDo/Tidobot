@@ -51,22 +51,13 @@ export class Confirmation extends Dispatcher {
 
     run(): void {
         setTimeout(() => {
-            if (!this.confirmed)
-                this.dispatch(new ExpiredEvent());
+            if (!this.confirmed) return this.dispatch(new ExpiredEvent());
         }, 1000 * this.seconds);
-    }
-
-    isExpired(): boolean {
-        return this.expired;
-    }
-
-    isConfirmed(): boolean {
-        return this.confirmed;
     }
 
     confirm(): void {
         this.confirmed = true;
-        this.dispatch(new ConfirmedEvent());
+        this.dispatch(new ConfirmedEvent()).then();
     }
 
     check(code: string): boolean {
@@ -99,6 +90,7 @@ class ConfirmCommand extends Command {
 export default class ConfirmationModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     readonly confirmations: EntityStateList<ChatterEntity, Confirmation>;
+    @command confirmCommand = new ConfirmCommand(this.confirmations);
 
     constructor() {
         super(ConfirmationModule);
@@ -106,8 +98,6 @@ export default class ConfirmationModule extends AbstractModule {
         this.coreModule = true;
         this.confirmations = new EntityStateList<ChatterEntity, Confirmation>(null);
     }
-
-    @command confirmCommand = new ConfirmCommand(this.confirmations);
 
     async make(message: Message, prompt: string, seconds: number): Promise<Confirmation> {
         const chatter = message.getChatter();

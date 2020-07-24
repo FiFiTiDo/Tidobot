@@ -33,6 +33,7 @@ const logger = getLogger(MODULE_INFO.name);
 
 class RoleArg {
     static type = "role";
+
     static convert(input: string, name: string, column: number): Role {
         const role = parseRole(input);
         if (role === null)
@@ -40,6 +41,7 @@ class RoleArg {
         return role;
     }
 }
+
 const PermissionArg = new EntityArg(PermissionEntity, {msgKey: "permission:error.unknown", optionKey: "permission"});
 
 class PermissionCommand extends Command {
@@ -114,15 +116,7 @@ class PermissionCommand extends Command {
 @HandlesEvents()
 export default class PermissionModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(PermissionModule);
-
-        this.coreModule = true;
-    }
-
     @command permissionCommand = new PermissionCommand();
-
     @permission createPerm = new Permission("permission.create", Role.MODERATOR);
     @permission deletePerm = new Permission("permission.delete", Role.MODERATOR);
     @permission setPerm = new Permission("permission.set", Role.MODERATOR);
@@ -130,6 +124,12 @@ export default class PermissionModule extends AbstractModule {
     @permission denyPerm = new Permission("permission.deny", Role.MODERATOR);
     @permission resetPerm = new Permission("permission.reset", Role.MODERATOR);
     @permission resetAllPerms = new Permission("permission.reset.all", Role.BROADCASTER);
+
+    constructor() {
+        super(PermissionModule);
+
+        this.coreModule = true;
+    }
 
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {

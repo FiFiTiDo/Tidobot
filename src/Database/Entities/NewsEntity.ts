@@ -7,6 +7,7 @@ import ChannelSpecificEntity from "./ChannelSpecificEntity";
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_news`)
 export default class NewsEntity extends ChannelSpecificEntity<NewsEntity> {
+    public static readonly TYPE = "news item";
     @Column({datatype: DataTypes.STRING})
     public value: string;
 
@@ -18,11 +19,9 @@ export default class NewsEntity extends ChannelSpecificEntity<NewsEntity> {
         return NewsEntity.make({channel}, {value});
     }
 
-    public static async convert(raw: string, channel: ChannelEntity): Promise<NewsEntity|null> {
+    public static async convert(raw: string, channel: ChannelEntity): Promise<NewsEntity | null> {
         const id = parseInt(raw);
         if (isNaN(id) || id < 0) return null;
-        return this.get(id, { channel });
+        return this.get(id, {channel});
     }
-
-    public static readonly TYPE = "news item";
 }

@@ -37,7 +37,7 @@ class RaffleCommand extends Command {
     @CheckPermission("raffle.open")
     async open(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @RestArguments(true, { join: " " }) keyword: string
+        @RestArguments(true, {join: " "}) keyword: string
     ): Promise<void> {
         const raffle = this.raffleModule.raffleService.openRaffle(keyword, channel, {
             price: await channel.getSetting(this.raffleModule.price),
@@ -79,22 +79,19 @@ class RaffleCommand extends Command {
 export default class RaffleModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     readonly raffleService: RaffleService = new RaffleService();
-
-    constructor() {
-        super(RaffleModule);
-    }
-
     @command raffleCommand = new RaffleCommand(this);
-
     @permission openRaffle = new Permission("raffle.open", Role.MODERATOR);
     @permission closeRaffle = new Permission("raffle.close", Role.MODERATOR);
     @permission resetRaffle = new Permission("raffle.reset", Role.MODERATOR);
     @permission pullWinner = new Permission("raffle.pull", Role.MODERATOR);
     @permission enterRaffle = new Permission("raffle.enter", Role.NORMAL);
-
     @setting price = new Setting("raffle.price", 0.0 as Float, SettingType.FLOAT);
     @setting maxEntries = new Setting("raffle.max-entries", 1 as Integer, SettingType.INTEGER);
     @setting duplicateWins = new Setting("raffle.duplicate-wins", false, SettingType.BOOLEAN);
+
+    constructor() {
+        super(RaffleModule);
+    }
 
     @EventHandler(MessageEvent)
     async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {

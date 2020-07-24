@@ -19,7 +19,7 @@ class Queue {
         return this._open;
     }
 
-    public pop(): ChatterEntity|undefined {
+    public pop(): ChatterEntity | undefined {
         return this.chatters.shift();
     }
 
@@ -28,7 +28,7 @@ class Queue {
         return this.chatters.length - 1;
     }
 
-    public peek(): ChatterEntity|undefined {
+    public peek(): ChatterEntity | undefined {
         return this.chatters.length < 1 ? undefined : this.chatters[0];
     }
 
@@ -75,7 +75,7 @@ export class QueueService {
         return Optional.of(this.getQueue(channel)).filter(queue => !queue.isOpen());
     }
 
-    public async joinQueue(chatter: ChatterEntity, channel: ChannelEntity): Promise<number|JoinQueueResponse> {
+    public async joinQueue(chatter: ChatterEntity, channel: ChannelEntity): Promise<number | JoinQueueResponse> {
         const queue = this.getOpenQueue(channel);
         if (!queue.present) return JoinQueueResponse.CLOSED;
         if (queue.value.in(chatter)) return JoinQueueResponse.ALREADY_IN;

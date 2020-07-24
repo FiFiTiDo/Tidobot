@@ -31,7 +31,8 @@ export interface TrainerStats {
 }
 
 export class GameService {
-    constructor(private experienceService: ExperienceService) {}
+    constructor(private experienceService: ExperienceService) {
+    }
 
     public async getTrainerData(chatter: ChatterEntity): Promise<Optional<TrainerData>> {
         const trainer = await TrainerEntity.getByChatter(chatter);
@@ -72,18 +73,21 @@ export class GameService {
         const maxLevel = await channel.getSetting<SettingType.INTEGER>("pokemon.level.max");
         const level = randomInt(minLevel, maxLevel);
 
-        return Optional.of({ trainer_id: trainer.id, name, level, nature, shiny, rus });
+        return Optional.of({trainer_id: trainer.id, name, level, nature, shiny, rus});
     }
 
     public async createMonFromStats(trainer: TrainerEntity, stats: PokemonStats): Promise<PokemonEntity> {
-        return PokemonEntity.make({ channel: trainer.getChannel() }, stats);
+        return PokemonEntity.make({channel: trainer.getChannel()}, stats);
     }
 
     public async getAllTrainerStats(channel: ChannelEntity): Promise<TrainerStats[]> {
         const trainers: TrainerStats[] = [];
         for await (const trainerData of await TrainerEntity.getAllTrainers(channel)) {
             const chatter = await trainerData.trainer.chatter();
-            trainers.push({ name: chatter.name, teamLevel: trainerData.team.reduce((prev, pkmn) => prev + pkmn.level, 0)});
+            trainers.push({
+                name: chatter.name,
+                teamLevel: trainerData.team.reduce((prev, pkmn) => prev + pkmn.level, 0)
+            });
         }
         return trainers;
     }
@@ -128,7 +132,7 @@ export class GameService {
         await self.trainer.save();
         await target.trainer.save();
 
-        return { leveledUp, winner, selfMon, targetMon };
+        return {leveledUp, winner, selfMon, targetMon};
     }
 
     public async attemptCatch(channel: ChannelEntity, stats: PokemonStats): Promise<boolean> {

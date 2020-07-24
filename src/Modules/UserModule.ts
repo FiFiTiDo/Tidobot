@@ -38,7 +38,7 @@ class UserCommand extends Command {
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
         @Argument(new ChatterArg()) user: ChatterEntity, @Argument(StringArg) permission: string
     ): Promise<void> {
-        return  UserPermissionsEntity.update(user, permission, true, channel)
+        return UserPermissionsEntity.update(user, permission, true, channel)
             .then(() => response.message("user:permission.granted", {permission, username: user.name}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
@@ -49,7 +49,7 @@ class UserCommand extends Command {
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
         @Argument(new ChatterArg()) user: ChatterEntity, @Argument(StringArg) permission: string
     ): Promise<void> {
-        return  UserPermissionsEntity.update(user, permission, false, channel)
+        return UserPermissionsEntity.update(user, permission, false, channel)
             .then(() => response.message("user:permission.denied", {username: user.name, permission}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
@@ -80,14 +80,13 @@ class UserCommand extends Command {
 @HandlesEvents()
 export default class UserModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
+    @command userCommand = new UserCommand(this);
 
     constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
         super(UserModule);
 
         this.coreModule = true;
     }
-
-    @command userCommand = new UserCommand(this);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {

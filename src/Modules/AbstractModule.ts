@@ -32,9 +32,10 @@ export const Symbols = {
 };
 
 export interface ModuleConstructor<T extends AbstractModule> {
-    new(...args: any[]): T;
     name: string;
     [Symbols.ModuleInfo]: ModuleInfo;
+
+    new(...args: any[]): T;
 }
 
 export default abstract class AbstractModule {

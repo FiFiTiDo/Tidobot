@@ -9,6 +9,7 @@ import ChannelSpecificEntity from "./ChannelSpecificEntity";
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_lists`)
 export default class ListsEntity extends ChannelSpecificEntity<ListsEntity> {
+    public static readonly TYPE = "list";
     @Column({datatype: DataTypes.STRING})
     public name: string;
 
@@ -25,6 +26,10 @@ export default class ListsEntity extends ChannelSpecificEntity<ListsEntity> {
         if (list === null) return null;
         await ListEntity.createTable({channel, optionalParam: name});
         return list;
+    }
+
+    public static async convert(raw: string, channel: ChannelEntity): Promise<ListsEntity | null> {
+        return this.findByName(raw, channel);
     }
 
     public async addItem(value: string): Promise<ListEntity | null> {
@@ -49,10 +54,4 @@ export default class ListsEntity extends ChannelSpecificEntity<ListsEntity> {
         await super.delete();
         await ListEntity.dropTable({channel: this.getChannel(), optionalParam: this.name});
     }
-
-    public static async convert(raw: string, channel: ChannelEntity): Promise<ListsEntity|null> {
-        return this.findByName(raw, channel);
-    }
-
-    public static readonly TYPE = "list";
 }

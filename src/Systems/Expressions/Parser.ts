@@ -2,19 +2,32 @@ import * as Tokens from "./Lexer";
 import {CstParser} from "chevrotain";
 
 export default class ExpressionParser extends CstParser {
+    public objectAccess = this.RULE("objectAccess", (): void => {
+        this.CONSUME(Tokens.Period);
+        this.CONSUME(Tokens.Identifier);
+    });
+    public valueExpressionList = this.RULE("valueExpressionList", (): void => {
+        this.MANY_SEP({
+            SEP: Tokens.Comma,
+            DEF: (): void => {
+                this.SUBRULE(this.valueExpression);
+            }
+        });
+    });
     public array = this.RULE("array", (): void => {
         this.CONSUME(Tokens.LSquare);
         this.SUBRULE(this.valueExpressionList);
         this.CONSUME(Tokens.RSquare);
     });
-    public objectAccess = this.RULE("objectAccess", (): void => {
-        this.CONSUME(Tokens.Period);
-        this.CONSUME(Tokens.Identifier);
-    });
     public functionCall = this.RULE("functionCall", (): void => {
         this.CONSUME(Tokens.LParen);
         this.SUBRULE(this.valueExpressionList);
         this.CONSUME(Tokens.RParen);
+    });
+    public arrayAccess = this.RULE("arrayAccess", (): void => {
+        this.CONSUME(Tokens.LSquare);
+        this.SUBRULE(this.valueExpression);
+        this.CONSUME(Tokens.RSquare);
     });
     public dotNotation = this.RULE("dotNotation", (): void => {
         this.CONSUME(Tokens.Identifier, {LABEL: "lhs"});
@@ -37,53 +50,6 @@ export default class ExpressionParser extends CstParser {
                 }
             ]);
         });
-    });
-    public valueExpression = this.RULE("valueExpression", (): void => {
-        this.OR([
-            {
-                ALT: (): void => {
-                    this.CONSUME(Tokens.StringLiteral);
-                }
-            },
-            {
-                ALT: (): void => {
-                    this.CONSUME(Tokens.NumberLiteral);
-                }
-            },
-            {
-                ALT: (): void => {
-                    this.CONSUME(Tokens.Boolean);
-                }
-            },
-            {
-                ALT: (): void => {
-                    this.SUBRULE(this.array);
-                }
-            },
-            {
-                ALT: (): void => {
-                    this.SUBRULE(this.dotNotation);
-                }
-            },
-            {
-                ALT: (): void => {
-                    this.SUBRULE(this.parenthesisExpression);
-                }
-            }
-        ]);
-    });
-    public valueExpressionList = this.RULE("valueExpressionList", (): void => {
-        this.MANY_SEP({
-            SEP: Tokens.Comma,
-            DEF: (): void => {
-                this.SUBRULE(this.valueExpression);
-            }
-        });
-    });
-    public arrayAccess = this.RULE("arrayAccess", (): void => {
-        this.CONSUME(Tokens.LSquare);
-        this.SUBRULE(this.valueExpression);
-        this.CONSUME(Tokens.RSquare);
     });
     public notExpression = this.RULE("notExpression", (): void => {
         this.OR([
@@ -149,6 +115,40 @@ export default class ExpressionParser extends CstParser {
         this.CONSUME(Tokens.LParen);
         this.SUBRULE(this.expression);
         this.CONSUME(Tokens.RParen);
+    });
+    public valueExpression = this.RULE("valueExpression", (): void => {
+        this.OR([
+            {
+                ALT: (): void => {
+                    this.CONSUME(Tokens.StringLiteral);
+                }
+            },
+            {
+                ALT: (): void => {
+                    this.CONSUME(Tokens.NumberLiteral);
+                }
+            },
+            {
+                ALT: (): void => {
+                    this.CONSUME(Tokens.Boolean);
+                }
+            },
+            {
+                ALT: (): void => {
+                    this.SUBRULE(this.array);
+                }
+            },
+            {
+                ALT: (): void => {
+                    this.SUBRULE(this.dotNotation);
+                }
+            },
+            {
+                ALT: (): void => {
+                    this.SUBRULE(this.parenthesisExpression);
+                }
+            }
+        ]);
     });
 
     constructor() {

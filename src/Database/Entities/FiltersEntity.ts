@@ -29,11 +29,11 @@ export default class FiltersEntity extends Entity<FiltersEntity> {
     }
 
     static createForChannel(channel: ChannelEntity): Promise<FiltersEntity | null> {
-         return this.make({service: channel.getService()}, {
-             channel_id: channel.channelId,
-             domains: "",
-             bad_words: "",
-             emotes: ""
-         });
+        return this.make({service: channel.getService()}, {
+            channel_id: channel.channelId,
+            domains: "",
+            bad_words: "",
+            emotes: ""
+        });
     }
 }

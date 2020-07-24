@@ -16,6 +16,7 @@ export enum CommandConditionResponse {
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_commands`)
 export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> {
+    public static readonly TYPE = "command";
     @Column()
     public trigger: string;
     @Column()
@@ -50,6 +51,12 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
         return CommandEntity.retrieveAll({channel}, where().eq("trigger", trigger));
     }
 
+    public static async convert(raw: string, channel: ChannelEntity): Promise<CommandEntity | null> {
+        const id = parseInt(raw);
+        if (isNaN(id) || id < 0) return null;
+        return this.get(id, {channel});
+    }
+
     async checkCondition(msg: Message): Promise<CommandConditionResponse> {
         if (this.condition.toLowerCase() === "@@default") return CommandConditionResponse.RUN_DEFAULT;
         const doRun = await msg.evaluateExpression(this.condition);
@@ -73,13 +80,4 @@ export default class CommandEntity extends ChannelSpecificEntity<CommandEntity> 
         if (resp.startsWith("/") || resp.startsWith(".")) resp = ">> " + resp;
         return resp;
     }
-
-
-    public static async convert(raw: string, channel: ChannelEntity): Promise<CommandEntity|null> {
-        const id = parseInt(raw);
-        if (isNaN(id) || id < 0) return null;
-        return this.get(id, { channel });
-    }
-
-    public static readonly TYPE = "command";
 }

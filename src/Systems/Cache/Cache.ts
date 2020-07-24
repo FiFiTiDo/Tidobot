@@ -31,6 +31,12 @@ export default class Cache extends System {
         return this.instance;
     }
 
+    static async create() {
+        const config = await Config.getInstance().getConfig(CacheConfig);
+        const client = new RedisClient(config.redis);
+        return new Cache(client);
+    }
+
     async exists(key: string): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.client.exists(key, (err, reply) => {
@@ -136,11 +142,5 @@ export default class Cache extends System {
             for (const key of keySet)
                 ops.push(this.del(key));
         return Promise.all(ops);
-    }
-
-    static async create() {
-        const config = await Config.getInstance().getConfig(CacheConfig);
-        const client = new RedisClient(config.redis);
-        return new Cache(client);
     }
 }

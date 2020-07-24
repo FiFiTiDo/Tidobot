@@ -18,6 +18,7 @@ import ChannelManager from "../../Chat/ChannelManager";
 import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
 import {getLogger, logError} from "../../Utilities/Logger";
+import {NewChatterEvent} from "../../Chat/Events/NewChatterEvent";
 
 @injectable()
 export default class TwitchAdapter extends Adapter {
@@ -106,70 +107,64 @@ export default class TwitchAdapter extends Adapter {
     }
 
     async getChatter(user: string | tmi.Userstate, channel: ChannelEntity): Promise<ChatterEntity> {
-        let chatter = typeof user === "string" ? channel.findChatterByName(user) : channel.findChatterById(user.id);
+        let chatterOptional = typeof user === "string" ? channel.findChatterByName(user) : channel.findChatterById(user.id);
 
-        if (chatter === null && typeof user !== "string")
-            chatter = await ChatterEntity.findById(user.id, channel);
+        if (chatterOptional.present) return chatterOptional.value;
 
-        if (chatter === null) {
-            let id: string, name: string;
-            if (typeof user === "string") {
-                let resp;
-                try {
-                    resp = await this.api.getUsers({login: user});
-                    id = resp.data[0].id;
-                    name = user;
-                } catch (e) {
-                    TwitchAdapter.LOGGER.fatal("Unable to retrieve user from the API");
-                    TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                    TwitchAdapter.LOGGER.error(e.stack);
-                    process.exit(1);
-                }
-            } else {
-                id = user["user-id"];
-                name = user.username;
+        let id: string, name: string;
+        if (typeof user !== "string") {
+            id = user["user-id"];
+            name = user.username;
+        } else {
+            try {
+                const resp = await this.api.getUsers({login: user});
+                id = resp.data[0].id;
+                name = user;
+            } catch (e) {
+                logError(TwitchAdapter.LOGGER, e, "Unable to retrieve user from the API", true);
+                process.exit(1);
             }
+        }
 
-            chatter = await ChatterEntity.findById(id, channel); // Try to find by id
+        let chatter = await ChatterEntity.findById(id, channel); // Try to find by id
 
-            if (chatter === null) { // Brand new chatter
-                chatter = await ChatterEntity.from(id, name, channel);
-                EventSystem.getInstance().dispatch(new NewChannelEvent(channel));
-            } else { // Returning chatter, change name just in case
-                chatter.name = name;
-                await channel.save();
-            }
+        if (chatter === null) { // Brand new chatter
+            chatter = await ChatterEntity.from(id, name, channel);
+            EventSystem.getInstance().dispatch(new NewChatterEvent(chatter));
+        } else { // Returning chatter, change name just in case
+            chatter.name = name;
+            await channel.save();
         }
 
         return chatter;
     }
 
     async getChannelByName(channelName: string): Promise<ChannelEntity | null> {
-        let channel = this.channelManager.findByName(channelName);
+        let channelOptional = this.channelManager.findByName(channelName);
 
-        if (channel === null) {
-            let resp: helix.Response<helix.User>;
-            try {
-                resp = await this.api.getUsers({login: channelName});
-            } catch (e) {
-                logError(TwitchAdapter.LOGGER, e, "Unable to retrieve user from the API", true);
-                process.exit(1);
-            }
-            const {id, login: name} = resp.data[0];
+        if (channelOptional.present) return channelOptional.value;
 
-            channel = await ChannelEntity.findById(id, this.getName());
+        let channel: ChannelEntity;
+        let resp: helix.Response<helix.User>;
+        try {
+            resp = await this.api.getUsers({login: channelName});
+        } catch (e) {
+            logError(TwitchAdapter.LOGGER, e, "Unable to retrieve user from the API", true);
+            process.exit(1);
+        }
+        const {id, login: name} = resp.data[0];
 
-            if (channel === null) {
-                channel = await ChannelEntity.from(id, name, this.getName());
-                EventSystem.getInstance().dispatch(new NewChannelEvent(channel));
-            } else {
-                channel.name = name;
-                await channel.save();
-            }
+        channel = await ChannelEntity.findById(id, this.getName());
 
-            this.channelManager.add(channel);
+        if (channel === null) { // New channel, not in database
+            channel = await ChannelEntity.from(id, name, this.getName());
+            EventSystem.getInstance().dispatch(new NewChannelEvent(channel));
+        } else { // Returning channel, change name just in case
+            channel.name = name;
+            await channel.save();
         }
 
+        this.channelManager.add(channel);
         return channel;
     }
 

@@ -35,18 +35,24 @@ interface EventReducerArgument<T> extends ArgumentMeta {
 
 export interface ArgumentConverter<T> {
     type: string;
+
     convert(input: string, name: string, column: number, event: CommandEvent): AsyncResolvable<void, T>;
 }
 
 export function Argument<T>(converter: ArgumentConverter<T>, name: string = null, required: boolean = true): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<ConverterArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, { parameterIndex, converter, name: name ?? propertyKey, required })
+        addPropertyMetadata<ConverterArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {
+            parameterIndex,
+            converter,
+            name: name ?? propertyKey,
+            required
+        })
     }
 }
 
 export function makeEventReducer<T>(reducer: AsyncResolvable<CommandEvent, T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, { parameterIndex, reducer })
+        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, reducer})
     }
 }
 
@@ -57,7 +63,7 @@ export const Channel = makeEventReducer(event => event.getMessage().getChannel()
 
 export function RestArguments(required: boolean = true, settings: RestSettings = {}): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, { parameterIndex, required, settings })
+        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, {parameterIndex, required, settings})
     }
 }
 
@@ -67,6 +73,25 @@ function isConverter(o: Object): o is ConverterArgument<any> {
 
 function isReducer(o: Object): o is EventReducerArgument<any> {
     return "reducer" in o;
+}
+
+function handleRestArguments(target: any, propertyKey: string, args: (string | string[])[], restArgs: string[]) {
+    const restArgsInfo = getPropertyMetadata<RestMeta[]>(REST_META_KEY, target, propertyKey) || [];
+    for (const arg of restArgsInfo) {
+        let value: string | string[] = restArgs.slice();
+
+        if (arg.settings.min && value.length < arg.settings.min) {
+            return null;
+        }
+
+        if (arg.settings.max && value.length > arg.settings.max) {
+            return null;
+        }
+
+        if (arg.settings.join) value = (value as string[]).join(arg.settings.join);
+
+        args[arg.parameterIndex] = value;
+    }
 }
 
 export async function resolveArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean) {
@@ -105,25 +130,7 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
         }
     }
 
-
-    const restArgs = rawArgs.slice();
-    const restArgsInfo = getPropertyMetadata<RestMeta[]>(REST_META_KEY, target, propertyKey) || [];
-    for (const arg of restArgsInfo) {
-        let value: string|string[] = restArgs.slice();
-
-        if (arg.settings.min && value.length < arg.settings.min) {
-            return null;
-        }
-
-        if (arg.settings.max && value.length > arg.settings.max) {
-            return null;
-        }
-
-        if (arg.settings.join) value = (value as string[]).join(arg.settings.join);
-
-        args[arg.parameterIndex] = value;
-    }
-
+    handleRestArguments(target, propertyKey, args, rawArgs.slice());
     return args;
 }
 
@@ -161,23 +168,6 @@ export async function resolveCliArguments(event: CommandEvent, target: any, prop
         }
     }
 
-    const restArgs = rawArgs._ || [];
-    const restArgsInfo = getPropertyMetadata<RestMeta[]>(REST_META_KEY, target, propertyKey) || [];
-    for (const arg of restArgsInfo) {
-        let value: string|string[] = restArgs.slice();
-
-        if (arg.settings.min && value.length < arg.settings.min) {
-            return null;
-        }
-
-        if (arg.settings.max && value.length > arg.settings.max) {
-            return null;
-        }
-
-        if (arg.settings.join) value = (value as string[]).join(arg.settings.join);
-
-        args[arg.parameterIndex] = value;
-    }
-
+    handleRestArguments(target, propertyKey, args, rawArgs._ || []);
     return args;
 }

@@ -40,7 +40,7 @@ class ListCommand extends Command {
     @CheckPermission(event => event.getArgumentCount() > 1 ? "list.view.specific" : "list.view.random")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
-        @Argument(new IntegerArg({ min: 0 }), "item number", false) itemNum: number = null
+        @Argument(new IntegerArg({min: 0}), "item number", false) itemNum: number = null
     ): Promise<void> {
         const random = itemNum === null;
         const item = random ? await list.getRandomItem() : await list.getItem(itemNum);
@@ -83,7 +83,7 @@ class ListCommand extends Command {
     @CheckPermission("list.edit")
     async edit(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
-        @Argument(new IntegerArg({ min: 0 }), "item number") itemNum: number,
+        @Argument(new IntegerArg({min: 0}), "item number") itemNum: number,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         try {
@@ -102,7 +102,7 @@ class ListCommand extends Command {
     @CheckPermission("list.remove")
     async remove(
         event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: ListsEntity,
-        @Argument(new IntegerArg({ min: 0 }), "item number") itemNum: number
+        @Argument(new IntegerArg({min: 0}), "item number") itemNum: number
     ): Promise<void> {
         const item = await list.getItem(itemNum);
         if (item === null) return await response.message("lists:item.unknown", {number: itemNum});
@@ -115,13 +115,7 @@ class ListCommand extends Command {
 @HandlesEvents()
 export default class ListModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(ListModule);
-    }
-
     @command listCommand = new ListCommand(this);
-
     @permission createList = new Permission("list.create", Role.MODERATOR);
     @permission deleteList = new Permission("list.delete", Role.MODERATOR);
     @permission addToList = new Permission("list.add", Role.MODERATOR);
@@ -129,6 +123,10 @@ export default class ListModule extends AbstractModule {
     @permission removeFromList = new Permission("list.remove", Role.MODERATOR);
     @permission viewItem = new Permission("list.view", Role.NORMAL);
     @permission viewSpecificItem = new Permission("list.view.specific", Role.NORMAL);
+
+    constructor() {
+        super(ListModule);
+    }
 
     @ExpressionContextResolver
     expressionContextResolver(msg: Message) {

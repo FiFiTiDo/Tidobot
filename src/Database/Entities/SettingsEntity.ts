@@ -6,7 +6,7 @@ import {where} from "../Where";
 import StringLike from "../../Utilities/Interfaces/StringLike";
 import SettingsSystem from "../../Systems/Settings/SettingsSystem";
 import Cache from "../../Systems/Cache/Cache";
-import Setting, {ConvertedSetting, SettingType, SettingValueType} from "../../Systems/Settings/Setting";
+import Setting, {SettingType, SettingValueType} from "../../Systems/Settings/Setting";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 
 @Id
@@ -34,7 +34,7 @@ export class ChannelSettings {
     constructor(private readonly channel: ChannelEntity) {
     }
 
-    async get<T extends SettingType>(key: string|Setting<T>): Promise<SettingValueType<T> | null> {
+    async get<T extends SettingType>(key: string | Setting<T>): Promise<SettingValueType<T> | null> {
         const settings = SettingsSystem.getInstance();
         const setting = key instanceof Setting ? key : settings.getSetting(key);
         const defaultValue = setting === null ? null : setting.getDefaultValue();

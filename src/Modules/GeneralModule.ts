@@ -62,7 +62,7 @@ class EchoCommand extends Command {
     @CommandHandler("echo", "echo <message>")
     @CheckPermission("general.echo")
     async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, {join: " "}) message: string): Promise<void> {
-        return  response.rawMessage(">> " + message);
+        return response.rawMessage(">> " + message);
     }
 }
 
@@ -99,26 +99,23 @@ class ShutdownCommand extends Command {
 
 export default class GeneralModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
+    @command pingCommand = new PingCommand();
+    @command rawCommand = new RawCommand();
+    @command echoCommand = new EchoCommand();
+    @command evalCommand = new EvalCommand();
+    @command shutdownCommand = new ShutdownCommand(this);
+    @permission ping = new Permission("general.ping", Role.MODERATOR);
+    @permission raw = new Permission("general.raw", Role.OWNER);
+    @permission echo = new Permission("general.echo", Role.MODERATOR);
+    @permission evalPerm = new Permission("general.eval", Role.MODERATOR);
+    @permission shutdown = new Permission("general.shutdown", Role.OWNER);
+    @setting timezone = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE);
 
     constructor(@inject(Application) public readonly app: Application) {
         super(GeneralModule);
 
         this.coreModule = true;
     }
-
-    @command pingCommand = new PingCommand();
-    @command rawCommand = new RawCommand();
-    @command echoCommand = new EchoCommand();
-    @command evalCommand = new EvalCommand();
-    @command shutdownCommand = new ShutdownCommand(this);
-
-    @permission ping = new Permission("general.ping", Role.MODERATOR);
-    @permission raw = new Permission("general.raw", Role.OWNER);
-    @permission echo = new Permission("general.echo", Role.MODERATOR);
-    @permission evalPerm = new Permission("general.eval", Role.MODERATOR);
-    @permission shutdown = new Permission("general.shutdown", Role.OWNER);
-
-    @setting timezone = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE);
 
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {

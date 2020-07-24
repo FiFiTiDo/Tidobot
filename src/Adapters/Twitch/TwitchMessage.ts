@@ -9,6 +9,7 @@ import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import {Role} from "../../Systems/Permissions/Role";
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
 import {ResponseFactory} from "../../Chat/Response";
+import {SettingType} from "../../Systems/Settings/Setting";
 import IStream = helix.Stream;
 
 export class TwitchMessage extends Message {
@@ -103,7 +104,7 @@ export class TwitchMessage extends Message {
                         to_id: this.getChannel().channelId
                     }).then(async resp => {
                         if (resp.total < 1) return "Sender is not following the channel.";
-                        const timezone = await this.getChannel().getSetting<moment.MomentZone>("timezone");
+                        const timezone = await this.getChannel().getSetting<SettingType.TIMEZONE>("timezone");
                         return moment.parseZone(resp.data[0].followed_at, timezone.name).format(format ? format : "Y-m-d h:i:s");
                     }).catch(e => {
                         TwitchAdapter.LOGGER.error("Unable to determine follow age");

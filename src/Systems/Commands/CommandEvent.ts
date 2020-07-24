@@ -17,7 +17,7 @@ export interface CommandEventArgs {
 export class CommandEvent extends Event<CommandEvent> {
     static NAME = "chat_command";
 
-    constructor(private readonly trigger: string, private readonly args: string[], private readonly msg: Message, private readonly command: Command|CommandEntity) {
+    constructor(private readonly trigger: string, private readonly args: string[], private readonly msg: Message, private readonly command: Command | CommandEntity) {
         super(CommandEvent);
     }
 
@@ -31,10 +31,6 @@ export class CommandEvent extends Event<CommandEvent> {
         };
     }
 
-    getTrigger(): string {
-        return this.trigger;
-    }
-
     getArgument(i: number): string {
         return this.args[i];
     }
@@ -45,10 +41,6 @@ export class CommandEvent extends Event<CommandEvent> {
 
     getArgumentCount(): number {
         return this.args.length;
-    }
-
-    getCommand(): Command|CommandEntity {
-        return this.command;
     }
 
     shiftArgument(): string {

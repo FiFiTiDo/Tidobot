@@ -1,30 +1,25 @@
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {provide} from "inversify-binding-decorators";
+import {MapExt} from "../Utilities/Structures/Map";
+import Optional from "../Utilities/Patterns/Optional";
 
 @provide(ChannelManager)
 export default class ChannelManager {
-    private readonly channels: ChannelEntity[];
-    private readonly ids: string[];
+    private readonly channels: MapExt<string, ChannelEntity>;
 
     constructor() {
-        this.channels = [];
-        this.ids = [];
+        this.channels = new MapExt();
     }
 
     getAll(): ChannelEntity[] {
-        return this.channels;
+        return [...this.channels.values()];
     }
 
     add(channel: ChannelEntity): void {
-        if (this.ids.indexOf(channel.channelId) >= 0) return;
-        this.ids.push(channel.channelId);
-        this.channels.push(channel);
+        this.channels.setNew(channel.channelId, channel);
     }
 
-    findByName(name: string): ChannelEntity | null {
-        for (const channel of this.channels)
-            if (channel.name === name)
-                return channel;
-        return null;
+    findByName(name: string): Optional<ChannelEntity> {
+        return Optional.ofUndefable(this.getAll().filter(channel => channel.name === name)[0]);
     }
 }

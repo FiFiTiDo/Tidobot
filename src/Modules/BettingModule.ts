@@ -41,21 +41,26 @@ class BetCommand extends Command {
     async place(
         event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
         @Argument(StringArg) option: string,
-        @Argument(new FloatArg({ min: 1 })) amount: number
+        @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         try {
             const resp = await this.betService.placeBet(sender, option, amount, channel);
             if (resp === null) return;
             switch (resp) {
-                case PlaceBetResponse.INVALID_OPTION: return await response.message("bet:error.invalid-option");
-                case PlaceBetResponse.LOW_BALANCE: return await response.message("currency:error.low-balance", {
-                    currency_name: await CurrencyModule.getPluralName(channel)
-                });
-                case PlaceBetResponse.TOO_LOW: return await response.message("bet:error.too-low");
-                case PlaceBetResponse.TOO_HIGH: return await response.message("bet:error.too-high");
-                case PlaceBetResponse.BET_PLACED: return await response.message("bet:placed", {
-                    amount: await CurrencyModule.formatAmount(amount, channel), option
-                });
+                case PlaceBetResponse.INVALID_OPTION:
+                    return await response.message("bet:error.invalid-option");
+                case PlaceBetResponse.LOW_BALANCE:
+                    return await response.message("currency:error.low-balance", {
+                        currency_name: await CurrencyModule.getPluralName(channel)
+                    });
+                case PlaceBetResponse.TOO_LOW:
+                    return await response.message("bet:error.too-low");
+                case PlaceBetResponse.TOO_HIGH:
+                    return await response.message("bet:error.too-high");
+                case PlaceBetResponse.BET_PLACED:
+                    return await response.message("bet:placed", {
+                        amount: await CurrencyModule.formatAmount(amount, channel), option
+                    });
             }
         } catch (e) {
             await response.genericErrorAndLog(e, logger);
@@ -113,18 +118,15 @@ class BetCommand extends Command {
 
 export default class BettingModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(BettingModule);
-    }
-
     @command betCommand = new BetCommand(this);
-
     @setting minimumBet = new Setting("bet.minimum", 1 as Integer, SettingType.INTEGER);
     @setting maximumBet = new Setting("bet.maximum", -1 as Integer, SettingType.INTEGER);
-
     @permission placeBet = new Permission("bet.place", Role.NORMAL);
     @permission openBet = new Permission("bet.open", Role.MODERATOR);
     @permission closeBet = new Permission("bet.close", Role.MODERATOR);
     @permission checkBet = new Permission("bet.check", Role.MODERATOR);
+
+    constructor() {
+        super(BettingModule);
+    }
 }

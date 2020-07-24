@@ -18,7 +18,7 @@ export default abstract class Adapter {
         TimerSystem.getInstance().startTimer(() => EventSystem.getInstance().dispatch(new TickEvent()), TimeUnit.Seconds(1));
     }
 
-    public abstract stop(): void|Promise<void>;
+    public abstract stop(): void | Promise<void>;
 
     public abstract getName(): string;
 

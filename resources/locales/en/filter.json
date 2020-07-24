@@ -35,6 +35,7 @@
     },
     "ban-reasons": {
         "url": "Blacklisted/Non-whitelisted URL",
+        "fake-dot": "Avoiding url filter",
         "caps": "Too many caps",
         "spam": "Spamming",
         "symbols": "Too many symbols",

@@ -48,7 +48,7 @@ class CounterCommand extends Command {
     @CheckPermission("counter.change")
     async increment(
         event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerArg({ min: 1 }), "amount", false) amount: number = 1
+        @Argument(new IntegerArg({min: 1}), "amount", false) amount: number = 1
     ): Promise<void> {
         counter.value += amount;
         return counter.save()
@@ -60,7 +60,7 @@ class CounterCommand extends Command {
     @CheckPermission("counter.change")
     async decrement(
         event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerArg({ min: 1 }), "amount", false) amount: number = 1
+        @Argument(new IntegerArg({min: 1}), "amount", false) amount: number = 1
     ): Promise<void> {
         counter.value -= amount;
         return counter.save()
@@ -72,7 +72,7 @@ class CounterCommand extends Command {
     @CheckPermission("counter.change")
     async set(
         event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerArg({ min: 1 })) amount: number
+        @Argument(new IntegerArg({min: 1})) amount: number
     ): Promise<void> {
         counter.value = amount;
         return counter.save()
@@ -87,7 +87,7 @@ class CounterCommand extends Command {
         @Argument(StringArg, "counter name") name: string
     ): Promise<void> {
         return CountersEntity.make({channel}, {name, value: 0})
-            .then(entity => response.message(entity === null ? "counter:error.exists" : "counter:created", { counter: name }))
+            .then(entity => response.message(entity === null ? "counter:error.exists" : "counter:created", {counter: name}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -105,17 +105,15 @@ class CounterCommand extends Command {
 @HandlesEvents()
 export default class CounterModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(CounterModule);
-    }
-
     @command counterCommand = new CounterCommand();
-
     @permission checkCounter = new Permission("counter.check", Role.NORMAL);
     @permission changeCounter = new Permission("counter.change", Role.MODERATOR);
     @permission createCounter = new Permission("counter.create", Role.MODERATOR);
     @permission deleteCounter = new Permission("counter.delete", Role.MODERATOR);
+
+    constructor() {
+        super(CounterModule);
+    }
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs) {

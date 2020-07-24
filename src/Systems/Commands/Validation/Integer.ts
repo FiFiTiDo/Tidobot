@@ -10,7 +10,8 @@ interface Constraints {
 export class IntegerArg implements ArgumentConverter<number> {
     type = "integer";
 
-    constructor(private constraints: Constraints = {}) {}
+    constructor(private constraints: Constraints = {}) {
+    }
 
     convert(input: string, name: string, column: number, event: CommandEvent): number {
         const int = parseInt(input);

@@ -1,7 +1,7 @@
 import {inject, injectable} from "inversify";
 import {ALL_MODULES_KEY} from "./index";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
-import AbstractModule, {Symbols} from "./AbstractModule";
+import AbstractModule from "./AbstractModule";
 import {getLogger, logError} from "../Utilities/Logger";
 
 @injectable()

@@ -42,11 +42,12 @@ const TrainerSender = makeEventReducer(async event => {
 });
 
 class TrainerDataArg {
+    type = "trainer";
     private chatterArg = new ChatterArg();
 
-    constructor(private gameService: GameService) {}
+    constructor(private gameService: GameService) {
+    }
 
-    type = "trainer";
     async convert(input: string, name: string, column: number, event: CommandEvent): Promise<TrainerData> {
         const response = event.getMessage().getResponse();
         const chatter = await this.chatterArg.convert(input, name, column, event);
@@ -134,7 +135,7 @@ class PokemonCommand extends Command {
     @CheckPermission("pokemon.play")
     async fight(
         event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
-        @TrainerSender self: TrainerData, @Argument(new TrainerDataArg(this.pokemonModule.gameService),"trainer") target: TrainerData
+        @TrainerSender self: TrainerData, @Argument(new TrainerDataArg(this.pokemonModule.gameService), "trainer") target: TrainerData
     ): Promise<void> {
         if (sender.is(target.chatter)) return response.message("pokemon:error.self");
         if (self.team.length < 1) return response.message("pokemon:error.no-team-self");
@@ -150,9 +151,15 @@ class PokemonCommand extends Command {
 
         let result: string;
         switch (winner) {
-            case WinState.SELF: result = await response.translate("pokemon:battle.win"); break;
-            case WinState.TARGET: result = await response.translate("pokemon:battle.lose"); break;
-            case WinState.DRAW: result = await response.translate("pokemon:battle.draw"); break;
+            case WinState.SELF:
+                result = await response.translate("pokemon:battle.win");
+                break;
+            case WinState.TARGET:
+                result = await response.translate("pokemon:battle.lose");
+                break;
+            case WinState.DRAW:
+                result = await response.translate("pokemon:battle.draw");
+                break;
         }
 
         if (leveledUp.length > 0)
@@ -181,9 +188,10 @@ class PokemonCommand extends Command {
     @CheckPermission("pokemon.stats")
     async top(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         return this.pokemonModule.gameService.getAllTrainerStats(channel)
-            .then(stats => response.message("pokemon:top", {trainers: stats
-                .sort((a, b) => b.teamLevel - a.teamLevel).slice(0, 10)
-                .map(trainer => `${trainer.name}(${trainer.teamLevel})`).join(", ")
+            .then(stats => response.message("pokemon:top", {
+                trainers: stats
+                    .sort((a, b) => b.teamLevel - a.teamLevel).slice(0, 10)
+                    .map(trainer => `${trainer.name}(${trainer.teamLevel})`).join(", ")
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 }
@@ -193,19 +201,10 @@ export default class PokemonModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     public readonly experienceService: ExperienceService;
     public readonly gameService: GameService;
-
-    constructor(channelManager: ChannelManager) {
-        super(PokemonModule);
-        this.experienceService = new ExperienceService(channelManager);
-        this.gameService = new GameService(this.experienceService);
-    }
-
     @command pokemonCommand = new PokemonCommand(this);
-
     @permission playPokemon = new Permission("pokemon.play", Role.NORMAL);
     @permission viewStats = new Permission("pokemon.stats", Role.NORMAL);
     @permission viewOthersStats = new Permission("pokemon.stats.other", Role.MODERATOR);
-
     @setting maxTeamSize = new Setting("pokemon.max-team-size", 5 as Integer, SettingType.INTEGER);
     @setting baseCatchChance = new Setting("pokemon.chance.base-catch", 0.3 as Float, SettingType.FLOAT);
     @setting shinyChance = new Setting("pokemon.chance.shiny", 0.05 as Float, SettingType.FLOAT);
@@ -214,9 +213,15 @@ export default class PokemonModule extends AbstractModule {
     @setting minLevel = new Setting("pokemon.level.min", 1 as Integer, SettingType.INTEGER);
     @setting maxLevel = new Setting("pokemon.level.max", 100 as Integer, SettingType.INTEGER);
 
+    constructor(channelManager: ChannelManager) {
+        super(PokemonModule);
+        this.experienceService = new ExperienceService(channelManager);
+        this.gameService = new GameService(this.experienceService);
+    }
+
     @EventHandler(NewChannelEvent)
-    async onNewChannel({ channel }: NewChannelEventArgs) {
-        await PokemonEntity.createTable({ channel });
-        await TrainerEntity.createTable({ channel });
+    async onNewChannel({channel}: NewChannelEventArgs) {
+        await PokemonEntity.createTable({channel});
+        await TrainerEntity.createTable({channel});
     }
 }

@@ -40,12 +40,15 @@ class QueueCommand extends Command {
     ): Promise<void> {
         const result = await this.queueService.joinQueue(sender, channel);
         if (typeof result === "number") {
-            return await response.message("queue:joined", { position: appendOrdinal(result) });
+            return await response.message("queue:joined", {position: appendOrdinal(result)});
         } else {
             switch (result) {
-                case JoinQueueResponse.CLOSED: return response.message("queue:error.closed");
-                case JoinQueueResponse.FULL: return response.message("queue:error.full");
-                case JoinQueueResponse.ALREADY_IN: return response.message("queue:error.in");
+                case JoinQueueResponse.CLOSED:
+                    return response.message("queue:error.closed");
+                case JoinQueueResponse.FULL:
+                    return response.message("queue:error.full");
+                case JoinQueueResponse.ALREADY_IN:
+                    return response.message("queue:error.in");
             }
         }
     }
@@ -55,9 +58,9 @@ class QueueCommand extends Command {
     async leave(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity
     ): Promise<void> {
-         const result = this.queueService.leaveQueue(sender, channel);
-         if (!result.present) return response.message("queue:error.closed");
-         return result.value ? await response.message("queue:left") : await response.message("queue:error.not-in");
+        const result = this.queueService.leaveQueue(sender, channel);
+        if (!result.present) return response.message("queue:error.closed");
+        return result.value ? await response.message("queue:left") : await response.message("queue:error.not-in");
     }
 
     @CommandHandler("queue check", "queue check [user]", 1)
@@ -69,8 +72,8 @@ class QueueCommand extends Command {
         const chatter = target ?? sender;
         const pos = this.queueService.getPosition(chatter, channel);
         return pos < 0 ?
-            await response.message("queue:error.not-in"):
-            await response.message("queue:check", { username: chatter.name, position: appendOrdinal(pos) });
+            await response.message("queue:error.not-in") :
+            await response.message("queue:check", {username: chatter.name, position: appendOrdinal(pos)});
     }
 
     @CommandHandler("queue pop", "queue pop", 1)
@@ -78,7 +81,7 @@ class QueueCommand extends Command {
     async pop(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         const chatter = this.queueService.removeNext(channel);
         if (!chatter.present) return response.message("queue:error.empty");
-        return response.message("queue:next", { username: chatter.value.name })
+        return response.message("queue:next", {username: chatter.value.name})
     }
 
     @CommandHandler("queue peek", "queue peek", 1)
@@ -86,7 +89,7 @@ class QueueCommand extends Command {
     async peek(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         const chatter = this.queueService.getNext(channel);
         if (!chatter.present) return response.message("queue:error.empty");
-        return response.message("queue:next", { username: chatter.value.name })
+        return response.message("queue:next", {username: chatter.value.name})
     }
 
     @CommandHandler("queue clear", "queue clear", 1)
@@ -100,7 +103,7 @@ class QueueCommand extends Command {
     @CheckPermission("queue.open")
     async open(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
         return this.queueService.openQueue(channel).present ?
-            await response.message("queue:opened", { prefix: await CommandSystem.getPrefix(channel) }) :
+            await response.message("queue:opened", {prefix: await CommandSystem.getPrefix(channel)}) :
             await response.message("queue:error.open");
     }
 
@@ -115,13 +118,7 @@ class QueueCommand extends Command {
 
 export default class QueueModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(QueueModule);
-    }
-
     @command queueCommand = new QueueCommand();
-
     @permission joinQueue = new Permission("queue.join", Role.NORMAL);
     @permission checkPos = new Permission("queue.check", Role.NORMAL);
     @permission checkPosOther = new Permission("queue.check.other", Role.MODERATOR);
@@ -130,6 +127,9 @@ export default class QueueModule extends AbstractModule {
     @permission clearQueue = new Permission("queue.clear", Role.MODERATOR);
     @permission openQueue = new Permission("queue.open", Role.MODERATOR);
     @permission closeQueue = new Permission("queue.close", Role.MODERATOR);
-
     @permission maxSize = new Setting("queue.max-size", 30 as Integer, SettingType.INTEGER);
+
+    constructor() {
+        super(QueueModule);
+    }
 }

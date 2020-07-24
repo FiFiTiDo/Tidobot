@@ -10,8 +10,6 @@ import ChannelEntity from "./ChannelEntity";
 import Permission from "../../Systems/Permissions/Permission";
 import ChannelSpecificEntity from "./ChannelSpecificEntity";
 import IgnoredEntity from "./IgnoredEntity";
-import {Resolvable} from "../../Utilities/Interfaces/Resolvable";
-import EntityStateList from "../EntityStateList";
 import CurrencyModule from "../../Modules/CurrencyModule";
 
 @Id
@@ -32,10 +30,6 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
         super(ChatterEntity, id, params);
     }
 
-    public async get formattedBalance() {
-        return await CurrencyModule.formatAmount(this.balance, this.getChannel());
-    }
-
     public static async findById(id: string, channel: ChannelEntity): Promise<ChatterEntity | null> {
         return ChatterEntity.retrieve({channel}, where().eq("user_id", id));
     }
@@ -52,6 +46,10 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
             banned: 0,
             regular: 0
         });
+    }
+
+    public async getFormattedBalance() {
+        return await CurrencyModule.formatAmount(this.balance, this.getChannel());
     }
 
     @ManyToMany(GroupsEntity, GroupMembersEntity, "user_id", "user_id", "id", "group_id")
@@ -101,4 +99,3 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
 }
 
 export const filterByChannel = (channel: ChannelEntity) => ([chatter, _]: [ChatterEntity, any]) => chatter.getChannel().is(channel);
-export const filterOutChannel = (channel: ChannelEntity) => ([chatter, _]: [ChatterEntity, any]) => !chatter.getChannel().is(channel);

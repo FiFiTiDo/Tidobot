@@ -46,7 +46,7 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.give")
     async give(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity, @Argument(new FloatArg({ min: 1 })) amount: number
+        @Argument(new ChatterArg()) chatter: ChatterEntity, @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         return chatter.deposit(amount)
             .then(async () => response.message("currency:give", {
@@ -59,7 +59,7 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.give-all")
     async giveAll(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new FloatArg({ min: 1 })) amount: number,
+        @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
         const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
@@ -74,7 +74,7 @@ class BankCommand extends Command {
     async take(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
         @Argument(new ChatterArg()) chatter: ChatterEntity,
-        @Argument(new FloatArg({ min: 1 })) amount: number
+        @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         return chatter.withdraw(amount)
             .then(async () => response.message("currency:take", {
@@ -87,7 +87,7 @@ class BankCommand extends Command {
     @CheckPermission("currency.bank.take-all")
     async takeAll(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new FloatArg({ min: 1 })) amount: number,
+        @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
         const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
@@ -103,7 +103,10 @@ class BankCommand extends Command {
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
         @Argument(new ChatterArg()) chatter: ChatterEntity
     ): Promise<void> {
-        return response.message("currency:balance-other", {username: chatter.name, balance: await chatter.formattedBalance});
+        return response.message("currency:balance-other", {
+            username: chatter.name,
+            balance: await chatter.getFormattedBalance()
+        });
     }
 
     @CommandHandler("bank reset", "bank reset <username>", 1)
@@ -146,7 +149,10 @@ class BalanceCommand extends Command {
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity
     ): Promise<void> {
-        return response.message("currency:balance", {username: sender.name, balance: await sender.formattedBalance});
+        return response.message("currency:balance", {
+            username: sender.name,
+            balance: await sender.getFormattedBalance()
+        });
     }
 }
 
@@ -160,7 +166,7 @@ class PayCommand extends Command {
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
         @Argument(new ChatterArg()) chatter: ChatterEntity,
-        @Argument(new FloatArg({ min: 1 })) amount: number
+        @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         const successful = await sender.charge(amount);
         if (successful === false) {
@@ -179,6 +185,23 @@ class PayCommand extends Command {
 
 export default class CurrencyModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
+    @command bankCommand = new BankCommand(this.makeConfirmation);
+    @command balanceCommand = new BalanceCommand();
+    @command payCommand = new PayCommand();
+    @permission payUser = new Permission("currency.pay", Role.NORMAL);
+    @permission getBalance = new Permission("currency.balance", Role.NORMAL);
+    @permission bankGive = new Permission("currency.bank.give", Role.MODERATOR);
+    @permission bankGiveAll = new Permission("currency.bank.give-all", Role.MODERATOR);
+    @permission bankTake = new Permission("currency.bank.take", Role.MODERATOR);
+    @permission bankTakeAll = new Permission("currency.bank.take-all", Role.MODERATOR);
+    @permission bankBalance = new Permission("currency.bank.balance", Role.MODERATOR);
+    @permission bankReset = new Permission("currency.bank.reset", Role.MODERATOR);
+    @permission bankResetAll = new Permission("currency.bank.reset-all", Role.BROADCASTER);
+    @setting singularCurrencyName = new Setting("currency.name.singular", "point", SettingType.STRING);
+    @setting pluralCurrencyName = new Setting("currency.name.plural", "points", SettingType.STRING);
+    @setting onlineGain = new Setting("currency.gain.online", 10 as Float, SettingType.FLOAT);
+    @setting offlineGain = new Setting("currency.gain.offline", 2 as Float, SettingType.FLOAT);
+    tickInterval: Timeout;
 
     constructor(
         @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory,
@@ -201,27 +224,6 @@ export default class CurrencyModule extends AbstractModule {
 
         return util.format("%d %s", amount, pluralize(amount, singular, plural));
     }
-
-    @command bankCommand = new BankCommand(this.makeConfirmation);
-    @command balanceCommand = new BalanceCommand();
-    @command payCommand = new PayCommand();
-
-    @permission payUser = new Permission("currency.pay", Role.NORMAL);
-    @permission getBalance = new Permission("currency.balance", Role.NORMAL);
-    @permission bankGive = new Permission("currency.bank.give", Role.MODERATOR);
-    @permission bankGiveAll = new Permission("currency.bank.give-all", Role.MODERATOR);
-    @permission bankTake = new Permission("currency.bank.take", Role.MODERATOR);
-    @permission bankTakeAll = new Permission("currency.bank.take-all", Role.MODERATOR);
-    @permission bankBalance = new Permission("currency.bank.balance", Role.MODERATOR);
-    @permission bankReset = new Permission("currency.bank.reset", Role.MODERATOR);
-    @permission bankResetAll = new Permission("currency.bank.reset-all", Role.BROADCASTER);
-
-    @setting singularCurrencyName = new Setting("currency.name.singular", "point", SettingType.STRING);
-    @setting pluralCurrencyName = new Setting("currency.name.plural", "points", SettingType.STRING);
-    @setting onlineGain = new Setting("currency.gain.online", 10 as Float, SettingType.FLOAT);
-    @setting offlineGain = new Setting("currency.gain.offline", 2 as Float, SettingType.FLOAT);
-
-    tickInterval: Timeout;
 
     @EventHandler(ConnectedEvent)
     handleConnected() {

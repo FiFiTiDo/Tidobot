@@ -121,16 +121,8 @@ class RegularCommand extends Command {
 
 export default class TidobotModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(TidobotModule);
-
-        this.coreModule = true;
-    }
-
     @command tidobotCommand = new TidobotCommand();
     @command regularCommand = new RegularCommand();
-
     @permission viewBotVersion = new Permission("bot.version", Role.NORMAL);
     @permission viewBotInfo = new Permission("bot.about", Role.NORMAL);
     @permission addIgnored = new Permission("bot.ignore", Role.OWNER);
@@ -139,4 +131,10 @@ export default class TidobotModule extends AbstractModule {
     @permission removeBanned = new Permission("bot.unban", Role.BROADCASTER);
     @permission addRegular = new Permission("regular.add", Role.MODERATOR);
     @permission removeRegular = new Permission("regular.remove", Role.MODERATOR);
+
+    constructor() {
+        super(TidobotModule);
+
+        this.coreModule = true;
+    }
 }

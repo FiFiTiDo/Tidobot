@@ -10,7 +10,8 @@ interface Constraints {
 export class FloatArg implements ArgumentConverter<number> {
     type = "float";
 
-    constructor(private constraints: Constraints = {}) {}
+    constructor(private constraints: Constraints = {}) {
+    }
 
     convert(input: string, name: string, column: number, event: CommandEvent): number {
         const float = parseFloat(input);

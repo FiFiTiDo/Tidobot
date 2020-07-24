@@ -5,8 +5,9 @@ import {ArgumentConverter} from "./Argument";
 import {CommandEvent} from "../CommandEvent";
 
 interface ConvertibleEntity<T extends Entity<T>> extends EntityConstructor<T> {
-    convert(raw: string, channel: ChannelEntity): Promise<T|null>;
     TYPE: string;
+
+    convert(raw: string, channel: ChannelEntity): Promise<T | null>;
 }
 
 interface ErrorInfo {

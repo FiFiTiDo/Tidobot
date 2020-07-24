@@ -10,11 +10,11 @@ export enum SettingType {
 
 export type SettingValueType<T extends SettingType> =
     T extends SettingType.STRING ? string :
-    T extends SettingType.INTEGER ? Integer :
-    T extends SettingType.FLOAT ? Float :
-    T extends SettingType.BOOLEAN ? boolean :
-    T extends SettingType.TIMEZONE ? moment.MomentZone :
-    never;
+        T extends SettingType.INTEGER ? Integer :
+            T extends SettingType.FLOAT ? Float :
+                T extends SettingType.BOOLEAN ? boolean :
+                    T extends SettingType.TIMEZONE ? moment.MomentZone :
+                        never;
 
 export type ConvertedSetting = string | Integer | Float | boolean | moment.MomentZone;
 

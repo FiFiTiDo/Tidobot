@@ -3,18 +3,17 @@ import System from "../System";
 
 export default class TimerSystem extends System {
     private static instance: TimerSystem = null;
+    private readonly timers: Timer[];
+
+    private constructor() {
+        super("Timer");
+    }
 
     public static getInstance(): TimerSystem {
         if (this.instance === null)
             this.instance = new TimerSystem();
         return this.instance;
     }
-
-    private constructor() {
-        super("Timer");
-    }
-
-    private readonly timers: Timer[];
 
     public startTimer<T extends any[]>(fun: (...args: T) => void, ms: number, ...args: T): Timer {
         const timer = setInterval(() => fun(...args), ms);

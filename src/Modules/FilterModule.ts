@@ -55,7 +55,7 @@ class NukeCommand extends Command {
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
         @RestArguments(true, {join: " "}) match: string
     ): Promise<void> {
-        const { newString, removed } = removePrefix("--regex ", match);
+        const {newString, removed} = removePrefix("--regex ", match);
         const regex = removed ? new RegExp(newString) : picomatch.compileRe(picomatch.parse(newString, {}) as any);
         const matches = (input: string): boolean => picomatch.test(input, regex).isMatch;
         const cached = FilterSystem.getInstance().getCachedMessages(channel);
@@ -75,7 +75,7 @@ class NukeCommand extends Command {
             }
         }
 
-        await response.message("filter:nuked", { count: purged });
+        await response.message("filter:nuked", {count: purged});
     }
 }
 
@@ -132,6 +132,7 @@ class PurgeCommand extends Command {
 }
 
 const ListConverter = new StringEnumArg(["domains", "badWords", "emotes"]);
+
 class FilterCommand extends Command {
     constructor(private filterModule: FilterModule) {
         super("filter", "<add|remove|reset>");
@@ -194,17 +195,11 @@ class FilterCommand extends Command {
 @HandlesEvents()
 export default class FilterModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor(@inject(Adapter) public adapter: Adapter, @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
-        super(FilterModule);
-    }
-
     @command permitCommand = new PermitCommand(this);
     @command pardonCommand = new PardonCommand();
     @command purgeCommand = new PurgeCommand(this);
     @command filterCommand = new FilterCommand(this);
     @command nukeCommand = new NukeCommand(this);
-
     @permission ignoreFilter = new Permission("filter.ignore", Role.MODERATOR);
     @permission permitUser = new Permission("filter.permit", Role.MODERATOR);
     @permission pardonUser = new Permission("filter.pardon", Role.MODERATOR);
@@ -213,9 +208,12 @@ export default class FilterModule extends AbstractModule {
     @permission removeList = new Permission("filter.list.remove", Role.MODERATOR);
     @permission resetList = new Permission("filter.list.reset", Role.MODERATOR);
     @permission nuke = new Permission("filter.nuke", Role.MODERATOR);
-
     @setting permitLength = new Setting("filter.permit-length", 30 as Integer, SettingType.INTEGER);
     @setting purgeLength = new Setting("filter.purge-length", 1 as Integer, SettingType.INTEGER);
+
+    constructor(@inject(Adapter) public adapter: Adapter, @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+        super(FilterModule);
+    }
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {

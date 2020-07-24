@@ -22,16 +22,6 @@ export function OneToOne<T extends Entity<T>>(entity: EntityConstructor<T>, loca
     };
 }
 
-export function ManyToOne<T extends Entity<T>>(entity: EntityConstructor<T>, localKey: string, foreignKey: string): Function {
-    return function <T2>(obj: T2, key: string, descriptor: DescriptorMany<T>): DescriptorMany<T> {
-        addMetadata(RELATIONSHIP_KEY, obj, key);
-        descriptor.value = async function (): Promise<T[]> {
-            return getOrSetProp(this, key, () => entity.retrieveAll({channel: this.getChannel()}, where().eq(foreignKey, this[localKey])));
-        };
-        return descriptor;
-    };
-}
-
 export function OneToMany<T extends Entity<T>>(entity: EntityConstructor<T>, localKey: string, foreignKey: string): Function {
     return function <T2>(obj: T2, key: string, descriptor: DescriptorMany<T>): DescriptorMany<T> {
         addMetadata(RELATIONSHIP_KEY, obj, key);

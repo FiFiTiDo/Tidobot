@@ -2,7 +2,6 @@
     "error": {
         "unknown": "Could not find a command with the ID: {{id}}",
         "generic": "Oops! An error occurred while executing the command",
-        "syntax": "Invalid syntax, usage: {{prefix}}{{- usage}}",
         "expected-token": "Expected token {{tokenType}} ({{token}}) at column {{column}}",
         "expected-argument": "Expected argument {{argument}} of type {{type}} at column {{column}}",
         "expected-cli-argument": "Expected argument {{argument}} of type {{type}}",

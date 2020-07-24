@@ -45,4 +45,4 @@ async function initialize() {
     return app.start(process.argv)
 }
 
-initialize();
+initialize().then();

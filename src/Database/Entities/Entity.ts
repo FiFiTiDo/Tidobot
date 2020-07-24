@@ -104,8 +104,8 @@ export default abstract class Entity<T extends Entity<T>> implements Serializabl
 
     static async make<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, data: RawRowData | RawRowData[]): Promise<T | T[] | null> {
         return Array.isArray(data) ?
-            Entity.makeEntities(this, params, data) :
-            Entity.makeEntity(this, params, data);
+            await Entity.makeEntities(this, params, data) :
+            await Entity.makeEntity(this, params, data);
     }
 
     static async retrieve<T extends Entity<T>>(this: EntityConstructor<T>, params: EntityParameters, whereClause: Where): Promise<T | null> {

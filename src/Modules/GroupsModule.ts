@@ -147,19 +147,17 @@ class GroupCommand extends Command {
 @HandlesEvents()
 export default class GroupsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
+    @command groupCommand = new GroupCommand(this);
+    @permission addToGroup = new Permission("group.add", Role.MODERATOR);
+    @permission removeFromGroup = new Permission("group.remove", Role.MODERATOR);
+    @permission createGroup = new Permission("group.create", Role.MODERATOR);
+    @permission deleteGroup = new Permission("group.delete", Role.BROADCASTER);
 
     constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
         super(GroupsModule);
 
         this.coreModule = true;
     }
-
-    @command groupCommand = new GroupCommand(this);
-
-    @permission addToGroup = new Permission("group.add", Role.MODERATOR);
-    @permission removeFromGroup = new Permission("group.remove", Role.MODERATOR);
-    @permission createGroup = new Permission("group.create", Role.MODERATOR);
-    @permission deleteGroup = new Permission("group.delete", Role.BROADCASTER);
 
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {

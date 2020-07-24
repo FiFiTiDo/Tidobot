@@ -1,9 +1,9 @@
-import Setting from "./Setting";
+import Setting, {SettingType} from "./Setting";
 import System from "../System";
 
 export default class SettingsSystem extends System {
     private static instance: SettingsSystem = null;
-    private readonly settings: Map<string, Setting>;
+    private readonly settings: Map<string, Setting<any>>;
 
     constructor() {
         super("Settings");
@@ -18,15 +18,15 @@ export default class SettingsSystem extends System {
         return this.instance;
     }
 
-    registerSetting(setting: Setting): void {
+    registerSetting<T extends SettingType>(setting: Setting<T>): void {
         this.settings.set(setting.getKey(), setting);
     }
 
-    getSetting(key: string): Setting | null {
+    getSetting<T extends SettingType>(key: string): Setting<T> | null {
         return this.settings.has(key) ? this.settings.get(key) : null;
     }
 
-    getAll(): Setting[] {
+    getAll(): Setting<any>[] {
         const settings = [];
         for (const [, setting] of this.settings)
             settings.push(setting);

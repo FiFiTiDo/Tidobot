@@ -88,10 +88,10 @@ class NewsCommand extends Command {
     async clear(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message): Promise<void> {
         const confirmMsg = await response.translate("news:clear-confirm");
         const confirm = await this.confirmationFactory(msg, confirmMsg, 30);
-        confirm.addListener(ConfirmedEvent, async () => NewsEntity.removeEntries({ channel })
+        confirm.addListener(ConfirmedEvent, async () => NewsEntity.removeEntries({channel})
             .then(() => response.message("news:cleared"))
             .catch(e => response.genericErrorAndLog(e, logger))
-         );
+        );
         confirm.run();
     }
 }
@@ -99,6 +99,13 @@ class NewsCommand extends Command {
 @HandlesEvents()
 export default class NewsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
+    @command newsCommand = new NewsCommand(this);
+    @permission addItem = new Permission("news.add", Role.MODERATOR);
+    @permission removeItem = new Permission("news.remove", Role.MODERATOR);
+    @permission clearItems = new Permission("news.clear", Role.MODERATOR);
+    @permission reload = new Permission("news.reload", Role.MODERATOR);
+    @setting messageCount = new Setting("news.message-count", 5 as Integer, SettingType.INTEGER);
+    @setting interval = new Setting("news.interval", 30 as Integer, SettingType.INTEGER);
     private lastMessage: Map<string, LastMessage>;
 
     constructor(
@@ -110,22 +117,12 @@ export default class NewsModule extends AbstractModule {
         this.lastMessage = new Map();
     }
 
-    @command newsCommand = new NewsCommand(this);
-
-    @permission addItem = new Permission("news.add", Role.MODERATOR);
-    @permission removeItem = new Permission("news.remove", Role.MODERATOR);
-    @permission clearItems = new Permission("news.clear", Role.MODERATOR);
-    @permission reload = new Permission("news.reload", Role.MODERATOR);
-
-    @setting messageCount = new Setting("news.message-count", 5 as Integer, SettingType.INTEGER);
-    @setting interval = new Setting("news.interval", 30 as Integer, SettingType.INTEGER);
-
     @EventHandler(NewChannelEvent)
     async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
         await NewsEntity.createTable({channel});
     }
 
-     async tryNext(channel: ChannelEntity, increment = false): Promise<void> {
+    async tryNext(channel: ChannelEntity, increment = false): Promise<void> {
         if (this.isDisabled(channel)) return;
         if (this.lastMessage.has(channel.channelId)) {
             const lastMessage = this.lastMessage.get(channel.channelId);

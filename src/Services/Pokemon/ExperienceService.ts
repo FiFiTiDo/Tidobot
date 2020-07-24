@@ -39,7 +39,7 @@ export class ExperienceService {
     }
 
     async decayLevel(mon: PokemonEntity): Promise<boolean> {
-        if (mon.level > 1)  {
+        if (mon.level > 1) {
             mon.level--;
             await mon.save();
             return true;

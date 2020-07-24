@@ -42,9 +42,9 @@ class SetCommand extends Command {
     @CheckPermission("settings.set")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(StringArg) key: string, @RestArguments(true, { join: " " }) value: string
+        @Argument(StringArg) key: string, @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
-        return channel.getSettings().set(key, value)
+        return channel.setSetting(key, value)
             .then(() => response.message("setting:set", {setting: key, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
@@ -89,20 +89,18 @@ class ResetCommand extends Command {
 @HandlesEvents()
 export default class SettingsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
+    @command setCommand = new SetCommand();
+    @command unsetCommand = new UnsetCommand();
+    @command resetCommand = new ResetCommand(this);
+    @permission setSetting = new Permission("settings.set", Role.MODERATOR);
+    @permission resetSetting = new Permission("settings.reset", Role.BROADCASTER);
+    @permission resetAllSettings = new Permission("settings.reset.all", Role.BROADCASTER);
 
     constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
         super(SettingsModule);
 
         this.coreModule = true;
     }
-
-    @command setCommand = new SetCommand();
-    @command unsetCommand = new UnsetCommand();
-    @command resetCommand = new ResetCommand(this);
-
-    @permission setSetting = new Permission("settings.set", Role.MODERATOR);
-    @permission resetSetting = new Permission("settings.reset", Role.BROADCASTER);
-    @permission resetAllSettings = new Permission("settings.reset.all", Role.BROADCASTER);
 
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {

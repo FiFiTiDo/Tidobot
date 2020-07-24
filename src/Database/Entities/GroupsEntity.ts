@@ -13,6 +13,7 @@ import ChannelSpecificEntity from "./ChannelSpecificEntity";
 @Id
 @Table(({service, channel}) => `${service}_${channel.name}_groups`)
 export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
+    static readonly TYPE = "group";
     @Column({datatype: DataTypes.STRING, unique: true})
     public name: string;
 
@@ -26,6 +27,10 @@ export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
 
     static async create(name: string, channel: ChannelEntity): Promise<GroupsEntity | null> {
         return GroupsEntity.make<GroupsEntity>({channel}, {name});
+    }
+
+    static async convert(raw: string, channel: ChannelEntity): Promise<GroupsEntity | null> {
+        return this.findByName(raw, channel);
     }
 
     @ManyToMany(ChatterEntity, GroupMembersEntity, "id", "group_id", "user_id", "user_id")
@@ -62,10 +67,4 @@ export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
         await GroupMembersEntity.removeEntries({channel: this.getChannel()}, where().eq("group_id", this.id));
         await GroupPermissionsEntity.removeEntries({channel: this.getChannel()}, where().eq("group_id", this.id));
     }
-
-    static async convert(raw: string, channel: ChannelEntity): Promise<GroupsEntity|null> {
-        return this.findByName(raw, channel);
-    }
-
-    static readonly TYPE = "group";
 }

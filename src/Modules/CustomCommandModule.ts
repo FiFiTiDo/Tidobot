@@ -33,7 +33,7 @@ export const MODULE_INFO = {
 };
 
 const logger = getLogger(MODULE_INFO.name);
-const CommandConverter = new EntityArg(CommandEntity, { msgKey: "command:error.unknown", optionKey: "id" });
+const CommandConverter = new EntityArg(CommandEntity, {msgKey: "command:error.unknown", optionKey: "id"});
 
 class CommandCommand extends Command {
     constructor() {
@@ -96,7 +96,7 @@ class CommandCommand extends Command {
     async editPrice(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @Argument(new FloatArg({ min: 0 })) value: number
+        @Argument(new FloatArg({min: 0})) value: number
     ): Promise<void> {
         command.price = value;
         command.save()
@@ -109,7 +109,7 @@ class CommandCommand extends Command {
     async editGlobalCooldown(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @Argument(new IntegerArg({ min: 0 })) value: number
+        @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
         command.globalCooldown = value;
         command.save()
@@ -122,7 +122,7 @@ class CommandCommand extends Command {
     async editUserCooldown(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
-        @Argument(new IntegerArg({ min: 0 })) value: number
+        @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
         command.userCooldown = value;
         command.save()
@@ -158,18 +158,16 @@ class CommandCommand extends Command {
 @HandlesEvents()
 export default class CustomCommandModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(CustomCommandModule);
-    }
-
     @command commandCommand = new CommandCommand();
-
     @permission addCommand = new Permission("command.add", Role.MODERATOR);
     @permission editCommand = new Permission("command.edit", Role.MODERATOR);
     @permission deleteCommand = new Permission("command.delete", Role.MODERATOR);
     @permission freeUsage = new Permission("command.free", Role.MODERATOR);
     @permission ignoreCooldown = new Permission("command.ignore-cooldown", Role.MODERATOR);
+
+    constructor() {
+        super(CustomCommandModule);
+    }
 
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {

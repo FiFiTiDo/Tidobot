@@ -61,7 +61,7 @@ class StrawpollCommand extends Command {
     @CheckPermission("polls.strawpoll.check")
     async check(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new IntegerArg({ min: 0 }), "poll id") pollId: number = null
+        @Argument(new IntegerArg({min: 0}), "poll id") pollId: number = null
     ): Promise<void> {
         if (pollId === null) {
             if (!this.lastStrawpoll.has(channel))
@@ -88,7 +88,7 @@ class StrawpollCommand extends Command {
         @Argument(BooleanArg, "multi", false) multi: boolean = false,
         @Argument(new StringEnumArg(["normal", "permissive", "disabled"]), "dupcheck", false) dupcheck: string = "normal",
         @Argument(BooleanArg, "captcha", false) captcha: boolean = false,
-        @RestArguments(true, { min: 2 }) options: string[]
+        @RestArguments(true, {min: 2}) options: string[]
     ): Promise<void> {
         return axios.request<StrawpollPostResponse>({
             url: "https://www.strawpoll.me/api/v2/polls",
@@ -115,7 +115,7 @@ class VoteCommand extends Command {
     @CheckPermission("polls.vote")
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity,
-        @Argument(new IntegerArg({ min: 0 })) optionNum: number
+        @Argument(new IntegerArg({min: 0})) optionNum: number
     ): Promise<void> {
         const announce = await channel.getSetting(this.pollsModule.announceVotes);
         const option = this.pollsModule.pollService.getOption(optionNum, channel);
@@ -136,7 +136,7 @@ class PollCommand extends Command {
     @CheckPermission("polls.run")
     async run(
         event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @RestArguments(true, { min: 2 }) options: string[]
+        @RestArguments(true, {min: 2}) options: string[]
     ): Promise<void> {
         const prefix = await CommandSystem.getPrefix(channel);
         const poll = this.pollsModule.pollService.createPoll(options, channel);
@@ -179,24 +179,21 @@ class PollCommand extends Command {
 export default class PollsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     readonly pollService: PollService;
-
-    constructor() {
-        super(PollsModule);
-
-        this.pollService = new PollService();
-    }
-
     @command pollCommand = new PollCommand(this);
     @command voteCommand = new VoteCommand(this);
     @command strawpollCommand = new StrawpollCommand(this);
-
     @permission vote = new Permission("polls.vote", Role.NORMAL);
     @permission runPoll = new Permission("polls.run", Role.MODERATOR);
     @permission stopPoll = new Permission("polls.stop", Role.MODERATOR);
     @permission viewResults = new Permission("polls.results", Role.MODERATOR);
     @permission checkStrawpoll = new Permission("polls.strawpoll.check", Role.MODERATOR);
     @permission createStrawpoll = new Permission("polls.strawpoll.create", Role.MODERATOR);
-
     @setting announceVotes = new Setting("polls.announceVotes", true, SettingType.BOOLEAN);
     @setting spamStrawpollLink = new Setting("polls.spamStrawpollLink", 1 as Integer, SettingType.INTEGER);
+
+    constructor() {
+        super(PollsModule);
+
+        this.pollService = new PollService();
+    }
 }

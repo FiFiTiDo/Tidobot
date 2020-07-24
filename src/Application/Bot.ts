@@ -6,8 +6,6 @@ import JoinEvent from "../Chat/Events/JoinEvent";
 import LeaveEvent from "../Chat/Events/LeaveEvent";
 import ConnectedEvent from "../Chat/Events/ConnectedEvent";
 import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelManager from "../Chat/ChannelManager";
 import EventSystem from "../Systems/Event/EventSystem";
 import {provide} from "inversify-binding-decorators";
@@ -62,40 +60,5 @@ export default class Bot {
 
     async shutdown(): Promise<void> {
         await this.adapter.stop();
-    }
-
-    async send(message: string, channel: ChannelEntity): Promise<void> {
-        return this.adapter.sendMessage(message, channel);
-    }
-
-    async action(action: string, channel: ChannelEntity): Promise<void> {
-        return this.adapter.sendAction(action, channel);
-    }
-
-    async unbanChatter(chatter: ChatterEntity): Promise<void> {
-        return this.adapter.unbanChatter(chatter);
-    }
-
-    async banChatter(chatter: ChatterEntity, reason?: string): Promise<void> {
-        return this.adapter.banChatter(chatter, reason);
-    }
-
-    async tempbanChatter(chatter: ChatterEntity, length: number, reason?: string): Promise<void> {
-        return this.adapter.tempbanChatter(chatter, length, reason);
-    }
-
-    async broadcast(message: string): Promise<void[]> {
-        const ops: Promise<void>[] = [];
-        for (const channel of this.channelManager.getAll())
-            ops.push(this.adapter.sendMessage(message, channel));
-        return Promise.all(ops);
-    }
-
-    async spam(message: string, channel: ChannelEntity, times: number, seconds = 1): Promise<void> {
-        const send = async (): Promise<void> => {
-            await this.adapter.sendMessage(message, channel);
-            if (--times > 0) setTimeout(send, seconds * 1000);
-        };
-        return send();
     }
 }

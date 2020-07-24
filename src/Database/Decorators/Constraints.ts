@@ -24,33 +24,9 @@ export function Unique(name: string, columns: string | string[]): Function {
     };
 }
 
-export function ForeignKey(name: string, key: string, foreignTable: string, foreignKey: string): Function {
-    return function <T>(target: T): T {
-        addMetadata<Constraint>(CONSTRAINTS_KEY, target, {
-            name,
-            sql: `FOREIGN KEY (${key}) REFERENCES ${foreignTable}(${foreignKey})`
-        });
-        return target;
-    };
-}
-
 export function NotNull(name: string, key: string): Function {
     return function <T>(target: T): T {
         addMetadata<Constraint>(CONSTRAINTS_KEY, target, {name, sql: `NOT NULL (${key})`});
-        return target;
-    };
-}
-
-export function PrimaryKey(name: string, key: string): Function {
-    return function <T>(target: T): T {
-        addMetadata<Constraint>(CONSTRAINTS_KEY, target, {name, sql: `PRIMARY KEY (${key})`});
-        return target;
-    };
-}
-
-export function Check(name: string, condition: string): Function {
-    return function <T>(target: T): T {
-        addMetadata<Constraint>(CONSTRAINTS_KEY, target, {name, sql: `CHECK (${condition})`});
         return target;
     };
 }

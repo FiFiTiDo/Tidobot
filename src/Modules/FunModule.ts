@@ -36,7 +36,7 @@ class RouletteCommand extends Command {
     async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity): Promise<void> {
         await response.action("fun:roulette.lead_up", {username: sender.name});
         await wait(TimeUnit.Seconds(1));
-        if (randomFloat() > 1/6) {
+        if (randomFloat() > 1 / 6) {
             await response.message("fun:roulette.safe", {username: sender.name});
         } else {
             await response.message("fun:roulette.hit", {username: sender.name});
@@ -73,16 +73,14 @@ class Magic8BallCommand extends Command {
 
 export default class FunModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
+    @command rouletteCommand = new RouletteCommand(this);
+    @command seppukuCommand = new SeppukuCommand(this);
+    @command magic8BallCommand = new Magic8BallCommand();
+    @permission playRoulette = new Permission("fun.roulette", Role.NORMAL);
+    @permission playSeppuku = new Permission("fun.seppuku", Role.NORMAL);
+    @permission play8Ball = new Permission("fun.8ball", Role.NORMAL);
 
     constructor(@inject(Adapter) public adapter: Adapter) {
         super(FunModule);
     }
-
-    @command rouletteCommand = new RouletteCommand(this);
-    @command seppukuCommand = new SeppukuCommand(this);
-    @command magic8BallCommand = new Magic8BallCommand();
-
-    @permission playRoulette = new Permission("fun.roulette", Role.NORMAL);
-    @permission playSeppuku = new Permission("fun.seppuku", Role.NORMAL);
-    @permission play8Ball = new Permission("fun.8ball", Role.NORMAL);
 }

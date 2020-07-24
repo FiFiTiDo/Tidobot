@@ -24,7 +24,7 @@ class BettingGame {
         return this.title;
     }
 
-    async close(winningOption: string): Promise<number|null> {
+    async close(winningOption: string): Promise<number | null> {
         if (!this.bets.has(winningOption.toLowerCase())) return null;
         this.open = false;
 
@@ -55,7 +55,7 @@ class BettingGame {
         return PlaceBetResponse.BET_PLACED;
     }
 
-    *getTotals(): Generator<[string, number]> {
+    * getTotals(): Generator<[string, number]> {
         for (const [option, bets] of this.bets.entries()) {
             let total = 0;
             for (const [, value] of bets.getAll(filterByChannel(this.channel))) total += value;
@@ -86,12 +86,12 @@ export class BetService {
         this.betInstances = new EntityStateList<ChannelEntity, BettingGame>(null);
     }
 
-    public getGame(channel: ChannelEntity): BettingGame|null {
+    public getGame(channel: ChannelEntity): BettingGame | null {
         if (!this.betInstances.has(channel)) return null;
         return this.betInstances.get(channel);
     }
 
-    public placeBet(chatter: ChatterEntity, option: string, amount: number, channel: ChannelEntity): Promise<PlaceBetResponse|null> {
+    public placeBet(chatter: ChatterEntity, option: string, amount: number, channel: ChannelEntity): Promise<PlaceBetResponse | null> {
         const game = this.getGame(channel);
         if (!game?.isOpen()) return null;
         return game.place(option, amount, chatter);
@@ -105,7 +105,7 @@ export class BetService {
         return true;
     }
 
-    public async getTotals(channel: ChannelEntity): Promise<GameTotals|null> {
+    public async getTotals(channel: ChannelEntity): Promise<GameTotals | null> {
         const game = this.getGame(channel);
         if (game === null) return null;
         return {

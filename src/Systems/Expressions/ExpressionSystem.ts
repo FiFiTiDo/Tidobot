@@ -67,8 +67,8 @@ export default class ExpressionSystem extends System {
                     return await rp(url);
                 } catch (e) {
                     this.logger.error("Web request error");
-            this.logger.error("Caused by: " + e.message);
-            this.logger.error(e.stack);
+                    this.logger.error("Caused by: " + e.message);
+                    this.logger.error(e.stack);
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },
@@ -84,8 +84,8 @@ export default class ExpressionSystem extends System {
                     });
                 } catch (e) {
                     this.logger.error("Web request error");
-            this.logger.error("Caused by: " + e.message);
-            this.logger.error(e.stack);
+                    this.logger.error("Caused by: " + e.message);
+                    this.logger.error(e.stack);
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },
@@ -105,8 +105,8 @@ export default class ExpressionSystem extends System {
                     });
                 } catch (e) {
                     this.logger.error("Web request error");
-            this.logger.error("Caused by: " + e.message);
-            this.logger.error(e.stack);
+                    this.logger.error("Caused by: " + e.message);
+                    this.logger.error(e.stack);
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },

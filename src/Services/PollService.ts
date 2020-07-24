@@ -27,13 +27,6 @@ class Poll {
         return true;
     }
 
-    removeVote(chatter: ChatterEntity): boolean {
-        const option = this.userVotes.get(chatter);
-        if (!option) return false;
-        this.votes[option].splice(this.votes[option].indexOf(chatter), 1);
-        return true;
-    }
-
     open(): void {
         this._open = true;
     }
@@ -78,17 +71,13 @@ export class PollService {
         this.polls = new EntityStateList<ChannelEntity, Poll>(null);
     }
 
-    getPoll(channel: ChannelEntity): Optional<Poll>  {
+    getPoll(channel: ChannelEntity): Optional<Poll> {
         const poll = this.polls.get(channel);
         return poll === null ? Optional.empty() : Optional.of(poll);
     }
 
     getOpenPoll(channel: ChannelEntity): Optional<Poll> {
         return this.getPoll(channel).filter(poll => poll.isOpen());
-    }
-
-    getClosedPoll(channel: ChannelEntity): Optional<Poll> {
-        return this.getPoll(channel).filter(poll => !poll.isOpen());
     }
 
     createPoll(options: string[], channel: ChannelEntity): Optional<Poll> {

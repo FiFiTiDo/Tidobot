@@ -45,13 +45,6 @@ export default class CommandSystem extends System {
         return await channel.getSetting<SettingType.STRING>("command.prefix");
     }
 
-    static async showInvalidSyntax(usage: string, msg: Message): Promise<void> {
-        await msg.getResponse().message("command:error.syntax", {
-            prefix: await this.getPrefix(msg.getChannel()),
-            usage
-        });
-    }
-
     static async showInvalidArgument(argument: string, given: any, usage: string, msg: Message): Promise<void> {
         await msg.getResponse().message("command:error.argument-arg", {
             argument, given,

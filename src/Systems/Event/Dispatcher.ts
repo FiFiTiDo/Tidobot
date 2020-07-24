@@ -1,10 +1,10 @@
 import Listener, {ListenerWrapper} from "./Listener";
-import Event, {EventConstructor} from "./Event";
+import Event, {EventArguments, EventConstructor} from "./Event";
 import {EventPriority} from "./EventPriority";
 import PriorityList from "../../Utilities/Structures/PriorityList";
 import {injectable} from "inversify";
 
-type ListenerType<T extends Event<T>> = Listener<T> | ListenerWrapper<T>;
+type ListenerType<T extends Event<T>> = Listener<T, EventArguments<T>> | ListenerWrapper<T, EventArguments<T>>;
 
 @injectable()
 export default class Dispatcher {
@@ -21,10 +21,6 @@ export default class Dispatcher {
         this.listeners.get(event.NAME).remove(listener);
     }
 
-    public addSubscriber(subscriber: Subscriber): void {
-        subscriber.registerListeners(this);
-    }
-
     public async dispatch<T extends Event<T>>(event: Event<T>): Promise<void> {
         if (!this.listeners.has(event.getName())) return;
 
@@ -38,10 +34,4 @@ export default class Dispatcher {
             if (event.isCancelled()) break;
         }
     }
-}
-
-export abstract class Subscriber {
-    abstract registerListeners(dispatcher: Dispatcher);
-
-    abstract unregisterListeners(dispatcher: Dispatcher);
 }

@@ -11,20 +11,23 @@ import {Role} from "../../Permissions/Role";
 const FAKE_PURGE = /^<message \w+>|^<\w+ deleted>/i;
 
 export default class FakePurgeFilter extends Filter {
+    private static ENABLED = new Setting("filter.fake-purge.enabled", true, SettingType.BOOLEAN);
+
+    private static IGNORE_FILTER = new Permission("filter.ignore.fake-purge", Role.MODERATOR);
+
     constructor(strikeManager: StrikeManager) {
         super(strikeManager);
 
         const settings = SettingsSystem.getInstance();
-        settings.registerSetting(new Setting("filter.fake-purge.enabled", "true", SettingType.BOOLEAN));
+        settings.registerSetting(FakePurgeFilter.ENABLED);
 
         const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("filter.ignore.fake-purge", Role.MODERATOR));
+        perm.registerPermission(FakePurgeFilter.IGNORE_FILTER);
     }
 
-    async handleMessage(lists: FiltersEntity, { message, response, sender, channel }: MessageEventArgs): Promise<boolean> {
-        if (await message.checkPermission("filter.ignore.fake-purge")) return false;
-        const enabled = await channel.getSetting<boolean>("filter.fake-purge.enabled");
-        if (!enabled) return false;
+    async handleMessage(lists: FiltersEntity, {message, response, sender, channel}: MessageEventArgs): Promise<boolean> {
+        if (await message.checkPermission(FakePurgeFilter.IGNORE_FILTER)) return false;
+        if (!(await channel.getSetting(FakePurgeFilter.ENABLED))) return false;
 
         if (FAKE_PURGE.test(message.getRaw())) {
             await this.strikeManager.issueStrike("fake-purge", message);

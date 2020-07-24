@@ -51,7 +51,7 @@ class SlotsCommand extends Command {
         ]
     }
 
-     getRandomIndex(): number {
+    getRandomIndex(): number {
         const number = randomFloat();
         if (number <= 0.075) return 4;
         else if (number <= 0.2) return 3;
@@ -99,15 +99,8 @@ class SlotsCommand extends Command {
 
 export default class GamblingModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-
-    constructor() {
-        super(GamblingModule);
-    }
-
     @command slotsCommand = new SlotsCommand(this);
-
     @permission playSlots = new Permission("gambling.slots", Role.NORMAL);
-
     @setting slotsPrice = new Setting("slots.price", 75 as Float, SettingType.FLOAT);
     @setting slotsPrize0 = new Setting("slots.prize.0", 75 as Float, SettingType.FLOAT);
     @setting slotsPrize1 = new Setting("slots.prize.1", 150 as Float, SettingType.FLOAT);
@@ -119,4 +112,8 @@ export default class GamblingModule extends AbstractModule {
     @setting slotsEmote2 = new Setting("slots.emote.2", "BloodTrail", SettingType.STRING);
     @setting slotsEmote3 = new Setting("slots.emote.3", "ResidentSleeper", SettingType.STRING);
     @setting slotsEmote4 = new Setting("slots.emote.4", "4Head", SettingType.STRING);
+
+    constructor() {
+        super(GamblingModule);
+    }
 }

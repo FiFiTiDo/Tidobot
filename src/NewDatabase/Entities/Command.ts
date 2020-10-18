@@ -34,6 +34,6 @@ export class Command extends CustomBaseEntity {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    @ManyToOne(type => Channel, channel => channel.commands)
+    @ManyToOne(() => Channel, channel => channel.commands)
     channel: Channel;
 }

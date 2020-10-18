@@ -14,6 +14,7 @@ import { Group } from "./Group";
 import { News } from "./News";
 import { Permission } from "./Permission";
 import { Service } from "./Service";
+import { Trainer } from "./Trainer";
 
 @Entity()
 export class Channel extends CustomBaseEntity {
@@ -29,16 +30,16 @@ export class Channel extends CustomBaseEntity {
     @Column({ default: 0 })
     newsIdCounter: number;
 
-    @OneToOne(type => ChannelSettings, channelSettings => channelSettings.channel)
+    @OneToOne(() => ChannelSettings, channelSettings => channelSettings.channel)
     settings: ChannelSettings;
 
-    @ManyToOne(type => Service, service => service.channels)
+    @ManyToOne(() => Service, service => service.channels)
     service: Service;
 
-    @OneToMany(type => Chatter, chatter => chatter.channel)
+    @OneToMany(() => Chatter, chatter => chatter.channel)
     chatters: Chatter[];
 
-    get trainers() {
+    get trainers(): Trainer[] {
         return this.chatters.map(chatter => chatter.trainer).filter(trainer => trainer);
     }
 
@@ -50,28 +51,28 @@ export class Channel extends CustomBaseEntity {
         return Optional.ofUndefable(this.chatters.find(chatter => chatter.user.name === name));
     }
 
-    @OneToMany(type => Group, group => group.channel)
+    @OneToMany(() => Group, group => group.channel)
     groups: Group[];
 
-    @OneToMany(type => Permission, permission => permission.channel)
+    @OneToMany(() => Permission, permission => permission.channel)
     permissions: Permission[];
 
-    @OneToMany(type => Command, command => command.channel)
+    @OneToMany(() => Command, command => command.channel)
     commands: Command[];
 
-    @OneToMany(type => Counter, counter => counter.channel)
+    @OneToMany(() => Counter, counter => counter.channel)
     counters: Counter[];
 
-    @OneToMany(type => DomainFilter, domainFilter => domainFilter.channel)
+    @OneToMany(() => DomainFilter, domainFilter => domainFilter.channel)
     domainFilters: DomainFilter[];
 
-    @OneToMany(type => BadWord, badWord => badWord.channel)
+    @OneToMany(() => BadWord, badWord => badWord.channel)
     badWords: BadWord[]
 
-    @OneToMany(type => DisabledModule, disabledModule => disabledModule.channel)
+    @OneToMany(() => DisabledModule, disabledModule => disabledModule.channel)
     disabledModules: DisabledModule[];
 
-    @OneToMany(type => News, news => news.channel)
+    @OneToMany(() => News, news => news.channel)
     newsItems: News[];
 
     get logger(): Logger {

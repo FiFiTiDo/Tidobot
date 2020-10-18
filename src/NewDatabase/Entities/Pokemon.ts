@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne } from "typeorm";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { Trainer } from "./Trainer";
 
@@ -10,32 +10,21 @@ export interface PokemonStats {
 }
 
 export const NATURES = [
-    'evil', 'mean', 'crazy', 'happy', 'cute',
-    'pretty', 'beautiful', 'amazing', 'sleepy',
-    'weird', 'funny', 'boring', 'lame', 'silly',
-    'neat', 'fun', 'enjoyable', 'pleasing', 'tall',
-    'appealing', 'dumb', 'awesome', 'stupid',
-    'friendly', 'freaky', 'elegant', 'rich', 'odd',
-    'lucky', 'young', 'old', 'unknown', 'confused',
-    'forgetful', 'talkative', 'mature', 'immature',
-    'strong', 'weak', 'malnourished', 'hungry',
-    'dying', 'super', 'naughty', 'short', 'toothless'
+    "evil", "mean", "crazy", "happy", "cute",
+    "pretty", "beautiful", "amazing", "sleepy",
+    "weird", "funny", "boring", "lame", "silly",
+    "neat", "fun", "enjoyable", "pleasing", "tall",
+    "appealing", "dumb", "awesome", "stupid",
+    "friendly", "freaky", "elegant", "rich", "odd",
+    "lucky", "young", "old", "unknown", "confused",
+    "forgetful", "talkative", "mature", "immature",
+    "strong", "weak", "malnourished", "hungry",
+    "dying", "super", "naughty", "short", "toothless"
 ];
 
 @Entity()
 export class Pokemon extends CustomBaseEntity {
     public static readonly GENERIC_NAME = "MissingNo.";
-
-    constructor(stats?: PokemonStats) {
-        super();
-
-        if (stats) {
-            this.name = stats.name;
-            this.level = stats.level;
-            this.rus = stats.rus;
-            this.shiny = stats.shiny;
-        }
-    }
 
     @Column()
     name: string;
@@ -52,7 +41,7 @@ export class Pokemon extends CustomBaseEntity {
     @Column()
     rus: boolean;
 
-    @ManyToOne(type => Trainer, trainer => trainer.team)
+    @ManyToOne(() => Trainer, trainer => trainer.team)
     trainer: Trainer;
 
     public toString(): string {

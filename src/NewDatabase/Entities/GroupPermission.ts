@@ -8,9 +8,9 @@ export class GroupPermission extends CustomBaseEntity {
     @Column()
     granted: boolean;
 
-    @ManyToOne(type => Permission)
+    @ManyToOne(() => Permission)
     permission: Permission;
 
-    @ManyToOne(type => Group, group => group.permissions)
+    @ManyToOne(() => Group, group => group.permissions)
     group: Group;
 }

@@ -10,6 +10,6 @@ export class ListItem extends CustomBaseEntity {
     @Column()
     content: string;
 
-    @ManyToOne(type => List, list => list.items)
+    @ManyToOne(() => List, list => list.items)
     list: List;
 }

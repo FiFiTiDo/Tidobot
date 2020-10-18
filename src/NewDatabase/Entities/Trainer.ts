@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, OneToOne } from "typeorm";
 import { Chatter } from "./Chatter";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { Pokemon } from "./Pokemon";
@@ -6,17 +6,17 @@ import { Pokemon } from "./Pokemon";
 @Entity()
 export class Trainer extends CustomBaseEntity {
     @Column()
-    gamesWon: number;
+    won: number;
 
     @Column()
-    gamesLost: number;
+    lost: number;
 
     @Column()
-    gamesDrawn: number;
+    draw: number;
 
-    @OneToOne(type => Chatter, chatter => chatter.trainer)
+    @OneToOne(() => Chatter, chatter => chatter.trainer)
     chatter: Chatter;
 
-    @OneToMany(type => Pokemon, pokemon => pokemon.trainer )
+    @OneToMany(() => Pokemon, pokemon => pokemon.trainer )
     team: Pokemon[];
 }

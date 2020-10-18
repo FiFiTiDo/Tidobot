@@ -16,24 +16,24 @@ export class Chatter extends CustomBaseEntity {
     regular: boolean;
 
     @Column({ default: false })
-    banned: Boolean;
+    banned: boolean;
 
-    @ManyToOne(type => User, user => user.chatters)
+    @ManyToOne(() => User, user => user.chatters)
     user: User;
 
-    @ManyToOne(type => Channel, channel => channel.chatters)
+    @ManyToOne(() => Channel, channel => channel.chatters)
     channel: Channel;
 
-    @OneToMany(type => ChatterPermission, permission => permission.chatter)
+    @OneToMany(() => ChatterPermission, permission => permission.chatter)
     permissions: ChatterPermission[];
 
-    @ManyToMany(type => Group, group => group.members)
+    @ManyToMany(() => Group, group => group.members)
     groups: Group[];
 
-    @OneToOne(type => Trainer, trainer => trainer.chatter)
+    @OneToOne(() => Trainer, trainer => trainer.chatter)
     trainer: Trainer;
 
-    memberOf(group: Group) {
+    memberOf(group: Group): boolean {
         for (const entity of this.groups)
             if (entity.id === group.id)
                 return true;
@@ -43,7 +43,7 @@ export class Chatter extends CustomBaseEntity {
     checkPermission(permission: Permission): PermissionStatus {
         for (const entity of this.permissions)
             if (entity.permission.token == permission.token)
-                return entity.granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED
+                return entity.granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED;
 
         if (this.groups.length < 1) return PermissionStatus.NOT_DEFINED;
 
@@ -56,6 +56,6 @@ export class Chatter extends CustomBaseEntity {
                 granted++;
         }
     
-        return granted > 0 ? PermissionStatus.GRANTED : PermissionStatus.NOT_DEFINED
+        return granted > 0 ? PermissionStatus.GRANTED : PermissionStatus.NOT_DEFINED;
     }
 }

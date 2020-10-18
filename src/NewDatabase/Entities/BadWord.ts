@@ -7,6 +7,6 @@ export class BadWord extends CustomBaseEntity {
     @Column()
     value: string;
 
-    @ManyToOne(type => Channel, channel => channel.badWords)
+    @ManyToOne(() => Channel, channel => channel.badWords)
     channel: Channel;
 }

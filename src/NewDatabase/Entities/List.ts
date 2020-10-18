@@ -10,6 +10,6 @@ export class List extends CustomBaseEntity {
     @Column()
     idCounter: number;
 
-    @OneToMany(type => ListItem, listItem => listItem.list)
+    @OneToMany(() => ListItem, listItem => listItem.list)
     items: ListItem[];
 }

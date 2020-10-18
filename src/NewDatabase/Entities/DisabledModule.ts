@@ -7,6 +7,6 @@ export class DisabledModule extends CustomBaseEntity {
     @Column()
     moduleName: string;
 
-    @ManyToOne(type => Channel, channel => channel.disabledModules)
+    @ManyToOne(() => Channel, channel => channel.disabledModules)
     channel: Channel;
 }

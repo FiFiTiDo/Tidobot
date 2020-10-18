@@ -8,9 +8,9 @@ export class ChatterPermission extends CustomBaseEntity {
     @Column()
     granted: boolean;
 
-    @ManyToOne(type => Chatter, chatter => chatter.permissions)
+    @ManyToOne(() => Chatter, chatter => chatter.permissions)
     chatter: Chatter;
 
-    @ManyToOne(type => Permission, permission => permission.chatterPermissions)
+    @ManyToOne(() => Permission, permission => permission.chatterPermissions)
     permission: Permission;
 }

@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
 import { Role } from "../../Systems/Permissions/Role";
 import { Channel } from "./Channel";
 import { ChatterPermission } from "./ChatterPermission";
@@ -27,12 +27,12 @@ export class Permission extends CustomBaseEntity {
     @Column()
     moduleDefined: boolean;
 
-    @ManyToOne(type => Channel, channel => channel.permissions)
+    @ManyToOne(() => Channel, channel => channel.permissions)
     channel: Channel;
 
-    @OneToMany(type => GroupPermission, groupPermission => groupPermission.permission)
+    @OneToMany(() => GroupPermission, groupPermission => groupPermission.permission)
     groupPermissions: GroupPermission;
 
-    @OneToMany(type => ChatterPermission, ChatterPermission => ChatterPermission.permission)
+    @OneToMany(() => ChatterPermission, ChatterPermission => ChatterPermission.permission)
     chatterPermissions: ChatterPermission;
 }

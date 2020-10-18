@@ -9,7 +9,7 @@ export class ChannelSettings extends CustomBaseEntity {
     @Column()
     json: { [key: string]: any };
 
-    @OneToOne(type => Channel)
+    @OneToOne(() => Channel)
     @JoinColumn()
     channel: Channel;
 
@@ -18,6 +18,6 @@ export class ChannelSettings extends CustomBaseEntity {
     }
 
     set<T extends SettingType>(setting: Setting<T>, value: any): void {
-        Dot.put(this.json, setting.key, value)
+        Dot.put(this.json, setting.key, value);
     }
 }

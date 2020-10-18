@@ -10,6 +10,6 @@ export class Counter extends CustomBaseEntity {
     @Column()
     value: number;
 
-    @ManyToOne(type => Channel, channel => channel.counters)
+    @ManyToOne(() => Channel, channel => channel.counters)
     channel: Channel;
 }

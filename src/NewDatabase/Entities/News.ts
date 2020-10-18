@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne } from "typeorm";
 import { Channel } from "./Channel";
 import CustomBaseEntity from "./CustomBaseEntity";
 
@@ -10,6 +10,6 @@ export class News extends CustomBaseEntity {
     @Column()
     content: string;
 
-    @ManyToOne(type => Channel, channel => channel.newsItems)
+    @ManyToOne(() => Channel, channel => channel.newsItems)
     channel: Channel;
 }

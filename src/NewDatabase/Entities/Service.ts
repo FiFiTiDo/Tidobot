@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany } from "typeorm";
 import { Channel } from "./Channel";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { User } from "./User";
@@ -8,9 +8,9 @@ export class Service extends CustomBaseEntity {
     @Column({ unique: true })
     name: string;
 
-    @OneToMany(type => User, user => user.service)
+    @OneToMany(() => User, user => user.service)
     users: User[]
 
-    @OneToMany(type => Channel, channel => channel.service)
+    @OneToMany(() => Channel, channel => channel.service)
     channels: Channel[]
 }

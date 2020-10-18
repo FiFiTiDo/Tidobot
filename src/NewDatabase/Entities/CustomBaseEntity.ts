@@ -10,7 +10,7 @@ export default abstract class CustomBaseEntity extends BaseEntity {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    public is(other: CustomBaseEntity) {
+    public is(other: CustomBaseEntity): boolean {
         return this.id === other.id;
     }
 }

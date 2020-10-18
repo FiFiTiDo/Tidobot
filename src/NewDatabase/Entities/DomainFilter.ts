@@ -7,6 +7,6 @@ export class DomainFilter extends CustomBaseEntity {
     @Column()
     value: string;
 
-    @ManyToOne(type => Channel, channel => channel.domainFilters)
+    @ManyToOne(() => Channel, channel => channel.domainFilters)
     channel: Channel;
 }

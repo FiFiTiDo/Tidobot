@@ -1,4 +1,4 @@
-import { BaseEntity, Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
 import { Chatter } from "./Chatter";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { Service } from "./Service";
@@ -14,9 +14,9 @@ export class User extends CustomBaseEntity {
     @Column({ default: false })
     ignored: boolean;
 
-    @ManyToOne(type => Service, service => service.users)
+    @ManyToOne(() => Service, service => service.users)
     service: Service;
 
-    @OneToMany(type => Chatter, chatter => chatter.user)
+    @OneToMany(() => Chatter, chatter => chatter.user)
     chatters: Chatter[]
 }

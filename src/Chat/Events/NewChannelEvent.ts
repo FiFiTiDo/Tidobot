@@ -1,10 +1,11 @@
 import Event, {EventArguments} from "../../Systems/Event/Event";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import { Channel } from "../../NewDatabase/Entities/Channel";
 
 export class NewChannelEvent extends Event<NewChannelEvent> {
     public static readonly NAME = "channel:new";
 
-    constructor(private readonly channel: ChannelEntity) {
+    constructor(private readonly channel: Channel) {
         super(NewChannelEvent);
     }
 
@@ -16,5 +17,5 @@ export class NewChannelEvent extends Event<NewChannelEvent> {
 }
 
 export interface NewChannelEventArgs extends EventArguments<NewChannelEvent> {
-    channel: ChannelEntity
+    channel: Channel
 }

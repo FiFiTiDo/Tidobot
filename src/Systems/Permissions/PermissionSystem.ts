@@ -1,26 +1,26 @@
-import Permission from "./Permission";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
+import Permission, { PermissionStatus } from "./Permission";
 import {getMaxRole, Role} from "./Role";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import PermissionEntity from "../../Database/Entities/PermissionEntity";
 import System from "../System";
 import {logError} from "../../Utilities/Logger";
+import { Service } from "typedi";
+import { PermissionRepository } from "../../NewDatabase/Repositories/PermissionRepository";
+import { InjectRepository } from "typeorm-typedi-extensions";
+import { Channel } from "../../NewDatabase/Entities/Channel";
+import { Permission as PermissionEntityNew } from "../../NewDatabase/Entities/Permission"  
+import { Chatter } from "../../NewDatabase/Entities/Chatter";
 
+@Service()
 export default class PermissionSystem extends System {
-    private static instance: PermissionSystem = null;
     private permissions: Permission[] = [];
 
-    constructor() {
+
+    constructor(
+        @InjectRepository()
+        private readonly repository: PermissionRepository
+    ) {
         super("Permission");
 
         this.logger.info("System initialized");
-    }
-
-    public static getInstance(): PermissionSystem {
-        if (this.instance === null)
-            this.instance = new PermissionSystem();
-
-        return this.instance;
     }
 
     public registerPermission(permission: Permission): void {
@@ -29,7 +29,7 @@ export default class PermissionSystem extends System {
 
     public findPermission(permStr: string): Permission | null {
         for (const permission of this.permissions)
-            if (permission.getPermission() === permStr)
+            if (permission.getToken() === permStr)
                 return permission;
         return null;
     }
@@ -38,17 +38,19 @@ export default class PermissionSystem extends System {
         return this.permissions;
     }
 
-    public async getPermissionRole(permission: Permission, channel: ChannelEntity): Promise<Role> {
+    public getPermissionRole(permission: Permission, channel: Channel): Role {
         try {
-            return (await channel.permissions())
-                .find(perm => perm.permission === permission.getPermission())?.role || Role.OWNER;
+            for (const entity of channel.permissions)
+                if (entity.token === permission.token)
+                    return entity.role;
+            return Role.OWNER;
         } catch (e) {
             logError(this.logger, e, "Unable to find permission in database");
             return Role.OWNER;
         }
     }
 
-    public async check(permission: Permission | string, chatter: ChatterEntity, roles: Role[] = []): Promise<boolean> {
+    public check(permission: Permission | string, chatter: Chatter, roles: Role[] = []): boolean {
         if (typeof permission === "string") {
             const permStr = permission;
             permission = this.findPermission(permission);
@@ -59,10 +61,9 @@ export default class PermissionSystem extends System {
         }
 
         try {
-            if (await chatter.hasPermission(permission)) return true;
+            if (chatter.checkPermission(permission) === PermissionStatus.GRANTED) return true;
 
-            const role = await this.getPermissionRole(permission, chatter.getChannel());
-            return getMaxRole(roles) >= role;
+            return getMaxRole(roles) >= this.getPermissionRole(permission, chatter.channel);;
         } catch (e) {
             logError(this.logger, e, "Unable to check permission");
         }
@@ -70,15 +71,14 @@ export default class PermissionSystem extends System {
         return false;
     }
 
-    public async resetChannelPermissions(channel: ChannelEntity): Promise<void> {
-        await PermissionEntity.removeEntries({channel});
-        await PermissionEntity.make({channel},
-            this.permissions.map(permission => ({
-                permission: permission.getPermission(),
-                role: Role[permission.getDefaultRole()],
-                default_role: Role[permission.getDefaultRole()],
-                module_defined: "true"
-            }))
-        );
+    public async resetChannelPermissions(channel: Channel): Promise<void> {
+        await this.repository.removeByChannel(channel);
+        await this.repository.save(this.permissions.map(permission => {
+            const entity = new PermissionEntityNew();
+            entity.role = permission.getDefaultRole();
+            entity.defaultRole = permission.getDefaultRole();
+            entity.moduleDefined = true;
+            return entity;
+        }));
     }
 }

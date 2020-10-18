@@ -1,11 +1,12 @@
-import EntityStateList from "../Database/EntityStateList";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {Role} from "../Systems/Permissions/Role";
-import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import {arrayRand} from "../Utilities/ArrayUtils";
 import Optional from "../Utilities/Patterns/Optional";
 import Message from "../Chat/Message";
+import { Chatter } from "../NewDatabase/Entities/Chatter";
+import { EntityStateList } from "../NewDatabase/EntityStateLiist";
+import { Channel } from "../NewDatabase/Entities/Channel";
+import { Service } from "typedi";
+import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 
 enum RaffleState {
     OPEN = 1,
@@ -20,12 +21,15 @@ interface RaffleSettings {
 
 class Raffle {
     private state: RaffleState;
-    private userEntries: EntityStateList<ChatterEntity, number>;
+    private userEntries: EntityStateList<Chatter, number>;
     private entries: string[];
     private winners: string[];
 
-    constructor(readonly keyword: string, private channel: ChannelEntity, private settings: RaffleSettings) {
-        this.userEntries = new EntityStateList<ChatterEntity, number>(0);
+    constructor(
+        readonly keyword: string, private channel: Channel, 
+        private settings: RaffleSettings, private readonly raffleService: RaffleService
+    ) {
+        this.userEntries = new EntityStateList<Chatter, number>(0);
         this.state = RaffleState.CLOSED;
         this.reset();
     }
@@ -46,16 +50,16 @@ class Raffle {
         return this.state === RaffleState.OPEN;
     }
 
-    async canEnter(chatter: ChatterEntity, roles: Role[]): Promise<boolean> {
+    async canEnter(chatter: Chatter, roles: Role[]): Promise<boolean> {
         if (!this.isOpen()) return false;
         if (this.userEntries.get(chatter) >= this.settings.maxEntries) return false;
 
-        return PermissionSystem.getInstance().check("raffle.enter", chatter, roles);
+        return this.raffleService.permissionSystem.check("raffle.enter", chatter, roles);
     }
 
-    addEntry(chatter: ChatterEntity): void {
+    addEntry(chatter: Chatter): void {
         this.userEntries.set(chatter, this.userEntries.get(chatter) + 1);
-        this.entries.push(chatter.name);
+        this.entries.push(chatter.user.name);
     }
 
     pullWinner(): string | null {
@@ -70,41 +74,45 @@ class Raffle {
     }
 
     reset(): void {
-        this.userEntries.filter((id, entity) => !entity.getChannel().is(this.channel));
+        this.userEntries.filter((id, entity) => !entity.channel.is(this.channel));
         this.entries = [];
         this.winners = [];
     }
 }
 
+@Service()
 export class RaffleService {
-    readonly raffles: EntityStateList<ChannelEntity, Raffle> = new EntityStateList<ChannelEntity, Raffle>(null);
+    readonly raffles: EntityStateList<Channel, Raffle> = new EntityStateList<Channel, Raffle>(null);
 
-    getRaffle(channel: ChannelEntity): Optional<Raffle> {
+    constructor(public readonly permissionSystem: PermissionSystem) {
+    }
+
+    getRaffle(channel: Channel): Optional<Raffle> {
         return Optional.ofNullable(this.raffles.get(channel));
     }
 
-    getOpenRaffle(channel: ChannelEntity): Optional<Raffle> {
+    getOpenRaffle(channel: Channel): Optional<Raffle> {
         return this.getRaffle(channel).filter(raffle => raffle.isOpen());
     }
 
-    openRaffle(keyword: string, channel: ChannelEntity, settings: RaffleSettings): Optional<Raffle> {
+    openRaffle(keyword: string, channel: Channel, settings: RaffleSettings): Optional<Raffle> {
         if (this.getOpenRaffle(channel)) return Optional.empty();
 
-        const raffle = new Raffle(keyword, channel, settings);
+        const raffle = new Raffle(keyword, channel, settings, this);
         raffle.open();
         this.raffles.set(channel, raffle);
         return Optional.of(raffle);
     }
 
-    closeRaffle(channel: ChannelEntity): Optional<void> {
+    closeRaffle(channel: Channel): Optional<void> {
         return this.getOpenRaffle(channel).map(raffle => raffle.close());
     }
 
-    resetRaffle(channel: ChannelEntity): Optional<void> {
+    resetRaffle(channel: Channel): Optional<void> {
         return this.getRaffle(channel).map(raffle => raffle.reset());
     }
 
-    pullWinner(channel: ChannelEntity): Optional<string | false> {
+    pullWinner(channel: Channel): Optional<string | false> {
         return this.getRaffle(channel).map(raffle => raffle.pullWinner() ?? false);
     }
 

@@ -1,5 +1,4 @@
 import Filter from "./Filter";
-import StrikeManager from "../StrikeManager";
 import FiltersEntity from "../../../Database/Entities/FiltersEntity";
 import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import Setting, {Integer, SettingType} from "../../Settings/Setting";
@@ -10,7 +9,9 @@ import {Role} from "../../Permissions/Role";
 
 const NON_ALPHA_PATTERN = /([^a-z0-9 ])/ig;
 const NON_ALPHA_SEQ_PATTERN = /([^a-z0-9 ])(\1+)/ig;
+import { Service } from "typedi";
 
+@Service()
 export default class SymbolFilter extends Filter {
     private static ENABLED = new Setting("filter.symbols.enabled", true, SettingType.BOOLEAN);
     private static LENGTH = new Setting("filter.symbols.length", 20 as Integer, SettingType.INTEGER);
@@ -19,30 +20,27 @@ export default class SymbolFilter extends Filter {
 
     private static IGNORE_FILER = new Permission("filter.ignore.symbols", Role.MODERATOR);
 
-    constructor(strikeManager: StrikeManager) {
-        super(strikeManager);
+    constructor(settings: SettingsSystem, perm: PermissionSystem) {
+        super();
 
-        const settings = SettingsSystem.getInstance();
         settings.registerSetting(SymbolFilter.ENABLED);
         settings.registerSetting(SymbolFilter.LENGTH);
         settings.registerSetting(SymbolFilter.MIN_LENGTH);
         settings.registerSetting(SymbolFilter.PERCENT);
-
-        const perm = PermissionSystem.getInstance();
         perm.registerPermission(new Permission("filter.ignore.symbols", Role.MODERATOR));
     }
 
-    async handleMessage(lists: FiltersEntity, {message, channel, sender, response}: MessageEventArgs): Promise<boolean> {
+    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
         if (await message.checkPermission(SymbolFilter.IGNORE_FILER)) return false;
-        if (!(await channel.getSetting(SymbolFilter.ENABLED))) return false;
+        if (!channel.settings.get(SymbolFilter.ENABLED)) return false;
 
         const stripped = message.getStripped();
-        const minLength = await channel.getSetting(SymbolFilter.MIN_LENGTH);
+        const minLength = channel.settings.get(SymbolFilter.MIN_LENGTH);
         if (stripped.length < minLength) return false;
 
         const sequences = NON_ALPHA_SEQ_PATTERN.exec(stripped) ?? [];
         if (sequences.length > 0) {
-            const maxLength = await channel.getSetting(SymbolFilter.LENGTH);
+            const maxLength = channel.settings.get(SymbolFilter.LENGTH);
             const longest = sequences.sort((a, b) => b.length - a.length)[0].length;
             if (longest >= maxLength) {
                 await this.strikeManager.issueStrike("symbols", message);
@@ -50,7 +48,7 @@ export default class SymbolFilter extends Filter {
             }
         }
 
-        const maxPercent = await channel.getSetting(SymbolFilter.PERCENT);
+        const maxPercent = channel.settings.get(SymbolFilter.PERCENT);
         const nonAlphaChars = NON_ALPHA_PATTERN.exec(stripped) || [];
         const percent = (nonAlphaChars.length / stripped.length) * 100;
 

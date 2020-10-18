@@ -59,7 +59,7 @@ export function makeEventReducer<T>(reducer: AsyncResolvable<CommandEvent, T>): 
 export const MessageArg = makeEventReducer(event => event.getMessage());
 export const ResponseArg = makeEventReducer(event => event.getMessage().getResponse());
 export const Sender = makeEventReducer(event => event.getMessage().getChatter());
-export const Channel = makeEventReducer(event => event.getMessage().getChannel());
+export const ChannelArg = makeEventReducer(event => event.getMessage().getChannel());
 
 export function RestArguments(required: boolean = true, settings: RestSettings = {}): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {

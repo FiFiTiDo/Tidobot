@@ -23,7 +23,7 @@ import {command} from "../Systems/Commands/decorators";
 import {setting} from "../Systems/Settings/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import Message from "../Chat/Message";
@@ -55,7 +55,7 @@ class NewsCommand extends Command {
     @CommandHandler("news add", "news add <message>", 1)
     @CheckPermission("news.add")
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         return NewsEntity.create(value, channel)
@@ -85,7 +85,7 @@ class NewsCommand extends Command {
 
     @CommandHandler("news clear", "news clear", 1)
     @CheckPermission("news.clear")
-    async clear(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message): Promise<void> {
+    async clear(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message): Promise<void> {
         const confirmMsg = await response.translate("news:clear-confirm");
         const confirm = await this.confirmationFactory(msg, confirmMsg, 30);
         confirm.addListener(ConfirmedEvent, async () => NewsEntity.removeEntries({channel})
@@ -140,7 +140,7 @@ export default class NewsModule extends AbstractModule {
 
     @EventHandler(TickEvent)
     async tickHandler(): Promise<void> {
-        await Promise.all(this.channelManager.getAll().map(channel => this.tryNext(channel)));
+        await Promise.all(this.channelManager.getAllActive().map(channel => this.tryNext(channel)));
     }
 
     @EventHandler(MessageEvent)

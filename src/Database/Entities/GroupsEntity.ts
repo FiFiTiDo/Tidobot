@@ -45,7 +45,7 @@ export default class GroupsEntity extends ChannelSpecificEntity<GroupsEntity> {
 
     async hasPermission(perm: Permission): Promise<boolean> {
         for (const permission of await this.permissions())
-            if (permission.permission === perm.getPermission())
+            if (permission.permission === perm.getToken())
                 return permission.allowed;
         return false;
     }

@@ -5,9 +5,10 @@ import axios, {AxiosInstance, AxiosPromise, AxiosRequestConfig} from "axios";
 import Config from "../../Systems/Config/Config";
 import CacheConfig from "../../Systems/Config/ConfigModels/CacheConfig";
 import TwitchAdapter from "./TwitchAdapter";
+import Container, { Service } from "typedi";
 
 const CACHE_EXPIRY = async () => {
-    const config = await Config.getInstance().getConfig(CacheConfig);
+    const config = await Container.get(Config).getConfig(CacheConfig);
     return parseDuration(config.length);
 };
 
@@ -137,10 +138,13 @@ export namespace helix {
     /**
      * The Api class handling the api requests for the new helix api
      */
+    @Service()
     export class Api {
         readonly BASE_URL = "https://api.twitch.tv/helix/";
         private accessToken: AccessToken = null;
         private axios: AxiosInstance;
+        private clientId: string;
+        private clientSecret: string;
 
         /**
          * Api constructor.
@@ -148,10 +152,17 @@ export namespace helix {
          * @param clientId The client id for the api
          * @param clientSecret The client secret for the api
          */
-        constructor(private clientId: string, private clientSecret: string) {
+        constructor(
+            private cache: Cache
+        ) {
             this.axios = axios.create({
                 baseURL: this.BASE_URL
             })
+        }
+
+        public setCredentials(clientId: string, clientSecret: string): void {
+            this.clientId = clientId;
+            this.clientSecret = clientSecret;
         }
 
         /**
@@ -162,7 +173,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getGames(params: GameParams): Promise<Response<Game>> {
-            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.games." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
+            return JSON.parse(await this.cache.retrieve("twitch.games." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Game>({
                     url: "/games", params
                 }));
@@ -177,7 +188,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getStreams(params: StreamParams): Promise<Response<Stream>> {
-            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.streams." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
+            return JSON.parse(await this.cache.retrieve("twitch.streams." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<Stream>({
                     url: "/streams", params
                 }));
@@ -192,7 +203,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUsers(params: UserParams): Promise<Response<User>> {
-            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.users." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
+            return JSON.parse(await this.cache.retrieve("twitch.users." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<User>({
                     url: "/users", params
                 }));
@@ -207,7 +218,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUserFollow(params: UserFollowParams): Promise<Response<UserFollow>> {
-            return JSON.parse(await (await Cache.getInstance()).retrieve("twitch.users.follow." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
+            return JSON.parse(await this.cache.retrieve("twitch.users.follow." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
                 return JSON.stringify(await this.makeRequest<UserFollow>({
                     url: "/users/follows", params
                 }));

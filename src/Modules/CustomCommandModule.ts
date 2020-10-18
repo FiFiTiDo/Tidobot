@@ -17,7 +17,7 @@ import {permission} from "../Systems/Permissions/decorators";
 import {command} from "../Systems/Commands/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response"
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
@@ -43,7 +43,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) add/, "command add <trigger> <response>", 1)
     @CheckPermission("command.add")
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg) trigger: string,
         @RestArguments(true, {join: " "}) resp: string
     ): Promise<void> {
@@ -55,7 +55,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit trigger/, "command edit trigger <id> <new trigger>", 2)
     @CheckPermission("command.edit")
     async editTrigger(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
@@ -68,7 +68,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (condition|cond)/, "command edit condition <id> <new condition>", 2)
     @CheckPermission("command.edit")
     async editCondition(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
@@ -81,7 +81,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (response|resp)/, "command edit response <id> <new response>", 2)
     @CheckPermission("command.edit")
     async editResponse(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
@@ -94,7 +94,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit price/, "command edit price <id> <new price>", 2)
     @CheckPermission("command.edit")
     async editPrice(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @Argument(new FloatArg({min: 0})) value: number
     ): Promise<void> {
@@ -107,7 +107,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (global-cooldwn|gc)/, "command edit trigger <id> <new cooldown>", 2)
     @CheckPermission("command.edit")
     async editGlobalCooldown(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
@@ -120,7 +120,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (user-cooldown|uc)/, "command edit user-cooldown <id> <new cooldown>", 2)
     @CheckPermission("command.edit")
     async editUserCooldown(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
@@ -133,7 +133,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit enabled/, "command edit enabled <id> <new value>", 2)
     @CheckPermission("command.edit")
     async editEnabled(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(CommandConverter) command: CommandEntity,
         @Argument(BooleanArg) value: boolean
     ): Promise<void> {
@@ -146,7 +146,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) (delete|del)/, "command delete <id>", 1)
     @CheckPermission("command.delete")
     async delete(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(CommandConverter) command: CommandEntity
     ): Promise<void> {
         command.delete()

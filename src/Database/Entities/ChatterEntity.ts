@@ -64,7 +64,7 @@ export default class ChatterEntity extends ChannelSpecificEntity<ChatterEntity> 
 
     public async hasPermission(perm: Permission): Promise<boolean> {
         for (const permission of await this.permissions())
-            if (permission.permission === perm.getPermission())
+            if (permission.permission === perm.getToken())
                 return permission.allowed;
 
         const groups = await this.groups();

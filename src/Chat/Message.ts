@@ -1,27 +1,28 @@
 import MessageParser from "./MessageParser";
 import Adapter from "../Adapters/Adapter";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {Response, ResponseFactory} from "./Response";
 import Permission from "../Systems/Permissions/Permission";
 import {returnError, validateFunction} from "../Utilities/ValidateFunction";
+import { Chatter } from "../NewDatabase/Entities/Chatter";
+import { Channel } from "../NewDatabase/Entities/Channel";
+import Container from "typedi";
 
 export default class Message {
-    protected stripped: string;
-    private readonly parts: string[];
-    private readonly response: Response;
+    public stripped: string;
+    public readonly parts: string[];
+    public readonly response: Response;
     private loopProtection: string[];
 
     constructor(
-        private readonly raw: string, private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity,
-        private readonly adapter: Adapter, private readonly responseFactory: ResponseFactory
+        public readonly raw: string, public readonly chatter: Chatter, public readonly channel: Channel,
+        private readonly adapter: Adapter
     ) {
         this.parts = MessageParser.parse(raw);
         this.loopProtection = [];
-        this.response = responseFactory(this);
+        this.response = new Response(this);
         this.stripped = raw;
     }
 
@@ -37,21 +38,21 @@ export default class Message {
     public async getExpressionContext(): Promise<ExpressionContext> {
         return {
             sender: {
-                id: this.getChatter().id,
-                name: this.getChatter().name,
+                id: this.chatter.id,
+                name: this.chatter.user.name,
             },
             channel: {
                 id: this.getChannel().id,
                 name: this.getChannel().name,
-                chatters: (await this.channel.chatters()).map(chatter => chatter.name),
-                isLive: (): boolean => this.getChannel().online.get()
+                chatters: this.channel.chatters.map(chatter => chatter.user.name),
+                isLive: (): boolean => this.channel.online.get()
             },
             raw_arguments: this.parts.slice(1).join(" "),
             arguments: this.parts.slice(1),
             to_user: validateFunction((prepend?: string, append?: string): string => {
                 let resp = "";
                 if (prepend) resp += prepend;
-                const name = this.parts.length < 2 ? this.chatter.name : this.parts[1];
+                const name = this.parts.length < 2 ? this.chatter.user.name : this.parts[1];
                 resp += name.startsWith("@") ? name.substring(1) : name;
                 if (append) resp += append;
                 return resp;
@@ -60,11 +61,11 @@ export default class Message {
     }
 
     public async evaluateExpression(expression: string): Promise<string> {
-        return ExpressionSystem.getInstance().evaluate(expression, this);
+        return Container.get(ExpressionSystem).evaluate(expression, this);
     }
 
     public async checkPermission(permission: string | Permission): Promise<boolean> {
-        return PermissionSystem.getInstance().check(permission, this.chatter, await this.getUserRoles());
+        return Container.get(PermissionSystem).check(permission, this.chatter, await this.getUserRoles());
     }
 
     public getRaw(): string {
@@ -83,11 +84,11 @@ export default class Message {
         return this.parts;
     }
 
-    public getChatter(): ChatterEntity {
+    public getChatter(): Chatter {
         return this.chatter;
     }
 
-    public getChannel(): ChannelEntity {
+    public getChannel(): Channel {
         return this.channel;
     }
 
@@ -111,7 +112,7 @@ export default class Message {
         const msg = this;
         return new class extends Message {
             constructor() {
-                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter, msg.responseFactory);
+                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter);
 
                 this.loopProtection = msg.loopProtection.slice();
             }

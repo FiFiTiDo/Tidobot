@@ -3,8 +3,6 @@ import {ConfigOption} from "../decorators";
 
 export default class TwitchConfig extends ConfigModel {
     @ConfigOption
-    public defaultChannels: string[];
-    @ConfigOption
     public identities: {
         [key: string]: {
             username: string;

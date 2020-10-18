@@ -4,37 +4,31 @@ import {promisify} from "util";
 import Config from "../Config/Config";
 import CacheConfig from "../Config/ConfigModels/CacheConfig";
 import System from "../System";
+import Container, { Service } from "typedi";
 
+@Service()
 export default class Cache extends System {
-    private static instance: Cache = null;
+    private client: RedisClient;
 
-    constructor(private readonly client: RedisClient) {
+    constructor(private readonly config: Config) {
         super("Cache");
-        client.on("error", (e: RedisError) => {
-            if (e.message.indexOf("ECONNREFUSED") !== -1) {
-                this.logger.fatal("Unable to connect to Redis server");
-                this.logger.fatal("Caused by: " + e.message);
-                this.logger.fatal(e.stack);
-                process.exit(1);
-            } else {
-                this.logger.error(e.message);
-                this.logger.error(e.stack);
-            }
-        });
         this.logger.info("System initialized");
     }
 
-    public static async getInstance(): Promise<Cache> {
-        if (this.instance === null)
-            this.instance = await Cache.create();
-
-        return this.instance;
-    }
-
-    static async create() {
-        const config = await Config.getInstance().getConfig(CacheConfig);
-        const client = new RedisClient(config.redis);
-        return new Cache(client);
+    public async onInitialize() {
+        const config = await this.config.getConfig(CacheConfig);
+        this.client = new RedisClient(config.redis);
+        await new Promise((resolve, reject) => {
+            this.client.on("connect", resolve);
+            this.client.on("error", (e: RedisError) => {
+                if (e.message.indexOf("ECONNREFUSED") !== -1) {
+                    reject(e);
+                } else {
+                    this.logger.error(e.message);
+                    this.logger.error(e.stack);
+                }
+            });
+        })
     }
 
     async exists(key: string): Promise<boolean> {

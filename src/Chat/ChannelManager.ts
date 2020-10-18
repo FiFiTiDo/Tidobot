@@ -1,25 +1,60 @@
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {provide} from "inversify-binding-decorators";
-import {MapExt} from "../Utilities/Structures/Map";
 import Optional from "../Utilities/Patterns/Optional";
+import { Service } from "typedi";
+import Config from "../Systems/Config/Config";
+import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
+import { Channel } from "../NewDatabase/Entities/Channel";
+import { InjectRepository } from "typeorm-typedi-extensions";
+import { ChannelRepository } from "../NewDatabase/Repositories/ChannelRepository";
+import { In } from "typeorm";
+import { ServiceManager } from "./ServiceManager";
+import { MapExt } from "../Utilities/Structures/Map";
 
-@provide(ChannelManager)
+interface ChannelState {
+    id: number;
+    nativeId: string;
+    name: string;
+    online: boolean;
+}
+
+@Service()
 export default class ChannelManager {
-    private readonly channels: MapExt<string, ChannelEntity>;
+    private channels: string[] = [];
+    private channelState: MapExt<string, ChannelState>;
 
-    constructor() {
-        this.channels = new MapExt();
+    constructor(
+        config: Config,
+        @InjectRepository()
+        private readonly repository: ChannelRepository,
+        private readonly serviceManager: ServiceManager
+    ) {
+        config.getConfig(GeneralConfig).then(config => this.channels = config.channels)
+        this.channelState = new MapExt()
     }
 
-    getAll(): ChannelEntity[] {
-        return [...this.channels.values()];
+    getAll(): Promise<Channel[]> {
+        return this.repository.find();
     }
 
-    add(channel: ChannelEntity): void {
-        this.channels.setNew(channel.channelId, channel);
+    getAllActive(): Promise<Channel[]> {
+        return this.repository.find({ name: In(this.channels), service: this.serviceManager.service })
     }
 
-    findByName(name: string): Optional<ChannelEntity> {
-        return Optional.ofUndefable(this.getAll().filter(channel => channel.name === name)[0]);
+    add(channel: Channel): void {
+        this.channels.push(channel.name);
+        this.repository.save(channel);
+    }
+
+    async findByNativeId(id: string): Promise<Optional<Channel>> {
+        const channel = await this.repository.findByNativeId(id, this.serviceManager.service);
+        return Optional.ofNullable(channel);
+    }
+
+    async findByName(name: string): Promise<Optional<Channel>> {
+        const channel = await this.repository.findOne({ name, service: this.serviceManager.service });
+        return Optional.ofNullable(channel);
+    }
+
+    save(channel: Channel): Promise<any> {
+        return this.repository.save(channel);
     }
 }

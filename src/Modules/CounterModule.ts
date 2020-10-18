@@ -16,7 +16,7 @@ import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {permission} from "../Systems/Permissions/decorators";
 import {command} from "../Systems/Commands/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
-import {Argument, Channel, ResponseArg} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
@@ -83,7 +83,7 @@ class CounterCommand extends Command {
     @CommandHandler("counter create", "counter create <counter name>", 1)
     @CheckPermission("counter.create")
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg, "counter name") name: string
     ): Promise<void> {
         return CountersEntity.make({channel}, {name, value: 0})

@@ -3,6 +3,8 @@ import {ConfigOption} from "../decorators";
 
 export default class GeneralConfig extends ConfigModel {
     @ConfigOption
+    public channels: string[];
+    @ConfigOption
     public language: string;
     @ConfigOption
     public version: string;

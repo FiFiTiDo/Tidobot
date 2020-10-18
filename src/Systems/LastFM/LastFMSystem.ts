@@ -5,26 +5,23 @@ import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../Config/Config";
 import LastFMConfig from "../Config/ConfigModels/LastFMConfig";
 import System from "../System";
+import { Service } from "typedi";
 
+@Service()
 export default class LastFMSystem extends System {
-    private static instance: LastFMSystem;
     private usernameSetting = new Setting("lastfm.username", "", SettingType.STRING);
+    private api: LastFMApi;
 
-    constructor(private readonly api: LastFMApi) {
+    constructor(settings: SettingsSystem, private readonly config: Config) {
         super("LastFM");
-        const settings = SettingsSystem.getInstance();
         settings.registerSetting(this.usernameSetting);
 
         this.logger.info("System initialized");
     }
 
-    public static async getInstance(): Promise<LastFMSystem> {
-        if (this.instance === null) {
-            const config = await Config.getInstance().getConfig(LastFMConfig);
-            this.instance = new LastFMSystem(new LastFMApi(config.apiKey, config.secret));
-        }
-
-        return this.instance;
+    async onInitialize() {
+        const config = await this.config.getConfig(LastFMConfig);
+        this.api = new LastFMApi(config.apiKey, config.secret);
     }
 
     public getUsername(channel: ChannelEntity): Promise<string> {

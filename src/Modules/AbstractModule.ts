@@ -1,5 +1,3 @@
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {arrayContains, arrayRemove} from "../Utilities/ArrayUtils";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
@@ -11,6 +9,11 @@ import {getPermissions} from "../Systems/Permissions/decorators";
 import Permission from "../Systems/Permissions/Permission";
 import {getCommands} from "../Systems/Commands/decorators";
 import Command from "../Systems/Commands/Command";
+import { Channel } from "../NewDatabase/Entities/Channel";
+import { DisabledModule } from "../NewDatabase/Entities/DisabledModule";
+import { Inject, Service } from "typedi";
+import { Repository } from "typeorm";
+import { InjectRepository } from "typeorm-typedi-extensions";
 
 export interface ModuleInfo {
     name: string;
@@ -38,42 +41,56 @@ export interface ModuleConstructor<T extends AbstractModule> {
     new(...args: any[]): T;
 }
 
+@Service()
 export default abstract class AbstractModule {
     protected coreModule = false;
     private readonly name: string;
     private readonly info: ModuleInfo;
 
-    protected constructor(constructor: ModuleConstructor<any>) {
-        this.name = constructor.name;
-        this.info = constructor[Symbols.ModuleInfo];
+    @Inject()
+    public readonly commandSystem: CommandSystem;
 
-        const commands = CommandSystem.getInstance();
-        for (const property of getCommands(constructor)) {
+    @Inject()
+    public readonly settingsSystem: SettingsSystem;
+
+    @Inject()
+    public readonly expressionSystem: ExpressionSystem;
+
+    @Inject()
+    public readonly permissionSystem: PermissionSystem;
+
+    @InjectRepository()
+    private readonly disabledModulesRepository: Repository<DisabledModule>;
+
+    protected constructor(private readonly ctor: ModuleConstructor<any>) {
+        this.name = ctor.name;
+        this.info = ctor[Symbols.ModuleInfo];
+    }
+
+    initalize() {
+        for (const property of getCommands(this.ctor)) {
             const command = this[property];
             if (command instanceof Command)
-                commands.registerCommand(command, this);
+                this.commandSystem.registerCommand(command, this);
             else
                 throw new Error("Invalid module configuration, property " + property.toString() + " is defined as a command but is not a command");
         }
 
-        const settings = SettingsSystem.getInstance();
-        for (const property of getSettings(constructor)) {
+        for (const property of getSettings(this.ctor)) {
             const setting = this[property];
             if (setting instanceof Setting)
-                settings.registerSetting(setting);
+                this.settingsSystem.registerSetting(setting);
             else
                 throw new Error("Invalid module configuration, property " + property.toString() + " is defined as a setting but is not a setting");
         }
 
-        const expression = ExpressionSystem.getInstance();
-        for (const resolver of getResolvers(constructor))
-            expression.registerResolver(this[resolver].bind(this));
+        for (const resolver of getResolvers(this.ctor))
+            this.expressionSystem.registerResolver(this[resolver].bind(this));
 
-        const permissions = PermissionSystem.getInstance();
-        for (const property of getPermissions(constructor)) {
+        for (const property of getPermissions(this.ctor)) {
             const permission = this[property];
             if (permission instanceof Permission)
-                permissions.registerPermission(permission);
+                this.permissionSystem.registerPermission(permission);
             else
                 throw new Error("Invalid module configuration, property " + property.toString() + " is defined as a permission but is not a permission");
         }
@@ -87,21 +104,31 @@ export default abstract class AbstractModule {
         return this.info;
     }
 
-    async disable(channel: ChannelEntity): Promise<void> {
+    async disable(channel: Channel): Promise<void> {
         if (this.coreModule) return;
         if (this.isDisabled(channel)) return;
-        channel.disabledModules.push(this.getName());
-        return channel.save();
+        const disabledModule = new DisabledModule();
+        disabledModule.channel = channel;
+        disabledModule.moduleName = this.getName();
+        await this.disabledModulesRepository.save(disabledModule)
     }
 
-    async enable(channel: ChannelEntity): Promise<void> {
+    async enable(channel: Channel): Promise<DisabledModule> {
         if (this.coreModule) return;
         if (!this.isDisabled(channel)) return;
-        arrayRemove(this.getName(), channel.disabledModules);
-        return channel.save();
+        
+        for (const disabledModule of channel.disabledModules)
+            if (disabledModule.moduleName === this.getName())
+                return disabledModule.remove();
     }
 
-    isDisabled(channel: ChannelEntity): boolean {
-        return !this.coreModule && arrayContains(this.getName(), channel.disabledModules);
+    isDisabled(channel: Channel): boolean {
+        if (this.coreModule) return false;
+
+        for (const disabledModule of channel.disabledModules)
+            if (disabledModule.moduleName === this.getName())
+                return true;
+
+        return false;
     }
 }

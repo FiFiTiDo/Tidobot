@@ -19,7 +19,7 @@ import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, Channel, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
@@ -77,7 +77,7 @@ class GroupCommand extends Command {
     @CommandHandler(/^g(roup)? create/, "group create <name>", 1)
     @CheckPermission("group.create")
     async createGroup(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg) name: string
     ): Promise<void> {
         return GroupsEntity.create(name, channel)

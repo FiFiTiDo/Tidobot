@@ -3,6 +3,7 @@ import Listener from "./Listener";
 import EventSystem from "./EventSystem";
 import {EventPriority} from "./EventPriority";
 import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
+import Container from "typedi";
 
 const EVENT_META_KEY = "handler:events";
 
@@ -18,7 +19,7 @@ export function HandlesEvents() {
             constructor(...args: any[]) {
                 super(...args);
                 for (const handler of getMetadata<EventHandler<any>[]>(EVENT_META_KEY, this.constructor)) {
-                    EventSystem.getInstance().addListener(handler.event, {
+                    Container.get(EventSystem).addListener(handler.event, {
                         thisArg: this,
                         func: handler.func
                     }, handler.priority);

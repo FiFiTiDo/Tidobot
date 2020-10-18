@@ -1,14 +1,11 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import FiltersEntity from "../Database/Entities/FiltersEntity";
+import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import {arrayAdd, arrayRemove} from "../Utilities/ArrayUtils";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
-import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {inject} from "inversify";
-import symbols from "../symbols";
+import {HandlesEvents} from "../Systems/Event/decorators";
+import { AdapterToken } from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import FilterSystem from "../Systems/Filter/FilterSystem";
@@ -24,7 +21,7 @@ import {setting} from "../Systems/Settings/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import {
     Argument,
-    Channel,
+    ChannelArg,
     MessageArg,
     ResponseArg,
     RestArguments,
@@ -32,9 +29,10 @@ import {
 } from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
 import Message from "../Chat/Message";
+import { Inject, Service } from "typedi";
+import { Channel } from "../NewDatabase/Entities/Channel";
+import { Chatter } from "../NewDatabase/Entities/Chatter";
 
 export const MODULE_INFO = {
     name: "Filter",
@@ -52,21 +50,21 @@ class NukeCommand extends Command {
     @CommandHandler("nuke", "nuke [--regex] <match>")
     @CheckPermission("filter.nuke")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @RestArguments(true, {join: " "}) match: string
     ): Promise<void> {
         const {newString, removed} = removePrefix("--regex ", match);
         const regex = removed ? new RegExp(newString) : picomatch.compileRe(picomatch.parse(newString, {}) as any);
         const matches = (input: string): boolean => picomatch.test(input, regex).isMatch;
-        const cached = FilterSystem.getInstance().getCachedMessages(channel);
+        const cached = this.filterModule.filterSystem.getCachedMessages(channel);
         let purged = 0;
 
         for (const message of cached) {
             if (matches(message.getRaw())) {
                 try {
                     await this.filterModule.adapter.tempbanChatter(message.getChatter(),
-                        await message.getChannel().getSetting(this.filterModule.purgeLength),
-                        await response.translate("filter:nuke-reason", {username: message.getChatter().name})
+                        await message.channel.settings.get(this.filterModule.purgeLength),
+                        await response.translate("filter:nuke-reason", {username: message.chatter.user.name})
                     );
                     purged++;
                 } catch (e) {
@@ -87,28 +85,28 @@ class PermitCommand extends Command {
     @CommandHandler("permit", "permit <user>")
     @CheckPermission("filter.permit")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
-        FilterSystem.getInstance().permitUser(chatter);
+        this.filterModule.filterSystem.permitUser(chatter);
         await response.message("filter:permit", {
-            username: chatter.name, second: await channel.getSetting(this.filterModule.permitLength)
+            username: chatter.user.name, second: channel.settings.get(this.filterModule.permitLength)
         });
     }
 }
 
 class PardonCommand extends Command {
-    constructor() {
+    constructor(private readonly filterModule: FilterModule) {
         super("pardon", "<user>");
     }
 
     @CommandHandler("pardon", "pardon <user>")
     @CheckPermission("filter.pardon")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
-        FilterSystem.getInstance().pardonUser(chatter);
-        return response.message("filter:strikes-cleared", {username: chatter.name});
+        this.filterModule.filterSystem.pardonUser(chatter);
+        return response.message("filter:strikes-cleared", {username: chatter.user.name});
     }
 }
 
@@ -120,14 +118,14 @@ class PurgeCommand extends Command {
     @CommandHandler("purge", "purge <user>")
     @CheckPermission("filter.purge")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
+        @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         await this.filterModule.adapter.tempbanChatter(chatter,
-            await channel.getSetting(this.filterModule.purgeLength),
-            await response.translate("filter:purge-reason", {username: sender.name})
+            await channel.settings.get(this.filterModule.purgeLength),
+            await response.translate("filter:purge-reason", {username: sender.user.name})
         );
-        await response.message("filter:purged", {username: chatter.name});
+        await response.message("filter:purged", {username: chatter.user.name});
     }
 }
 
@@ -141,7 +139,7 @@ class FilterCommand extends Command {
     @CommandHandler("list add", "list add <list> <item>", 1)
     @CheckPermission("filter.list.add")
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(ListConverter) list: string, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         const lists = await channel.getFilters();
@@ -154,7 +152,7 @@ class FilterCommand extends Command {
     @CommandHandler(/^list (remove|rem)/, "list remove <list> <item>", 1)
     @CheckPermission("filter.list.remove")
     async remove(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(ListConverter) list: string, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         const lists = await channel.getFilters();
@@ -167,12 +165,12 @@ class FilterCommand extends Command {
     @CommandHandler("list reset", "list reset <list>", 1)
     @CheckPermission("filter.list.reset")
     async reset(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(ListConverter, "list", false) list: string
     ): Promise<void> {
         const lists = await channel.getFilters();
 
-        const confirmation = await this.filterModule.makeConfirmation(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);
+        const confirmation = await this.filterModule.confirmationModule.make(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);
         confirmation.addListener(ConfirmedEvent, async () => {
             if (list) {
                 lists[list] = [];
@@ -193,10 +191,11 @@ class FilterCommand extends Command {
 }
 
 @HandlesEvents()
+@Service()
 export default class FilterModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     @command permitCommand = new PermitCommand(this);
-    @command pardonCommand = new PardonCommand();
+    @command pardonCommand = new PardonCommand(this);
     @command purgeCommand = new PurgeCommand(this);
     @command filterCommand = new FilterCommand(this);
     @command nukeCommand = new NukeCommand(this);
@@ -211,12 +210,12 @@ export default class FilterModule extends AbstractModule {
     @setting permitLength = new Setting("filter.permit-length", 30 as Integer, SettingType.INTEGER);
     @setting purgeLength = new Setting("filter.purge-length", 1 as Integer, SettingType.INTEGER);
 
-    constructor(@inject(Adapter) public adapter: Adapter, @inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+    constructor(
+        @Inject(AdapterToken) public adapter: Adapter, 
+        public readonly confirmationModule: ConfirmationModule,
+        public readonly filterSystem: FilterSystem
+    ) {
         super(FilterModule);
     }
 
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
-        await FiltersEntity.createForChannel(channel);
-    }
 }

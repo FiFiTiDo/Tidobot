@@ -12,7 +12,7 @@ import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
 import {command} from "../Systems/Commands/decorators";
-import {Argument, Channel, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
@@ -35,7 +35,7 @@ class UserCommand extends Command {
     @CommandHandler(/^u(ser)? grant/, "user grant <user> <permission>")
     @CheckPermission("permission.grant")
     async grant(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(new ChatterArg()) user: ChatterEntity, @Argument(StringArg) permission: string
     ): Promise<void> {
         return UserPermissionsEntity.update(user, permission, true, channel)
@@ -46,7 +46,7 @@ class UserCommand extends Command {
     @CommandHandler(/^u(ser)? deny/, "user deny <user> <permission>")
     @CheckPermission("permission.deny")
     async deny(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(new ChatterArg()) user: ChatterEntity, @Argument(StringArg) permission: string
     ): Promise<void> {
         return UserPermissionsEntity.update(user, permission, false, channel)
@@ -57,7 +57,7 @@ class UserCommand extends Command {
     @CommandHandler(/^u(ser)? reset/, "user reset <user> [permission>]")
     @CheckPermission("permission.reset")
     async reset(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
         @Argument(new ChatterArg()) user: ChatterEntity,
         @Argument(StringArg, "permission", false) permission: string = null
     ): Promise<void> {

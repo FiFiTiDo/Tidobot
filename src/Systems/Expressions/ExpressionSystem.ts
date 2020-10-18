@@ -13,6 +13,7 @@ import deepmerge from "deepmerge";
 import chrono from "chrono-node";
 import {IllegalStateError, OutOfBoundsError, UnknownKeyError} from "./InterpreterErrors";
 import System from "../System";
+import { Service } from "typedi";
 
 export interface ExpressionContext {
     [key: string]: any;
@@ -22,8 +23,8 @@ export interface ExpressionContextResolver {
     (msg: Message): ExpressionContext;
 }
 
+@Service()
 export default class ExpressionSystem extends System {
-    private static instance: ExpressionSystem = null;
     private readonly resolvers: ExpressionContextResolver[] = [];
     private parser: ExpressionParser;
     private interpreter: ExpressionInterpreter;
@@ -33,14 +34,6 @@ export default class ExpressionSystem extends System {
         this.parser = new ExpressionParser();
         this.interpreter = new ExpressionInterpreter();
         this.logger.info("System initialized");
-    }
-
-    static getInstance(): ExpressionSystem {
-        if (this.instance == null) {
-            this.instance = new ExpressionSystem();
-        }
-
-        return this.instance;
     }
 
     registerResolver(resolver: ExpressionContextResolver): void {

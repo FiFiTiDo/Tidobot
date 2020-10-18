@@ -6,7 +6,9 @@ import Cooldown from "./Cooldown";
 import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import CooldownList from "./CooldownList";
 import EntityStateList from "../../Database/EntityStateList";
+import { Service } from "typedi";
 
+@Service()
 export default class CooldownSystem {
     private static instance: CooldownSystem = null;
     private globalCooldowns = new EntityStateList<ChannelEntity, CooldownList>(() => new CooldownList());

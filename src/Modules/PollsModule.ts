@@ -16,7 +16,7 @@ import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
 import EntityStateList from "../Database/EntityStateList";
-import {Argument, Channel, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
@@ -60,7 +60,7 @@ class StrawpollCommand extends Command {
     @CommandHandler(/^(strawpoll|sp) check/, "strawpoll check [poll id]", 1)
     @CheckPermission("polls.strawpoll.check")
     async check(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(new IntegerArg({min: 0}), "poll id") pollId: number = null
     ): Promise<void> {
         if (pollId === null) {
@@ -83,7 +83,7 @@ class StrawpollCommand extends Command {
     @CommandHandler("strawpoll create", "strawpoll create --title \"title\" <option 1> <option 2> ... [option n]", 1, false, true)
     @CheckPermission("polls.strawpoll.create")
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg) title: String,
         @Argument(BooleanArg, "multi", false) multi: boolean = false,
         @Argument(new StringEnumArg(["normal", "permissive", "disabled"]), "dupcheck", false) dupcheck: string = "normal",
@@ -114,7 +114,7 @@ class VoteCommand extends Command {
     @CommandHandler("vote", "vote <option #>", 0, true)
     @CheckPermission("polls.vote")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @Sender sender: ChatterEntity,
         @Argument(new IntegerArg({min: 0})) optionNum: number
     ): Promise<void> {
         const announce = await channel.getSetting(this.pollsModule.announceVotes);
@@ -135,7 +135,7 @@ class PollCommand extends Command {
     @CommandHandler("poll run", "poll run <option 1> <option 2> ... <option n>", 1)
     @CheckPermission("polls.run")
     async run(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @RestArguments(true, {min: 2}) options: string[]
     ): Promise<void> {
         const prefix = await CommandSystem.getPrefix(channel);
@@ -151,7 +151,7 @@ class PollCommand extends Command {
     @CommandHandler("poll stop", "poll stop", 1)
     @CheckPermission("polls.stop")
     async stop(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity
     ): Promise<void> {
         const prefix = await CommandSystem.getPrefix(channel);
         const results = this.pollsModule.pollService.closePoll(channel);
@@ -166,7 +166,7 @@ class PollCommand extends Command {
     @CommandHandler(/^poll res(ults)?/, "poll results", 1)
     @CheckPermission("polls.results")
     async results(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity
     ): Promise<void> {
         const prefix = await CommandSystem.getPrefix(channel);
         const results = this.pollsModule.pollService.getResults(channel);

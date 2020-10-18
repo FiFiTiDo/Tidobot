@@ -1,5 +1,5 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
+import ConfirmationModule, {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import SettingsEntity from "../Database/Entities/SettingsEntity";
@@ -7,8 +7,6 @@ import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import {ConvertedSetting, SettingType} from "../Systems/Settings/Setting";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {inject} from "inversify";
-import symbols from "../symbols";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {StringArg} from "../Systems/Commands/Validation/String";
@@ -21,9 +19,10 @@ import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {logErrorOnFail, validateFunction} from "../Utilities/ValidateFunction";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
+import { Service } from "typedi";
 
 export const MODULE_INFO = {
     name: "Settings",
@@ -41,7 +40,7 @@ class SetCommand extends Command {
     @CommandHandler("set", "set <key> <value>")
     @CheckPermission("settings.set")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg) key: string, @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         return channel.setSetting(key, value)
@@ -58,7 +57,7 @@ class UnsetCommand extends Command {
     @CommandHandler("unset", "unset <key>")
     @CheckPermission("settings.reset")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Argument(StringArg) key: string
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @Argument(StringArg) key: string
     ): Promise<void> {
         return channel.getSettings().unset(key)
             .then(() => response.message("setting:unset", {setting: key}))
@@ -74,10 +73,10 @@ class ResetCommand extends Command {
     @CommandHandler("reset", "reset")
     @CheckPermission("settings.reset.all")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message
     ): Promise<void> {
         const confirmMsg = await response.translate("setting:confirm-reset");
-        const confirm = await this.settingsModule.makeConfirmation(msg, confirmMsg, 30);
+        const confirm = await this.settingsModule.confirmationModule.make(msg, confirmMsg, 30);
         confirm.addListener(ConfirmedEvent, () => channel.getSettings().reset()
             .then(() => response.message("setting:reset"))
             .catch(e => response.genericErrorAndLog(e, logger))
@@ -86,7 +85,7 @@ class ResetCommand extends Command {
     }
 }
 
-@HandlesEvents()
+@Service()
 export default class SettingsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     @command setCommand = new SetCommand();
@@ -96,7 +95,8 @@ export default class SettingsModule extends AbstractModule {
     @permission resetSetting = new Permission("settings.reset", Role.BROADCASTER);
     @permission resetAllSettings = new Permission("settings.reset.all", Role.BROADCASTER);
 
-    constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+    constructor(public readonly confirmationModule: ConfirmationModule
+) {
         super(SettingsModule);
 
         this.coreModule = true;
@@ -107,24 +107,9 @@ export default class SettingsModule extends AbstractModule {
         return {
             settings: {
                 get: validateFunction(async <T>(key: string, defVal: T = null): Promise<ConvertedSetting | T | null> => {
-                    return msg.getChannel().getSetting(key) ?? defVal;
+                    return msg.channel.settings.get(key) ?? defVal;
                 }, ["string|required", ""], logErrorOnFail(logger, Promise.resolve(null)))
             }
         }
-    }
-
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
-        await SettingsEntity.createTable({channel});
-        await SettingsEntity.make({channel},
-            SettingsSystem.getInstance().getAll().map(setting => {
-                return {
-                    key: setting.getKey(),
-                    value: setting.getDefaultValue(),
-                    type: SettingType[setting.getType()],
-                    default_value: setting.getDefaultValue()
-                }
-            })
-        );
     }
 }

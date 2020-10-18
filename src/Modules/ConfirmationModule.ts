@@ -8,10 +8,12 @@ import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {generateRandomCode} from "../Utilities/RandomUtils";
 import {command} from "../Systems/Commands/decorators";
-import EntityStateList from "../Database/EntityStateList";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
+import { Service } from "typedi";
+import { EntityStateList } from "../NewDatabase/EntityStateLiist";
+import { Chatter } from "../NewDatabase/Entities/Chatter";
 
 export const MODULE_INFO = {
     name: "Confirmation",
@@ -70,33 +72,34 @@ export interface ConfirmationFactory {
 }
 
 class ConfirmCommand extends Command {
-    constructor(private confirmations: EntityStateList<ChatterEntity, Confirmation>) {
+    constructor(private confirmationModule: ConfirmationModule) {
         super("confirm", "<code>");
     }
 
     @CommandHandler("confirm", "confirm <code>")
-    handleConfirm(event: CommandEvent, @Sender sender: ChatterEntity, @ResponseArg response: Response): Promise<any> {
-        if (!this.confirmations.has(sender)) return response.message("confirmation:error.expired");
+    handleConfirm(event: CommandEvent, @Sender sender: Chatter, @ResponseArg response: Response): Promise<any> {
+        if (!this.confirmationModule.confirmations.has(sender)) return response.message("confirmation:error.expired");
         if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");
 
-        const confirmation = this.confirmations.get(sender);
+        const confirmation = this.confirmationModule.confirmations.get(sender);
         if (confirmation.check(event.getArgument(0))) {
             confirmation.confirm();
-            this.confirmations.delete(sender);
+            this.confirmationModule.confirmations.delete(sender);
         }
     }
 }
 
+@Service()
 export default class ConfirmationModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    readonly confirmations: EntityStateList<ChatterEntity, Confirmation>;
-    @command confirmCommand = new ConfirmCommand(this.confirmations);
+    readonly confirmations: EntityStateList<Chatter, Confirmation>;
+    @command confirmCommand = new ConfirmCommand(this);
 
     constructor() {
         super(ConfirmationModule);
 
         this.coreModule = true;
-        this.confirmations = new EntityStateList<ChatterEntity, Confirmation>(null);
+        this.confirmations = new EntityStateList<Chatter, Confirmation>(null);
     }
 
     async make(message: Message, prompt: string, seconds: number): Promise<Confirmation> {

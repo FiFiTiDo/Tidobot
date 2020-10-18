@@ -1,8 +1,8 @@
 import Event, {EventArguments} from "../../Systems/Event/Event";
 import Message from "../Message";
 import {Response} from "../Response";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import { Channel } from "../../NewDatabase/Entities/Channel";
+import { Chatter } from "../../NewDatabase/Entities/Chatter";
 
 export default class MessageEvent extends Event<MessageEvent> {
     public static readonly NAME: string = "chat_message";
@@ -32,6 +32,6 @@ export default class MessageEvent extends Event<MessageEvent> {
 export interface MessageEventArgs extends EventArguments<MessageEvent> {
     message: Message;
     response: Response;
-    sender: ChatterEntity;
-    channel: ChannelEntity;
+    sender: Chatter;
+    channel: Channel;
 }

@@ -16,7 +16,7 @@ import {wait} from "../Utilities/functions";
 import {RaffleService} from "../Services/RaffleService";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Channel, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {ChannelArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 
 export const MODULE_INFO = {
@@ -36,7 +36,7 @@ class RaffleCommand extends Command {
     @CommandHandler("raffle open", "raffle open <keyword>", 1)
     @CheckPermission("raffle.open")
     async open(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @RestArguments(true, {join: " "}) keyword: string
     ): Promise<void> {
         const raffle = this.raffleModule.raffleService.openRaffle(keyword, channel, {
@@ -52,19 +52,19 @@ class RaffleCommand extends Command {
 
     @CommandHandler("raffle close", "raffle close", 1)
     @CheckPermission("raffle.close")
-    async close(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+    async close(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity): Promise<void> {
         this.raffleModule.raffleService.closeRaffle(channel).ifPresent(() => response.message("raffle:closed"));
     }
 
     @CommandHandler("raffle reset", "raffle reset", 1)
     @CheckPermission("raffle.reset")
-    async reset(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+    async reset(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity): Promise<void> {
         this.raffleModule.raffleService.resetRaffle(channel).ifPresent(() => response.message("raffle:reset"));
     }
 
     @CommandHandler(/^raffle (pull|draw)/, "raffle pull", 1)
     @CheckPermission("raffle.pull")
-    async pull(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+    async pull(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity): Promise<void> {
         this.raffleModule.raffleService.pullWinner(channel).ifPresent(async value => {
             if (value === false) return response.message("raffle:error.no-entries");
 

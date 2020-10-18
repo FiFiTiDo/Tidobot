@@ -13,7 +13,7 @@ import {getLogger} from "../Utilities/Logger";
 import {setting} from "../Systems/Settings/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {command} from "../Systems/Commands/decorators";
-import {Argument, Channel, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
@@ -39,7 +39,7 @@ class BetCommand extends Command {
     @CommandHandler("bet place", "bet place <option> <amount>")
     @CheckPermission("bet.place")
     async place(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg) option: string,
         @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
@@ -70,7 +70,7 @@ class BetCommand extends Command {
     @CommandHandler("bet open", "bet open \"<title>\" <option 1> <option 2> ... <option n>")
     @CheckPermission("bet.open")
     async open(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg) title: string,
         @RestArguments() options: string[]
     ): Promise<void> {
@@ -84,7 +84,7 @@ class BetCommand extends Command {
     @CommandHandler("bet close", "bet close <winning option>")
     @CheckPermission("bet.close")
     async close(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
         @Argument(StringArg, "winning option") option: string
     ): Promise<void> {
         const game = this.betService.getGame(channel);
@@ -100,7 +100,7 @@ class BetCommand extends Command {
     @CommandHandler("bet check", "bet check")
     @CheckPermission("bet.check")
     async check(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity
     ): Promise<void> {
         const parts = [];
         const totals = await this.betService.getTotals(channel);

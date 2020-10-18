@@ -19,7 +19,7 @@ export type SettingValueType<T extends SettingType> =
 export type ConvertedSetting = string | Integer | Float | boolean | moment.MomentZone;
 
 export default class Setting<T extends SettingType> {
-    constructor(private readonly key: string, private readonly defaultValue: SettingValueType<T>, private readonly type: T) {
+    constructor(readonly key: string, readonly defaultValue: SettingValueType<T>, readonly type: T) {
     }
 
     public getKey(): string {

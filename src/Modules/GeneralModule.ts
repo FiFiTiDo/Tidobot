@@ -17,7 +17,7 @@ import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {MessageArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
-import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
+import {returnError, returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
 import Application from "../Application/Application";
 import {inject} from "inversify";
 import {getLogger} from "../Utilities/Logger";
@@ -97,6 +97,8 @@ class ShutdownCommand extends Command {
     }
 }
 
+export const TIMEZONE_SETTING = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE)
+
 export default class GeneralModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     @command pingCommand = new PingCommand();
@@ -109,7 +111,7 @@ export default class GeneralModule extends AbstractModule {
     @permission echo = new Permission("general.echo", Role.MODERATOR);
     @permission evalPerm = new Permission("general.eval", Role.MODERATOR);
     @permission shutdown = new Permission("general.shutdown", Role.OWNER);
-    @setting timezone = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE);
+    @setting timezone = TIMEZONE_SETTING;
 
     constructor(@inject(Application) public readonly app: Application) {
         super(GeneralModule);
@@ -120,10 +122,10 @@ export default class GeneralModule extends AbstractModule {
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
-            datetime: validateFunction(async (format: string = "Y-m-d h:i:s"): Promise<string> => {
-                const timezone = await msg.getChannel().getSetting(this.timezone);
+            datetime: validateFunction((format: string = "Y-m-d h:i:s"): string => {
+                const timezone = msg.channel.settings.get(this.timezone);
                 return moment().tz(timezone.name).format(format);
-            }, ["string"], returnErrorAsync())
+            }, ["string"], returnError())
         }
     }
 }

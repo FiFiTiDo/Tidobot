@@ -1,43 +1,44 @@
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import leven from "leven";
 import Message from "../../Chat/Message";
 import Setting, {Integer, SettingType} from "../Settings/Setting";
 import SettingsSystem from "../Settings/SettingsSystem";
-import EntityStateList from "../../Database/EntityStateList";
 import SpamFilter from "./Filters/SpamFilter";
+import { Service } from "typedi";
+import { Channel } from "../../NewDatabase/Entities/Channel";
+import { EntityStateList } from "../../NewDatabase/EntityStateLiist";
 
+@Service()
 export default class MessageCache {
     private static MAX_CACHE = new Setting("filter.cache.amount", 30 as Integer, SettingType.INTEGER);
 
-    private messages: EntityStateList<ChannelEntity, Message[]> = new EntityStateList<ChannelEntity, Message[]>([]);
+    private messages: EntityStateList<Channel, Message[]> = new EntityStateList<Channel, Message[]>([]);
 
-    constructor() {
-        const settings = SettingsSystem.getInstance();
+    constructor(settings: SettingsSystem) {
         settings.registerSetting(MessageCache.MAX_CACHE);
     }
 
-    async add(message: Message): Promise<void> {
+    add(message: Message): void {
         const channel = message.getChannel();
         const messages = this.messages.get(channel);
-        const maxMessages = await this.getMaxMessages(channel);
+        const maxMessages = this.getMaxMessages(channel);
         messages.push(message);
         messages.slice(Math.max(0, messages.length - maxMessages), Math.min(messages.length, maxMessages));
         this.messages.set(channel, messages);
     }
 
-    async getMaxPercentage(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting(SpamFilter.SIMILARITY);
+    getMaxPercentage(channel: Channel): number {
+        return channel.settings.get(SpamFilter.SIMILARITY);
     }
 
-    async getMaxMessages(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting(MessageCache.MAX_CACHE);
+    getMaxMessages(channel: Channel): number {
+        return channel.settings.get(MessageCache.MAX_CACHE);
     }
 
-    async getMaxMatches(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting(SpamFilter.AMOUNT);
+    getMaxMatches(channel: Channel): number {
+        return channel.settings.get(SpamFilter.AMOUNT);
     }
 
-    getAll(channel: ChannelEntity): Message[] {
+    getAll(channel: Channel): Message[] {
         return this.messages.get(channel);
     }
 

@@ -1,21 +1,15 @@
 import Setting, {SettingType} from "./Setting";
 import System from "../System";
+import { Service } from "typedi";
 
+@Service()
 export default class SettingsSystem extends System {
-    private static instance: SettingsSystem = null;
     private readonly settings: Map<string, Setting<any>>;
 
     constructor() {
         super("Settings");
         this.settings = new Map();
         this.logger.info("System initialized");
-    }
-
-    public static getInstance(): SettingsSystem {
-        if (this.instance === null)
-            this.instance = new SettingsSystem();
-
-        return this.instance;
     }
 
     registerSetting<T extends SettingType>(setting: Setting<T>): void {

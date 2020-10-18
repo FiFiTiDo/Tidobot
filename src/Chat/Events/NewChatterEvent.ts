@@ -1,10 +1,10 @@
 import Event, {EventArguments} from "../../Systems/Event/Event";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
+import { Chatter } from "../../NewDatabase/Entities/Chatter";
 
 export class NewChatterEvent extends Event<NewChatterEvent> {
     public static readonly NAME = "chatter:new";
 
-    constructor(private readonly chatter: ChatterEntity) {
+    constructor(public readonly chatter: Chatter) {
         super(NewChatterEvent);
     }
 
@@ -16,5 +16,5 @@ export class NewChatterEvent extends Event<NewChatterEvent> {
 }
 
 export interface NewChatterEventArgs extends EventArguments<NewChatterEvent> {
-    chatter: ChatterEntity
+    chatter: Chatter
 }

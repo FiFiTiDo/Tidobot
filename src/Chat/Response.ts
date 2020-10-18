@@ -3,13 +3,21 @@ import ChannelManager from "./ChannelManager";
 import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
 import {arrayRand} from "../Utilities/ArrayUtils";
-import {TranslationProvider} from "../symbols";
+import {AdapterToken, TranslationProvider, TranslationProviderToken} from "../symbols";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {Logger} from "log4js";
 import {logError} from "../Utilities/Logger";
+import Container from "typedi";
 
 export class Response {
-    constructor(private adapter: Adapter, private translator: TranslationProvider, private channelManager: ChannelManager, private msg: Message) {
+    private adapter: Adapter;
+    private translator: TranslationProvider;
+    private channelManager: ChannelManager;
+
+    constructor(private msg: Message) {
+        this.adapter = Container.get(AdapterToken);
+        this.translator = Container.get(TranslationProviderToken);
+        this.channelManager = Container.get(ChannelManager);
     }
 
     rawMessage(message: string): Promise<void> {
@@ -41,7 +49,7 @@ export class Response {
     async broadcast<TKeys extends TFunctionKeys = string,
         TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
         const ops = [];
-        for (const channel of this.channelManager.getAll())
+        for (const channel of await this.channelManager.getAllActive())
             ops.push(this.adapter.sendMessage(await this.translate(key, options), channel));
         await Promise.all(ops);
     }

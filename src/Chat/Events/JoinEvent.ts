@@ -1,19 +1,19 @@
 import Event from "../../Systems/Event/Event";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import { Channel } from "../../NewDatabase/Entities/Channel";
+import { Chatter } from "../../NewDatabase/Entities/Chatter";
 
 export default class JoinEvent extends Event<JoinEvent> {
     public static readonly NAME = "chat_join";
 
-    constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity) {
+    constructor(public readonly chatter: Chatter, public readonly channel: Channel) {
         super(JoinEvent);
     }
 
-    getChatter(): ChatterEntity {
+    getChatter(): Chatter {
         return this.chatter;
     }
 
-    getChannel(): ChannelEntity {
+    getChannel(): Channel {
         return this.channel;
     }
 }

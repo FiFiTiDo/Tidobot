@@ -17,7 +17,7 @@ import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, Channel, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
@@ -53,7 +53,7 @@ class ListCommand extends Command {
     @CommandHandler("list create", "list create <name>", 1)
     @CheckPermission("list.create")
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Argument(StringArg) name: string
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @Argument(StringArg) name: string
     ): Promise<void> {
         return ListsEntity.create(name, channel)
             .then(list => response.message(list === null ? "lists:exists" : "lists:created", {list: name}))

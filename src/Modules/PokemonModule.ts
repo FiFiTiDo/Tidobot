@@ -4,27 +4,24 @@ import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting";
-import TrainerEntity from "../Database/Entities/TrainerEntity";
-import PokemonEntity, {formatStats} from "../Database/Entities/PokemonEntity";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
 import {arrayRand} from "../Utilities/ArrayUtils";
 import {Response} from "../Chat/Response";
-import ChannelManager from "../Chat/ChannelManager";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
-import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import {command} from "../Systems/Commands/decorators";
 import {permission} from "../Systems/Permissions/decorators";
 import {setting} from "../Systems/Settings/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, Channel, makeEventReducer, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, makeEventReducer, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {TranslateMessageInputError} from "../Systems/Commands/Validation/ValidationErrors";
 import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {GameService, TrainerData, WinState} from "../Services/Pokemon/GameService";
 import {ExperienceService} from "../Services/Pokemon/ExperienceService";
+import { Channel } from "../NewDatabase/Entities/Channel";
+import { Chatter } from "../NewDatabase/Entities/Chatter";
+import { Service } from "typedi";
 
 export const MODULE_INFO = {
     name: "Pokemon",
@@ -35,9 +32,9 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 const TrainerSender = makeEventReducer(async event => {
-    const chatter = event.getMessage().getChatter();
-    const trainer = await TrainerEntity.getByChatter(chatter);
-    const team = await trainer?.team() ?? [];
+    const chatter = event.message.chatter;
+    const trainer = chatter.trainer;
+    const team = trainer?.team ?? [];
     return {chatter, trainer, team};
 });
 
@@ -49,10 +46,10 @@ class TrainerDataArg {
     }
 
     async convert(input: string, name: string, column: number, event: CommandEvent): Promise<TrainerData> {
-        const response = event.getMessage().getResponse();
         const chatter = await this.chatterArg.convert(input, name, column, event);
-        const data = await this.gameService.getTrainerData(chatter);
-        return data.orElseThrow(() => new TranslateMessageInputError("pokemon:error.no-trainer", {username: input}));
+        if (chatter.trainer === undefined)
+            throw new TranslateMessageInputError("pokemon:error.no-trainer", {username: input});
+        return { chatter, trainer: chatter.trainer, team: chatter.trainer.team }
     }
 }
 
@@ -70,32 +67,29 @@ class PokemonCommand extends Command {
     @CommandHandler(/^(pokemon|poke|pm) throw/, "pokemon throw [target]", 1)
     @CheckPermission("pokemon.play")
     async throw(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @TrainerSender trainerData: TrainerData,
-        @Argument(new ChatterArg(), "target", false) chatter: ChatterEntity = null, @Sender sender: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @TrainerSender trainerData: TrainerData,
+        @Argument(new ChatterArg(), "target", false) chatter: Chatter = null, @Sender sender: Chatter
     ): Promise<void> {
         const {trainer, team} = trainerData;
-        const maxTeamSize = await channel.getSetting(this.pokemonModule.maxTeamSize);
+        const maxTeamSize = channel.settings.get(this.pokemonModule.maxTeamSize);
         if (team.length >= maxTeamSize) return response.message("pokemon:error.full");
 
-        const stats = chatter === null ?
-            await this.pokemonModule.gameService.generateRandomStats(trainerData) :
-            await this.pokemonModule.gameService.generateStats(chatter.name, trainerData);
-        if (!stats.present) return response.message("pokemon:error.already-caught");
+        const pkmn = chatter === null ?
+            this.pokemonModule.gameService.generateRandom(trainerData) :
+            this.pokemonModule.gameService.generate(chatter.user.name, trainerData);
+        if (!pkmn.present) return response.message("pokemon:error.already-caught");
 
         try {
-            let pokemon;
-            let result;
+            let pokemon = pkmn.value.toFullString();
+            let result: string;
 
-            if (await this.pokemonModule.gameService.attemptCatch(channel, stats.value)) {
-                const pkmn = await this.pokemonModule.gameService.createMonFromStats(trainer, stats.value);
-                pokemon = pkmn.toFullString();
-                result = await response.translate("pokemon:catch.success", {nature: pkmn.nature});
+            if (await this.pokemonModule.gameService.attemptCatch(channel, pkmn.value)) {
+                result = await response.translate("pokemon:catch.success", {nature: pkmn.value.nature});
             } else {
-                pokemon = formatStats(stats.value);
                 result = arrayRand(await response.getTranslation("pokemon:catch.failed"));
             }
 
-            return await response.message("pokemon:catch.full", {username: sender.name, pokemon, result});
+            return await response.message("pokemon:catch.full", {username: sender.user.name, pokemon, result});
         } catch (e) {
             return await response.genericErrorAndLog(e, logger);
         }
@@ -104,7 +98,7 @@ class PokemonCommand extends Command {
     @CommandHandler(/^(pokemon|poke|pm) rel(ease)?/, "pokemon release [pokemon]", 1)
     @CheckPermission("pokemon.play")
     async release(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter,
         @TrainerSender {trainer, team}: TrainerData, @Argument(StringArg, "pokemon", false) name: string = null
     ): Promise<void> {
         const specific = name === null;
@@ -114,27 +108,26 @@ class PokemonCommand extends Command {
 
         if (!pkmn.present) return response.message(specific ? "pokemon:error.not-caught" : "pokemon:error.empty");
 
-        return pkmn.value.delete().then(() => response.message("pokemon:released", {
-            username: sender.name, pokemon: pkmn.value.toFullString()
+        return pkmn.value.remove().then(() => response.message("pokemon:released", {
+            username: sender.user.name, pokemon: pkmn.value.toFullString()
         })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(pokemon|poke|pm) rel(ease)?-all/, "pokemon release-all", 1)
     @CheckPermission("pokemon.play")
     async releaseAll(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity,
-        @TrainerSender {team}: TrainerData
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter, @TrainerSender {team}: TrainerData
     ): Promise<void> {
         const pokemon = team.map(pkmn => pkmn.name).join(", ");
         return this.pokemonModule.gameService.releaseTeam(team)
-            .then(() => response.message("pokemon.released", {username: sender.name, pokemon}))
+            .then(() => response.message("pokemon.released", {username: sender.user.name, pokemon}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(pokemon|poke|pm) fight/, "pokemon fight <trainer>", 1)
     @CheckPermission("pokemon.play")
     async fight(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: ChannelEntity,
         @TrainerSender self: TrainerData, @Argument(new TrainerDataArg(this.pokemonModule.gameService), "trainer") target: TrainerData
     ): Promise<void> {
         if (sender.is(target.chatter)) return response.message("pokemon:error.self");
@@ -166,8 +159,8 @@ class PokemonCommand extends Command {
             result += " " + await response.translate("pokemon:battle.level-up", {pokemon: leveledUp.join(", ")});
 
         await response.message("pokemon:battle.base", {
-            self: sender.name, selfMon: selfMon.toString(),
-            target: target.chatter.name, targetMon: targetMon.toString(),
+            self: sender.user.name, selfMon: selfMon.toString(),
+            target: target.chatter.user.name, targetMon: targetMon.toString(),
             result
         });
     }
@@ -181,12 +174,12 @@ class PokemonCommand extends Command {
         const {chatter, trainer: {won, lost, draw}} = target ?? sender;
         let ratio = (won / (won + lost + draw)) * 100;
         if (isNaN(ratio)) ratio = 0;
-        return response.message("pokemon:stats", {username: chatter.name, ratio, won, lost, draw})
+        return response.message("pokemon:stats", {username: chatter.user.name, ratio, won, lost, draw})
     }
 
     @CommandHandler(/^(pokemon|poke|pm) top/, "pokemon top", 1)
     @CheckPermission("pokemon.stats")
-    async top(event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity): Promise<void> {
+    async top(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         return this.pokemonModule.gameService.getAllTrainerStats(channel)
             .then(stats => response.message("pokemon:top", {
                 trainers: stats
@@ -196,11 +189,9 @@ class PokemonCommand extends Command {
     }
 }
 
-@HandlesEvents()
+@Service()
 export default class PokemonModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    public readonly experienceService: ExperienceService;
-    public readonly gameService: GameService;
     @command pokemonCommand = new PokemonCommand(this);
     @permission playPokemon = new Permission("pokemon.play", Role.NORMAL);
     @permission viewStats = new Permission("pokemon.stats", Role.NORMAL);
@@ -213,15 +204,7 @@ export default class PokemonModule extends AbstractModule {
     @setting minLevel = new Setting("pokemon.level.min", 1 as Integer, SettingType.INTEGER);
     @setting maxLevel = new Setting("pokemon.level.max", 100 as Integer, SettingType.INTEGER);
 
-    constructor(channelManager: ChannelManager) {
+    constructor(public readonly experienceService: ExperienceService, public readonly gameService: GameService) {
         super(PokemonModule);
-        this.experienceService = new ExperienceService(channelManager);
-        this.gameService = new GameService(this.experienceService);
-    }
-
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs) {
-        await PokemonEntity.createTable({channel});
-        await TrainerEntity.createTable({channel});
     }
 }

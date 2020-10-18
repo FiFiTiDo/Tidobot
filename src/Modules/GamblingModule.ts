@@ -14,7 +14,7 @@ import CurrencyModule from "./CurrencyModule";
 import {arrayRand} from "../Utilities/ArrayUtils";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Channel, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {ChannelArg, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import ChatterEntity from "../Database/Entities/ChatterEntity";
 
@@ -63,7 +63,7 @@ class SlotsCommand extends Command {
     @CommandHandler("slots", "slots")
     @CheckPermission("gambling.slots")
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @Sender sender: ChatterEntity
     ): Promise<void> {
         if (!await sender.charge(await channel.getSetting(this.gamblingModule.slotsPrice))) return;
 

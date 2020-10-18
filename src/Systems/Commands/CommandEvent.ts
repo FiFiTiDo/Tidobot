@@ -5,29 +5,31 @@ import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Command from "./Command";
 import CommandEntity from "../../Database/Entities/CommandEntity";
+import { Chatter } from "../../NewDatabase/Entities/Chatter";
+import { Channel } from "../../NewDatabase/Entities/Channel";
 
 export interface CommandEventArgs {
     event: CommandEvent;
     message: Message;
     response: Response;
-    sender: ChatterEntity;
-    channel: ChannelEntity;
+    sender: Chatter;
+    channel: Channel;
 }
 
 export class CommandEvent extends Event<CommandEvent> {
     static NAME = "chat_command";
 
-    constructor(private readonly trigger: string, private readonly args: string[], private readonly msg: Message, private readonly command: Command | CommandEntity) {
+    constructor(public readonly trigger: string, public readonly args: string[], public readonly message: Message, public readonly command: Command | CommandEntity) {
         super(CommandEvent);
     }
 
     public getEventArgs(): CommandEventArgs {
         return {
             event: this,
-            message: this.msg,
-            response: this.msg.getResponse(),
-            sender: this.msg.getChatter(),
-            channel: this.msg.getChannel()
+            message: this.message,
+            response: this.message.response,
+            sender: this.message.chatter,
+            channel: this.message.channel
         };
     }
 
@@ -49,10 +51,10 @@ export class CommandEvent extends Event<CommandEvent> {
 
 
     getMessage(): Message {
-        return this.msg;
+        return this.message;
     }
 
     clone(): CommandEvent {
-        return new CommandEvent(this.trigger, this.args.slice(), this.msg, this.command);
+        return new CommandEvent(this.trigger, this.args.slice(), this.message, this.command);
     }
 }

@@ -1,13 +1,16 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 import Cache from "../../Systems/Cache/Cache";
 import {parseDuration} from "../../Utilities/TimeUtils";
 import {AccessToken} from "./ApiAuthentication";
-import axios, {AxiosInstance, AxiosPromise, AxiosRequestConfig} from "axios";
+import axios, {AxiosInstance, AxiosPromise, AxiosRequestConfig, AxiosResponse} from "axios";
 import Config from "../../Systems/Config/Config";
 import CacheConfig from "../../Systems/Config/ConfigModels/CacheConfig";
 import TwitchAdapter from "./TwitchAdapter";
 import Container, { Service } from "typedi";
+import { Duration } from "moment";
+import { logError } from "../../Utilities/Logger";
 
-const CACHE_EXPIRY = async () => {
+const CACHE_EXPIRY = async (): Promise<Duration> => {
     const config = await Container.get(Config).getConfig(CacheConfig);
     return parseDuration(config.length);
 };
@@ -57,7 +60,6 @@ export namespace helix {
         user_id: string;
         user_name: string;
         game_id: string;
-        community_ids: string[];
         type: string;
         title: string;
         viewer_count: number;
@@ -74,7 +76,6 @@ export namespace helix {
     export interface StreamParams {
         after?: string;
         before?: string;
-        community_id?: string;
         first?: number;
         game_id?: string | string[];
         language?: string | string[];
@@ -136,6 +137,38 @@ export namespace helix {
     }
 
     /**
+     * Information about a channel
+     */
+    export interface ChannelInformation {
+        broadcaster_id: string;
+        broadcaster_name: string;
+        broadcaster_language: string;
+        game_id: string;
+        game_name: string;
+        title: string;
+    }
+
+    /**
+     * The parameters for requesting information about a channel
+     *
+     * One of the following params are required
+     */
+    export interface ChannelParams {
+        broadcaster_id: string;
+    }
+
+    /**
+     * The parameters for modifying information about a channel
+     *
+     * One of the following params are required
+     */
+    export interface ChannelUpdateData {
+        game_id?: string;
+        broadcaster_language?: string;
+        title?: string;
+    }
+
+    /**
      * The Api class handling the api requests for the new helix api
      */
     @Service()
@@ -157,7 +190,7 @@ export namespace helix {
         ) {
             this.axios = axios.create({
                 baseURL: this.BASE_URL
-            })
+            });
         }
 
         public setCredentials(clientId: string, clientSecret: string): void {
@@ -173,11 +206,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getGames(params: GameParams): Promise<Response<Game>> {
-            return JSON.parse(await this.cache.retrieve("twitch.games." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<Game>({
-                    url: "/games", params
-                }));
-            }));
+            return this.makeCachedRequest("twitch.games." + JSON.stringify(params), {url: "/games", params});
         }
 
         /**
@@ -188,11 +217,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getStreams(params: StreamParams): Promise<Response<Stream>> {
-            return JSON.parse(await this.cache.retrieve("twitch.streams." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<Stream>({
-                    url: "/streams", params
-                }));
-            }));
+            return this.makeCachedRequest("twitch.streams." + JSON.stringify(params), {url: "/streams", params});
         }
 
         /**
@@ -203,11 +228,7 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUsers(params: UserParams): Promise<Response<User>> {
-            return JSON.parse(await this.cache.retrieve("twitch.users." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<User>({
-                    url: "/users", params
-                }));
-            }));
+            return this.makeCachedRequest("twitch.users." + JSON.stringify(params), {url: "/users", params});
         }
 
         /**
@@ -218,11 +239,43 @@ export namespace helix {
          * @returns A Promise that resolves to an [[IResponse]]
          */
         async getUserFollow(params: UserFollowParams): Promise<Response<UserFollow>> {
-            return JSON.parse(await this.cache.retrieve("twitch.users.follow." + JSON.stringify(params), (await CACHE_EXPIRY()).asSeconds(), async () => {
-                return JSON.stringify(await this.makeRequest<UserFollow>({
-                    url: "/users/follows", params
-                }));
-            }));
+            return this.makeCachedRequest("twitch.users.follow." + JSON.stringify(params), {url: "/users/follows", params});
+        }
+
+        /**
+         * Get the information of the channel matching the given parameters
+         *
+         * @param params The parameters of the request
+         *
+         * @returns A Promise that resolves to an [[IResponse]]
+         */
+        async getChannel(params: ChannelParams): Promise<Response<ChannelInformation>> {
+            return this.makeCachedRequest("twitch.channels." + JSON.stringify(params), {url: "/channels", params});
+        }
+
+        /**
+         * Modify a specified channel's information
+         * 
+         * @param params The channel to modify
+         * @param data The updated information
+         * 
+         * @returns True if the information was updated successfully
+         */
+        async modifyChannel(params: ChannelParams, data: ChannelUpdateData): Promise<boolean> {
+            const response = await this.makeRequest<ChannelInformation>({url: "/channels", params, data});
+
+            switch (response.status) {
+                case 204: return true;
+                case 400:
+                    TwitchAdapter.LOGGER.warn("Missing query parameter in helix.Api#modifyChannel");
+                    return false;
+                case 500:
+                    TwitchAdapter.LOGGER.error("Failed to update channel due to Twitch Internal Server Error");
+                    return false;
+                default:
+                    TwitchAdapter.LOGGER.error("Modifying channel returned unexpected status code: " + response.status + ", text: " + response.statusText);
+                    return false;
+            }
         }
 
         /**
@@ -237,9 +290,7 @@ export namespace helix {
                 try {
                     this.accessToken = await AccessToken.retrieve(this.clientId, this.clientSecret);
                 } catch (e) {
-                    TwitchAdapter.LOGGER.fatal("Unable to retrieve the access token");
-                    TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                    TwitchAdapter.LOGGER.error(e.stack);
+                    logError(TwitchAdapter.LOGGER, e, "Unable to retrieve the access token", true);
                     process.exit(1);
                 }
             }
@@ -247,9 +298,7 @@ export namespace helix {
             try {
                 await this.accessToken.validate();
             } catch (e) {
-                TwitchAdapter.LOGGER.fatal("Unable to validate access token");
-                TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                TwitchAdapter.LOGGER.error(e.stack);
+                logError(TwitchAdapter.LOGGER, e, "Unable to validate access token", true);
                 process.exit(1);
             }
 
@@ -261,7 +310,7 @@ export namespace helix {
          *
          * @param opts The options for the request
          */
-        private async makeRequest<T>(opts: AxiosRequestConfig): Promise<Response<T>> {
+        private async makeRequest<T>(opts: AxiosRequestConfig): Promise<AxiosResponse<T>> {
             const accessToken = await this.getAccessToken();
 
             opts.headers = Object.assign({}, opts.headers || {}, {
@@ -270,7 +319,13 @@ export namespace helix {
             });
             opts.responseType = "json";
 
-            return this.axios(opts).then(resp => resp.data);
+            return this.axios(opts);
+        }
+
+        private async makeCachedRequest<T>(key: string, opts: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+            return JSON.parse(await this.cache.retrieve(key, (await CACHE_EXPIRY()).asSeconds(), async () => {
+                return JSON.stringify(await this.makeRequest(opts).then(resp => resp.data));
+            }));
         }
     }
 }

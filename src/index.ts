@@ -1,7 +1,5 @@
 import "reflect-metadata";
 import Application from "./Application/Application";
-import container from "./inversify.config";
-import {buildProviderModule} from "inversify-binding-decorators";
 import ModuleManager from "./Modules/ModuleManager";
 import FilterSystem from "./Systems/Filter/FilterSystem";
 import Config from "./Systems/Config/Config";
@@ -24,9 +22,6 @@ import { Container } from "typedi";
 import { setupDatabase } from "./Database";
 
 require("source-map-support").install({ hookRequire: true });
-
-container.load(buildProviderModule());
-
 
 Container.set(TranslationProviderToken, async () => i18next.use(Backend).init({
     ns: [
@@ -76,7 +71,7 @@ async function initialize(): Promise<void> {
     logger.info("Initializing application");
 
     const app = Container.get(Application);
-    container.get<ModuleManager>(ModuleManager);
+    Container.get(ModuleManager);
     return app.start(process.argv);
 }
 

@@ -19,7 +19,6 @@ export default class ModuleManager {
         for (const module of Object.values(this.modules)) {
             const info = module.getInfo();
             try {
-                module.initalize();
                 ModuleManager.LOGGER.info(`Initialized module ${info.name} v${info.version}`);
             } catch (e) {
                 logError(ModuleManager.LOGGER, e, "An error occurred while initializing the module " + info.name, true);

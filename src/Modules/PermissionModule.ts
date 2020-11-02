@@ -12,7 +12,6 @@ import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Argument, ChannelArg, MessageArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
@@ -136,9 +135,9 @@ export default class PermissionModule extends AbstractModule {
         this.coreModule = true;
         this.registerCommand(permissionCommand);
         this.registerPermissions(PermissionModule.permissions);
+        this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             sender: {

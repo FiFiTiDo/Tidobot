@@ -1,13 +1,9 @@
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
-import {getSettings} from "../Systems/Settings/decorators";
+import ExpressionSystem, { ExpressionContextResolver } from "../Systems/Expressions/ExpressionSystem";
 import Setting from "../Systems/Settings/Setting";
-import {getResolvers} from "../Systems/Expressions/decorators";
-import {getPermissions} from "../Systems/Permissions/decorators";
 import Permission from "../Systems/Permissions/Permission";
-import {getCommands} from "../Systems/Commands/decorators";
 import Command from "../Systems/Commands/Command";
 import { Channel } from "../Database/Entities/Channel";
 import { DisabledModule } from "../Database/Entities/DisabledModule";
@@ -80,9 +76,8 @@ export default abstract class AbstractModule {
             settingsSystem.registerSetting(setting);
     }
 
-    initalize(): void {
-        for (const resolver of getResolvers(this.ctor))
-            this.expressionSystem.registerResolver(this[resolver].bind(this));
+    registerExpressionContextResolver(resolver: ExpressionContextResolver): void {
+        Container.get(ExpressionSystem).registerResolver(resolver.bind(this));
     }
 
     getName(): string {

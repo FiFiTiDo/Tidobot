@@ -9,7 +9,6 @@ import {StringArg} from "../Systems/Commands/Validation/String";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
-import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Argument, ChannelArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
@@ -133,9 +132,9 @@ export default class ListModule extends AbstractModule {
 
         this.registerCommand(listCommand);
         this.registerPermissions(ListModule.permissions);
+        this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    @ExpressionContextResolver
     expressionContextResolver(msg: Message): {} {
         return {
             list: {

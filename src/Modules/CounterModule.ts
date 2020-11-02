@@ -7,7 +7,6 @@ import {IntegerArg} from "../Systems/Commands/Validation/Integer";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {getLogger} from "../Utilities/Logger";
-import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
@@ -125,10 +124,10 @@ export default class CounterModule extends AbstractModule {
 
         this.registerCommand(counterCommand);
         this.registerPermissions(CounterModule.permissions);
+        this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    @ExpressionContextResolver
-    resolveExpressionContext(msg: Message): ExpressionContext {
+    expressionContextResolver(msg: Message): ExpressionContext {
         return {
             counters: {
                 get: validateFunction(async (name: string): Promise<object | string> => {

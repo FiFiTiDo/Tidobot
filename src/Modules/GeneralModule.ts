@@ -8,7 +8,6 @@ import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {MessageArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
@@ -128,9 +127,9 @@ export default class GeneralModule extends AbstractModule {
         this.registerCommand(shutdownCommand);
         this.registerPermissions(GeneralModule.permissions);
         this.registerSettings(GeneralModule.settings);
+        this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             datetime: validateFunction((format = "Y-m-d h:i:s"): string => {

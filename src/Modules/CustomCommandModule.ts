@@ -10,7 +10,6 @@ import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {Argument, ChannelArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
@@ -164,9 +163,9 @@ export default class CustomCommandModule extends AbstractModule {
         super(CustomCommandModule);
 
         this.registerCommand(commandCommand);
+        this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             alias: validateFunction(async (command: string): Promise<string> => new Promise(resolve => {

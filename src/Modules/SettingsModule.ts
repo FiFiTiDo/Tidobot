@@ -8,7 +8,6 @@ import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {logErrorOnFail, validateFunction} from "../Utilities/ValidateFunction";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
@@ -112,9 +111,9 @@ export default class SettingsModule extends AbstractModule {
         this.coreModule = true;
         this.registerCommands(setCommand, unsetCommand, resetCommand);
         this.registerPermissions(SettingsModule.permissions);
+        this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             settings: {

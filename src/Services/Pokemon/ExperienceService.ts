@@ -15,7 +15,7 @@ export class ExperienceService {
         timerSystem.startTimer(this.decayAllMonLevels, TimeUnit.Days(1) / 2, channelManager);
     }
 
-    calculateExpForLevel(level: number) {
+    calculateExpForLevel(level: number): number {
         const actualLevel = level + 1;
         return actualLevel > 100 ? NaN : Math.pow(actualLevel, 0.75) * 10;
     }
@@ -50,7 +50,7 @@ export class ExperienceService {
         }
     }
 
-    async decayAllMonLevels(channelManager: ChannelManager) {
+    async decayAllMonLevels(channelManager: ChannelManager): Promise<void> {
         logger.debug("Decaying pokemon levels");
         for (const channel of await channelManager.getAllActive())
             for await (const trainerData of channel.trainers)

@@ -20,6 +20,7 @@ import { Chatter } from "../../Database/Entities/Chatter";
 import { ChatterRepository } from "../../Database/Repositories/ChatterRepository";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Service } from "typedi";
+import { ChatterManager } from "../../Chat/ChatterManager";
 
 @Service()
 export default class TwitchAdapter extends Adapter {
@@ -31,6 +32,7 @@ export default class TwitchAdapter extends Adapter {
 
     constructor(
         private readonly channelManager: ChannelManager,
+        private readonly chatterManager: ChatterManager,
         @InjectRepository()
         private readonly chatterRepository: ChatterRepository,
         public readonly api: helix.Api,
@@ -70,7 +72,7 @@ export default class TwitchAdapter extends Adapter {
             const channel = await this.getChannelByName(channelName.substring(1));
             const chatter = await this.getChatter(username, channel);
 
-            channel.addChatter(chatter);
+            this.chatterManager.setActive(chatter, true);
             this.eventSystem.dispatch(new JoinEvent(chatter, channel));
         });
 
@@ -80,7 +82,7 @@ export default class TwitchAdapter extends Adapter {
             const channel = await this.getChannelByName(channelName.substring(1));
             const chatter = await this.getChatter(username, channel);
 
-            channel.removeChatter(chatter);
+            this.chatterManager.setActive(chatter, false);
             this.eventSystem.dispatch(new LeaveEvent(chatter, channel));
         });
 
@@ -99,7 +101,6 @@ export default class TwitchAdapter extends Adapter {
         });
 
         await this.client.connect();
-        super.run(options);
     }
 
     async stop(): Promise<void> {

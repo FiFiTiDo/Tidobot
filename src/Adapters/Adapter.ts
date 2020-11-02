@@ -22,12 +22,7 @@ export interface AdapterConstructor<T extends Adapter> {
 }
 
 export default abstract class Adapter {
-    public run(options: AdapterOptions): void {
-        const timer = Container.get(TimerSystem);
-        const event = Container.get(EventSystem);
-
-        timer.startTimer(() => event.dispatch(new TickEvent()), TimeUnit.Seconds(1));
-    }
+    public abstract run(options: AdapterOptions): void;
 
     public abstract stop(): void | Promise<void>;
 
@@ -55,13 +50,13 @@ export class AdapterManager {
 
     }
 
-    public async registerAdapter(adapter: AdapterConstructor<any>) {
+    public async registerAdapter(adapter: AdapterConstructor<any>): Promise<void> {
         this.adapters.push(adapter);
 
         await this.serviceRepository.save({ name: adapter.serviceName });
     }
 
-    public findAdapterByName(name: string) {
+    public findAdapterByName(name: string): AdapterConstructor<any> {
         return this.adapters.find(adapter => adapter.serviceName === name);
     }
 }

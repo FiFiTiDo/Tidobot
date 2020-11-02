@@ -6,8 +6,9 @@ import {getLogger} from "../Utilities/Logger";
 import {Logger} from "log4js";
 import EventSystem from "../Systems/Event/EventSystem";
 import ShutdownEvent from "./Events/ShutdownEvent";
-import TimerSystem from "../Systems/Timer/TimerSystem";
+import TimerSystem, { TimeUnit } from "../Systems/Timer/TimerSystem";
 import { Service } from "typedi";
+import TickEvent from "./TickEvent";
 
 @Service()
 export default class Application {
@@ -36,6 +37,7 @@ export default class Application {
             .option("channels", "The channels where the bot will enter.", [Application.DEFAULT_CHANNEL])
             .parse(argv);
 
+        this.timerSystem.startTimer(() => this.eventSystem.dispatch(new TickEvent()), TimeUnit.Seconds(1));
         return this.bot.start(options as AdapterOptions);
     }
 

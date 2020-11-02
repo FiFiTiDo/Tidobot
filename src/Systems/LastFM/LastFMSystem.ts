@@ -1,11 +1,11 @@
 import SettingsSystem from "../Settings/SettingsSystem";
 import Setting, {SettingType} from "../Settings/Setting";
 import LastFMApi from "./LastFMApi";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../Config/Config";
 import LastFMConfig from "../Config/ConfigModels/LastFMConfig";
 import System from "../System";
 import { Service } from "typedi";
+import { Channel } from "../../Database/Entities/Channel";
 
 @Service()
 export default class LastFMSystem extends System {
@@ -19,20 +19,20 @@ export default class LastFMSystem extends System {
         this.logger.info("System initialized");
     }
 
-    async onInitialize() {
+    async onInitialize(): Promise<void> {
         const config = await this.config.getConfig(LastFMConfig);
         this.api = new LastFMApi(config.apiKey, config.secret);
     }
 
-    public getUsername(channel: ChannelEntity): Promise<string> {
-        return channel.getSetting(this.usernameSetting);
+    public getUsername(channel: Channel): string {
+        return channel.settings.get(this.usernameSetting);
     }
 
     public async getLastPlayed(username: string);
-    public async getLastPlayed(channel: ChannelEntity);
-    public async getLastPlayed(target: ChannelEntity | string) {
-        if (target instanceof ChannelEntity)
-            return this.getLastPlayed(await this.getUsername(target));
+    public async getLastPlayed(channel: Channel);
+    public async getLastPlayed(target: Channel | string): Promise<any> {
+        if (target instanceof Channel)
+            return this.getLastPlayed(this.getUsername(target));
 
         const resp = await this.api.get("user.getRecentTracks", {
             limit: 1,
@@ -41,10 +41,10 @@ export default class LastFMSystem extends System {
     }
 
     public async getCurrentPlaying(username: string);
-    public async getCurrentPlaying(channel: ChannelEntity);
-    public async getCurrentPlaying(target: ChannelEntity | string) {
-        if (target instanceof ChannelEntity)
-            return this.getCurrentPlaying(await this.getUsername(target));
+    public async getCurrentPlaying(channel: Channel);
+    public async getCurrentPlaying(target: Channel | string): Promise<any> {
+        if (target instanceof Channel)
+            return this.getCurrentPlaying(this.getUsername(target));
 
 
     }

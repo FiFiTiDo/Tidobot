@@ -3,7 +3,7 @@ import ChannelManager from "../../Chat/ChannelManager";
 import {getLogger} from "../../Utilities/Logger";
 import TimerSystem, {TimeUnit} from "../../Systems/Timer/TimerSystem";
 import { Service } from "typedi";
-import { Pokemon } from "../../NewDatabase/Entities/Pokemon";
+import { Pokemon } from "../../Database/Entities/Pokemon";
 
 const logger = getLogger("Pokemon");
 

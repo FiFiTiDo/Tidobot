@@ -1,15 +1,25 @@
 import CommandSystem from "./CommandSystem";
 import {CommandEvent, CommandEventArgs} from "./CommandEvent";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import {SubcommandParams} from "./decorators";
 import {CommandHandlerFunction, getCommandHandlers} from "./Validation/CommandHandler";
+import AbstractModule from "../../Modules/AbstractModule";
+import { Channel } from "../../Database/Entities/Channel";
 
 export default class Command {
+    private module: AbstractModule = null;
     private subcommandData: Map<string, SubcommandParams>;
     private readonly commandHandlers: CommandHandlerFunction[];
 
     constructor(protected label: string, protected usage: string | null, protected aliases: string[] = []) {
         this.commandHandlers = getCommandHandlers(this).map(property => this[property]);
+    }
+
+    setModule(module: AbstractModule): void {
+        if (this.module === null) this.module = module;
+    }
+
+    getModule(): AbstractModule {
+        return this.module;
     }
 
     getLabel(): string {
@@ -32,20 +42,20 @@ export default class Command {
         return data.globalCooldown || 0;
     }
 
-    async formatUsage(channel: ChannelEntity): Promise<string> {
-        let usage = await CommandSystem.getPrefix(channel) + this.label;
+    formatUsage(channel: Channel): string {
+        let usage = CommandSystem.getPrefix(channel) + this.label;
         if (this.usage !== null) usage += ` ${this.usage}`;
         return usage;
     }
 
-    async execute(args: CommandEventArgs): Promise<void> {
+    execute(args: CommandEventArgs): Promise<void> {
         const {message, response} = args;
 
         if (!this.executeCommandHandlers(args.event))
-            return response.rawMessage(await this.formatUsage(message.getChannel()));
+            return response.rawMessage(this.formatUsage(message.channel));
     }
 
-    protected async executeCommandHandlers(event: CommandEvent) {
+    protected executeCommandHandlers(event: CommandEvent): boolean {
         let executed = false;
         for (const commandHandler of this.commandHandlers) {
             if (commandHandler.call(this, event)) executed = true;

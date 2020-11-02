@@ -1,8 +1,8 @@
 import Event, {EventArguments} from "../../Systems/Event/Event";
 import Message from "../Message";
 import {Response} from "../Response";
-import { Channel } from "../../NewDatabase/Entities/Channel";
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
 
 export default class MessageEvent extends Event<MessageEvent> {
     public static readonly NAME: string = "chat_message";

@@ -1,11 +1,9 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import CommandEntity, {CommandConditionResponse} from "../Database/Entities/CommandEntity";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {StringArg} from "../Systems/Commands/Validation/String";
@@ -13,160 +11,159 @@ import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
-import {permission} from "../Systems/Permissions/decorators";
-import {command} from "../Systems/Commands/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, ChannelArg, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
-import {Response} from "../Chat/Response"
-import ChannelEntity from "../Database/Entities/ChannelEntity";
+import {Argument, ChannelArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Response} from "../Chat/Response";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
 import {FloatArg} from "../Systems/Commands/Validation/Float";
 import {BooleanArg} from "../Systems/Commands/Validation/Boolean";
 import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
+import { Service } from "typedi";
+import { CommandRepository } from "../Database/Repositories/CommandRepository";
+import { Command as CommandEntity, CommandConditionResponse } from "../Database/Entities/Command";
+import { InjectRepository } from "typeorm-typedi-extensions";
+import { Channel } from "../Database/Entities/Channel";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.3.2",
+    version: "1.4.0",
     description: "Create your own commands with the powerful expression engine."
 };
 
 const logger = getLogger(MODULE_INFO.name);
-const CommandConverter = new EntityArg(CommandEntity, {msgKey: "command:error.unknown", optionKey: "id"});
+const CommandConverter = new EntityArg(CommandRepository, {msgKey: "command:error.unknown", optionKey: "id"});
 
+@Service()
 class CommandCommand extends Command {
-    constructor() {
+    constructor(@InjectRepository() private readonly commandRepository: CommandRepository) {
         super("command", "<add|edit|delete>", ["cmd", "c"]);
     }
 
     @CommandHandler(/^(c|cmd|command) add/, "command add <trigger> <response>", 1)
-    @CheckPermission("command.add")
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg) trigger: string,
         @RestArguments(true, {join: " "}) resp: string
     ): Promise<void> {
-        CommandEntity.create(trigger, resp, channel)
+        this.commandRepository.make(trigger, resp, channel)
             .then(entity => response.message("command:added", {id: entity.id}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(c|cmd|command) edit trigger/, "command edit trigger <id> <new trigger>", 2)
-    @CheckPermission("command.edit")
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editTrigger(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
-        @Argument(CommandConverter) command: CommandEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.trigger = value;
         command.save()
-            .then(() => response.message(`command:edit.trigger`, {id: command.id, value}))
+            .then(() => response.message("command:edit.trigger", {id: command.id, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(c|cmd|command) edit (condition|cond)/, "command edit condition <id> <new condition>", 2)
-    @CheckPermission("command.edit")
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editCondition(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
-        @Argument(CommandConverter) command: CommandEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.condition = value;
         command.save()
-            .then(() => response.message(`command:edit.condition`, {id: command.id, value}))
+            .then(() => response.message("command:edit.condition", {id: command.id, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(c|cmd|command) edit (response|resp)/, "command edit response <id> <new response>", 2)
-    @CheckPermission("command.edit")
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editResponse(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
-        @Argument(CommandConverter) command: CommandEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.response = value;
         command.save()
-            .then(() => response.message(`command:edit.response`, {id: command.id, value}))
+            .then(() => response.message("command:edit.response", {id: command.id, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(c|cmd|command) edit price/, "command edit price <id> <new price>", 2)
-    @CheckPermission("command.edit")
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editPrice(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
-        @Argument(CommandConverter) command: CommandEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(new FloatArg({min: 0})) value: number
     ): Promise<void> {
         command.price = value;
         command.save()
-            .then(() => response.message(`command:edit.price`, {id: command.id, value}))
+            .then(() => response.message("command:edit.price", {id: command.id, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
-    @CommandHandler(/^(c|cmd|command) edit (global-cooldwn|gc)/, "command edit trigger <id> <new cooldown>", 2)
-    @CheckPermission("command.edit")
+    @CommandHandler(/^(c|cmd|command) edit (global-cooldwn|gc)/, "command edit global-cooldown <id> <new cooldown>", 2)
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editGlobalCooldown(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
-        @Argument(CommandConverter) command: CommandEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
         command.globalCooldown = value;
         command.save()
-            .then(() => response.message(`command:edit.global-cooldown`, {id: command.id, value}))
+            .then(() => response.message("command:edit.global-cooldown", {id: command.id, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(c|cmd|command) edit (user-cooldown|uc)/, "command edit user-cooldown <id> <new cooldown>", 2)
-    @CheckPermission("command.edit")
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editUserCooldown(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
-        @Argument(CommandConverter) command: CommandEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
         command.userCooldown = value;
         command.save()
-            .then(() => response.message(`command:edit.user-cooldown`, {id: command.id, value}))
+            .then(() => response.message("command:edit.user-cooldown", {id: command.id, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(c|cmd|command) edit enabled/, "command edit enabled <id> <new value>", 2)
-    @CheckPermission("command.edit")
+    @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editEnabled(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message,
-        @Argument(CommandConverter) command: CommandEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(BooleanArg) value: boolean
     ): Promise<void> {
         command.enabled = value;
         command.save()
-            .then(() => response.message(`command:edit.user-cooldown`, {id: command.id, value}))
+            .then(() => response.message("command:edit.user-cooldown", {id: command.id, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^(c|cmd|command) (delete|del)/, "command delete <id>", 1)
-    @CheckPermission("command.delete")
+    @CheckPermission(() => CustomCommandModule.permissions.deleteCommand)
     async delete(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
-        @Argument(CommandConverter) command: CommandEntity
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity
     ): Promise<void> {
-        command.delete()
+        command.remove()
             .then(() => response.message("command:deleted", {id: command.id}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
+@Service()
 @HandlesEvents()
 export default class CustomCommandModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    @command commandCommand = new CommandCommand();
-    @permission addCommand = new Permission("command.add", Role.MODERATOR);
-    @permission editCommand = new Permission("command.edit", Role.MODERATOR);
-    @permission deleteCommand = new Permission("command.delete", Role.MODERATOR);
-    @permission freeUsage = new Permission("command.free", Role.MODERATOR);
-    @permission ignoreCooldown = new Permission("command.ignore-cooldown", Role.MODERATOR);
+    static permissions = {
+        addCommand: new Permission("command.add", Role.MODERATOR),
+        editCommand: new Permission("command.edit", Role.MODERATOR),
+        deleteCommand: new Permission("command.delete", Role.MODERATOR),
+        freeUsage: new Permission("command.free", Role.MODERATOR),
+        ignoreCooldown: new Permission("command.ignore-cooldown", Role.MODERATOR),
+    }
 
-    constructor() {
+    constructor(commandCommand: CommandCommand) {
         super(CustomCommandModule);
+
+        this.registerCommand(commandCommand);
     }
 
     @ExpressionContextResolver
@@ -181,11 +178,6 @@ export default class CustomCommandModule extends AbstractModule {
         };
     }
 
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
-        await CommandEntity.createTable({channel});
-    }
-
     @EventHandler(MessageEvent)
     async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
         const msg = event.getMessage();
@@ -194,7 +186,7 @@ export default class CustomCommandModule extends AbstractModule {
         if (msg.getParts().length < 1) return;
 
         const trigger = msg.getPart(0);
-        const commands = await CommandEntity.findByTrigger(trigger, msg.getChannel());
+        const commands = msg.channel.commands.filter(command => command.trigger === trigger);
         if (commands.length < 1) return;
 
         let executed = 0;
@@ -218,6 +210,6 @@ export default class CustomCommandModule extends AbstractModule {
             }
         }
 
-        msg.getChannel().logger.debug(`Custom command ${trigger} triggered by ${msg.getChatter().name} triggering ${executed} commands.`);
+        msg.channel.logger.debug(`Custom command ${trigger} triggered by ${msg.chatter.user.name} triggering ${executed} commands.`);
     }
 }

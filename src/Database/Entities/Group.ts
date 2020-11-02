@@ -25,4 +25,25 @@ export class Group extends CustomBaseEntity {
                 return entity.granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED;
         return PermissionStatus.NOT_DEFINED;
     }
+
+    private getMemberIndex(chatter: Chatter): number {
+        for (let i = 0; i < this.members.length; i++) {
+            const member = this.members[i];
+            if (member.id === chatter.id) return i;
+        }
+        return -1;
+    }
+
+    async addMember(chatter: Chatter): Promise<boolean> {
+        if (this.getMemberIndex(chatter) !== -1) return false;
+        this.members.push(chatter);
+        await this.save();
+    }
+
+    async removeMember(chatter: Chatter): Promise<boolean> {
+        const i = this.getMemberIndex(chatter);
+        if (i === -1) return false;
+        delete this.members[i];
+        await this.save();
+    }
 }

@@ -3,12 +3,13 @@ import Adapter from "../Adapters/Adapter";
 import {Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {Response, ResponseFactory} from "./Response";
+import {Response} from "./Response";
 import Permission from "../Systems/Permissions/Permission";
 import {returnError, validateFunction} from "../Utilities/ValidateFunction";
-import { Chatter } from "../NewDatabase/Entities/Chatter";
-import { Channel } from "../NewDatabase/Entities/Channel";
+import { Chatter } from "../Database/Entities/Chatter";
+import { Channel } from "../Database/Entities/Channel";
 import Container from "typedi";
+import ChannelManager from "./ChannelManager";
 
 export default class Message {
     public stripped: string;
@@ -17,8 +18,7 @@ export default class Message {
     private loopProtection: string[];
 
     constructor(
-        public readonly raw: string, public readonly chatter: Chatter, public readonly channel: Channel,
-        private readonly adapter: Adapter
+        public readonly raw: string, public readonly chatter: Chatter, public readonly channel: Channel, private readonly adapter: Adapter
     ) {
         this.parts = MessageParser.parse(raw);
         this.loopProtection = [];
@@ -45,7 +45,7 @@ export default class Message {
                 id: this.getChannel().id,
                 name: this.getChannel().name,
                 chatters: this.channel.chatters.map(chatter => chatter.user.name),
-                isLive: (): boolean => this.channel.online.get()
+                isLive: (): boolean => Container.get(ChannelManager).isOnline(this.channel)
             },
             raw_arguments: this.parts.slice(1).join(" "),
             arguments: this.parts.slice(1),
@@ -109,20 +109,20 @@ export default class Message {
     }
 
     public extend(newRaw: string, onReply: (message: string) => void): Message {
-        const msg = this;
+        const { getUserRoles, getExpressionContext, chatter, channel, adapter, loopProtection } = this;
         return new class extends Message {
             constructor() {
-                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter);
+                super(newRaw, chatter, channel, adapter);
 
-                this.loopProtection = msg.loopProtection.slice();
+                this.loopProtection = loopProtection.slice();
             }
 
             async getUserRoles(): Promise<Role[]> {
-                return msg.getUserRoles();
+                return getUserRoles();
             }
 
             async getExpressionContext(): Promise<ExpressionContext> {
-                return msg.getExpressionContext();
+                return getExpressionContext();
             }
 
             async reply(message: string): Promise<void> {

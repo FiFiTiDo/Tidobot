@@ -2,22 +2,20 @@ import AbstractModule, {Symbols} from "./AbstractModule";
 import Dispatcher from "../Systems/Event/Dispatcher";
 import Event from "../Systems/Event/Event";
 import Message from "../Chat/Message";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Command from "../Systems/Commands/Command";
 import {generateRandomCode} from "../Utilities/RandomUtils";
-import {command} from "../Systems/Commands/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
-import { Service } from "typedi";
-import { EntityStateList } from "../NewDatabase/EntityStateLiist";
-import { Chatter } from "../NewDatabase/Entities/Chatter";
+import { Inject, Service } from "typedi";
+import { EntityStateList } from "../Database/EntityStateLiist";
+import { Chatter } from "../Database/Entities/Chatter";
 
 export const MODULE_INFO = {
     name: "Confirmation",
-    version: "1.1.1",
+    version: "1.2.0",
     description: "An added confirmation layer to actions that cannot be undone and are of great magnitude"
 };
 
@@ -40,7 +38,6 @@ export class ExpiredEvent extends Event<ExpiredEvent> {
 export class Confirmation extends Dispatcher {
     private confirmed: boolean;
     private readonly seconds: number;
-    private expired = false;
     private readonly code: string;
 
     constructor(seconds: number, code: string) {
@@ -71,8 +68,11 @@ export interface ConfirmationFactory {
     (message: Message, prompt: string, seconds: number): Promise<Confirmation>;
 }
 
+@Service()
 class ConfirmCommand extends Command {
-    constructor(private confirmationModule: ConfirmationModule) {
+    constructor(
+        @Inject(() => ConfirmationModule) private confirmationModule: ConfirmationModule
+    ) {
         super("confirm", "<code>");
     }
 
@@ -93,13 +93,15 @@ class ConfirmCommand extends Command {
 export default class ConfirmationModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     readonly confirmations: EntityStateList<Chatter, Confirmation>;
-    @command confirmCommand = new ConfirmCommand(this);
 
-    constructor() {
+    constructor(
+        @Inject(() => ConfirmCommand) confirmCommand: ConfirmCommand
+    ) {
         super(ConfirmationModule);
 
         this.coreModule = true;
         this.confirmations = new EntityStateList<Chatter, Confirmation>(null);
+        this.registerCommand(confirmCommand);
     }
 
     async make(message: Message, prompt: string, seconds: number): Promise<Confirmation> {
@@ -111,8 +113,7 @@ export default class ConfirmationModule extends AbstractModule {
 
         await message.getResponse().rawMessage(prompt);
         await message.getResponse().message("confirmation:time", {
-            prefix: await CommandSystem.getPrefix(message.getChannel()),
-            code, seconds
+            prefix: CommandSystem.getPrefix(message.getChannel()), code, seconds
         });
         await message.getResponse().message("confirmation:warning");
 

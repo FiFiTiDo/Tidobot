@@ -7,7 +7,8 @@
         "delete": {
             "specific":  "Successfully deleted the permission {{permission}} for the user {{username}}",
             "all": "Successfully deleted all of the permissions for the user {{username}}",
-            "confirm": "Are you sure you want to delete the permissions for the user {{username}}?"
+            "confirm": "Are you sure you want to delete the permissions for the user {{username}}?",
+            "not-found": "The user {{username}} has not been specifically granted or denied the permission {{permission}}"
         }
     },
     "regular": {

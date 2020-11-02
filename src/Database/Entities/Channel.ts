@@ -11,6 +11,7 @@ import CustomBaseEntity from "./CustomBaseEntity";
 import { DisabledModule } from "./DisabledModule";
 import { DomainFilter } from "./DomainFilter";
 import { Group } from "./Group";
+import { List } from "./List";
 import { News } from "./News";
 import { Permission } from "./Permission";
 import { Service } from "./Service";
@@ -74,6 +75,9 @@ export class Channel extends CustomBaseEntity {
 
     @OneToMany(() => News, news => news.channel)
     newsItems: News[];
+
+    @OneToMany(() => List, list => list.channel)
+    lists: List[];
 
     get logger(): Logger {
         const logger = getLogger("Channel");

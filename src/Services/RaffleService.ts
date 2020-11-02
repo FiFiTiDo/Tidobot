@@ -2,9 +2,9 @@ import {Role} from "../Systems/Permissions/Role";
 import {arrayRand} from "../Utilities/ArrayUtils";
 import Optional from "../Utilities/Patterns/Optional";
 import Message from "../Chat/Message";
-import { Chatter } from "../NewDatabase/Entities/Chatter";
-import { EntityStateList } from "../NewDatabase/EntityStateLiist";
-import { Channel } from "../NewDatabase/Entities/Channel";
+import { Chatter } from "../Database/Entities/Chatter";
+import { EntityStateList } from "../Database/EntityStateLiist";
+import { Channel } from "../Database/Entities/Channel";
 import { Service } from "typedi";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 
@@ -34,7 +34,7 @@ class Raffle {
         this.reset();
     }
 
-    get keywordLower() {
+    get keywordLower(): string {
         return this.keyword.toLowerCase();
     }
 
@@ -125,6 +125,6 @@ export class RaffleService {
             if (raw !== raffle.keywordLower || !raffle.canEnter(sender, roles)) return false;
             raffle.addEntry(sender);
             return true;
-        })
+        });
     }
 }

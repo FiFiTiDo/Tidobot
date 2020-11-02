@@ -1,26 +1,19 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import {pluralize} from "../Utilities/functions";
 import * as util from "util";
-import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
+import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
-import {inject} from "inversify";
-import symbols from "../symbols";
 import ChannelManager from "../Chat/ChannelManager";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {FloatArg} from "../Systems/Commands/Validation/Float";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {getLogger} from "../Utilities/Logger";
-import {permission} from "../Systems/Permissions/decorators";
-import {setting} from "../Systems/Settings/decorators";
 import {BooleanArg} from "../Systems/Commands/Validation/Boolean";
-import {command} from "../Systems/Commands/decorators";
 import ConnectedEvent from "../Chat/Events/ConnectedEvent";
-import {EventHandler} from "../Systems/Event/decorators";
+import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
@@ -28,110 +21,116 @@ import {Argument, ChannelArg, MessageArg, ResponseArg, Sender} from "../Systems/
 import {Response} from "../Chat/Response";
 import Message from "../Chat/Message";
 import Timeout = NodeJS.Timeout;
+import { Inject, Service } from "typedi";
+import { Channel } from "../Database/Entities/Channel";
+import { Chatter } from "../Database/Entities/Chatter";
+import { ChatterManager } from "../Chat/ChatterManager";
 
 export const MODULE_INFO = {
     name: "Currency",
-    version: "1.1.1",
+    version: "1.2.0",
     description: "A points system used for granting the use of certain bot features"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
+@Service()
 class BankCommand extends Command {
-    constructor(private confirmationFactory: ConfirmationFactory) {
+    constructor(
+        @Inject(() => CurrencyModule) private readonly currencyModule: CurrencyModule,
+        private readonly chatterManager: ChatterManager,
+        private readonly confirmationModule: ConfirmationModule
+    ) {
         super("bank", "<give|give-all|take|take-all|balance|reset|reset-all>");
     }
 
     @CommandHandler("bank give", "bank give <user> <amount>", 1)
-    @CheckPermission("currency.bank.give")
+    @CheckPermission(() => CurrencyModule.permissions.bankGive)
     async give(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity, @Argument(new FloatArg({min: 1})) amount: number
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        @Argument(new ChatterArg()) chatter: Chatter, @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         return chatter.deposit(amount)
             .then(async () => response.message("currency:give", {
-                amount: await CurrencyModule.formatAmount(amount, channel),
-                username: chatter.name
+                amount: this.currencyModule.formatAmount(amount, channel),
+                username: chatter.user.name
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler("bank give-all", "bank give-all <amount>", 1)
-    @CheckPermission("currency.bank.give-all")
+    @CheckPermission(() => CurrencyModule.permissions.bankGiveAll)
     async giveAll(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
-        const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
+        let chatters: Chatter[] = channel.chatters;
+        if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
         return Promise.all(chatters.map(chatter => chatter.deposit(amount)))
             .then(async () => response.message("currency:give-all", {
-                amount: await CurrencyModule.formatAmount(amount, channel)
+                amount: this.currencyModule.formatAmount(amount, channel),
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler("bank take", "bank take <user> <amount>", 1)
-    @CheckPermission("currency.bank.take")
+    @CheckPermission(() => CurrencyModule.permissions.bankTake)
     async take(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        @Argument(new ChatterArg()) chatter: Chatter,
         @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         return chatter.withdraw(amount)
             .then(async () => response.message("currency:take", {
-                amount: await CurrencyModule.formatAmount(amount, channel),
-                username: chatter.name
+                amount: this.currencyModule.formatAmount(amount, channel),
+                username: chatter.user.name
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler("bank take", "bank take-all <amount>", 1)
-    @CheckPermission("currency.bank.take-all")
+    @CheckPermission(() => CurrencyModule.permissions.bankTakeAll)
     async takeAll(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
-        const chatters: ChatterEntity[] = onlyActive ? channel.getChatters() : await ChatterEntity.getAll({channel});
+        let chatters: Chatter[] = channel.chatters;
+        if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
         return Promise.all(chatters.map(chatter => chatter.withdraw(amount)))
             .then(async () => response.message("currency:take-all", {
-                amount: await CurrencyModule.formatAmount(amount, channel)
+                amount: this.currencyModule.formatAmount(amount, channel),
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^bank (balance|bal)/, "bank balance <username>", 1)
-    @CheckPermission("currency.bank.balance")
+    @CheckPermission(() => CurrencyModule.permissions.bankBalance)
     async balance(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         return response.message("currency:balance-other", {
-            username: chatter.name,
-            balance: await chatter.getFormattedBalance()
+            username: chatter.user.name,
+            balance: this.currencyModule.formatAmount(chatter.balance, channel)
         });
     }
 
     @CommandHandler("bank reset", "bank reset <username>", 1)
-    @CheckPermission("currency.bank.reset")
+    @CheckPermission(() => CurrencyModule.permissions.bankReset)
     async reset(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         chatter.balance = 0;
         return chatter.save()
-            .then(() => response.message("currency:reset.user", {username: chatter.name}))
+            .then(() => response.message("currency:reset.user", {username: chatter.user.name}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler("bank reset-all", "bank reset", 1)
-    @CheckPermission("currency.bank.reset-all")
+    @CheckPermission(() => CurrencyModule.permissions.bankResetAll)
     async resetAll(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @MessageArg msg: Message
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message
     ): Promise<void> {
-        const confirmation = await this.confirmationFactory(msg, await response.translate("currency.reset.all-confirm"), 30);
-        confirmation.addListener(ConfirmedEvent, () => ChatterEntity.getAll({channel})
-            .then(chatters => Promise.all(chatters.map(chatter => {
-                chatter.balance = 0;
-                return chatter.save();
-            })))
+        const confirmation = await this.confirmationModule.make(msg, await response.translate("currency.reset.all-confirm"), 30);
+        confirmation.addListener(ConfirmedEvent, () => Promise.all(channel.chatters.map(chatter => chatter.resetBalance()))
             .then(() => response.message("currency:reset.all"))
             .catch(e => response.genericErrorAndLog(e, logger))
         );
@@ -139,33 +138,39 @@ class BankCommand extends Command {
     }
 }
 
+@Service()
 class BalanceCommand extends Command {
-    constructor() {
+    constructor(
+        @Inject(() => CurrencyModule) private readonly currencyModule: CurrencyModule
+    ) {
         super("balance", null, ["bal"]);
     }
 
     @CommandHandler(/^(balance|bal)/, "balance")
-    @CheckPermission("currency.balance")
+    @CheckPermission(() => CurrencyModule.permissions.getBalance)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @ChannelArg channel: ChannelEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
     ): Promise<void> {
         return response.message("currency:balance", {
-            username: sender.name,
-            balance: await sender.getFormattedBalance()
+            username: sender.user.name,
+            balance: this.currencyModule.formatAmount(sender.balance, channel)
         });
     }
 }
 
+@Service()
 class PayCommand extends Command {
-    constructor() {
+    constructor(
+        @Inject(() => CurrencyModule) private readonly currencyModule: CurrencyModule
+    ) {
         super("pay", "<user> <amount>");
     }
 
     @CommandHandler("pay", "pay <user> <amount>")
-    @CheckPermission("currency.pay")
+    @CheckPermission(() => CurrencyModule.permissions.payUser)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @ChannelArg channel: ChannelEntity,
-        @Argument(new ChatterArg()) chatter: ChatterEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel,
+        @Argument(new ChatterArg()) chatter: Chatter,
         @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         const successful = await sender.charge(amount);
@@ -176,73 +181,86 @@ class PayCommand extends Command {
         } else {
             return chatter.deposit(amount)
                 .then(async () => response.message("currency.pay", {
-                    username: chatter.name,
-                    amount: await CurrencyModule.formatAmount(amount, channel)
+                    username: chatter.user.name,
+                    amount: this.currencyModule.formatAmount(amount, channel)
                 })).catch(e => response.genericErrorAndLog(e, logger));
         }
     }
 }
 
+@HandlesEvents()
+@Service()
 export default class CurrencyModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    @command bankCommand = new BankCommand(this.makeConfirmation);
-    @command balanceCommand = new BalanceCommand();
-    @command payCommand = new PayCommand();
-    @permission payUser = new Permission("currency.pay", Role.NORMAL);
-    @permission getBalance = new Permission("currency.balance", Role.NORMAL);
-    @permission bankGive = new Permission("currency.bank.give", Role.MODERATOR);
-    @permission bankGiveAll = new Permission("currency.bank.give-all", Role.MODERATOR);
-    @permission bankTake = new Permission("currency.bank.take", Role.MODERATOR);
-    @permission bankTakeAll = new Permission("currency.bank.take-all", Role.MODERATOR);
-    @permission bankBalance = new Permission("currency.bank.balance", Role.MODERATOR);
-    @permission bankReset = new Permission("currency.bank.reset", Role.MODERATOR);
-    @permission bankResetAll = new Permission("currency.bank.reset-all", Role.BROADCASTER);
-    @setting singularCurrencyName = new Setting("currency.name.singular", "point", SettingType.STRING);
-    @setting pluralCurrencyName = new Setting("currency.name.plural", "points", SettingType.STRING);
-    @setting onlineGain = new Setting("currency.gain.online", 10 as Float, SettingType.FLOAT);
-    @setting offlineGain = new Setting("currency.gain.offline", 2 as Float, SettingType.FLOAT);
+    static permissions = {
+        payUser: new Permission("currency.pay", Role.NORMAL),
+        getBalance: new Permission("currency.balance", Role.NORMAL),
+        bankGive: new Permission("currency.bank.give", Role.MODERATOR),
+        bankGiveAll: new Permission("currency.bank.give-all", Role.MODERATOR),
+        bankTake: new Permission("currency.bank.take", Role.MODERATOR),
+        bankTakeAll: new Permission("currency.bank.take-all", Role.MODERATOR),
+        bankBalance: new Permission("currency.bank.balance", Role.MODERATOR),
+        bankReset: new Permission("currency.bank.reset", Role.MODERATOR),
+        bankResetAll: new Permission("currency.bank.reset-all", Role.BROADCASTER)
+    }
+    static settings = {
+        singularCurrencyName: new Setting("currency.name.singular", "point", SettingType.STRING),
+        pluralCurrencyName: new Setting("currency.name.plural", "points", SettingType.STRING),
+        onlineGain: new Setting("currency.gain.online", 10 as Float, SettingType.FLOAT),
+        offlineGain: new Setting("currency.gain.offline", 2 as Float, SettingType.FLOAT)
+    }
     tickInterval: Timeout;
 
     constructor(
-        @inject(symbols.ConfirmationFactory) private makeConfirmation: ConfirmationFactory,
-        @inject(ChannelManager) private channelManager: ChannelManager
+        private readonly channelManager: ChannelManager,
+        @Inject(() => BankCommand) bankCommand: BankCommand,
+        @Inject(() => BalanceCommand) balanceCommand: BalanceCommand,
+        @Inject(() => PayCommand) payCommand: PayCommand
     ) {
         super(CurrencyModule);
+
+        this.registerCommand(bankCommand);
+        this.registerCommand(balanceCommand);
+        this.registerCommand(payCommand);
     }
 
-    static async getSingularName(channel: ChannelEntity): Promise<string> {
-        return channel.getSetting<SettingType.STRING>("currency.name.singular");
+    getSingularName(channel: Channel): string {
+        return channel.settings.get(CurrencyModule.settings.singularCurrencyName);
     }
 
-    static async getPluralName(channel: ChannelEntity): Promise<string> {
-        return channel.getSetting<SettingType.STRING>("currency.name.plural");
+    getPluralName(channel: Channel): string {
+        return channel.settings.get(CurrencyModule.settings.pluralCurrencyName);
     }
 
-    static async formatAmount(amount: number, channel: ChannelEntity): Promise<string> {
-        const singular = await this.getSingularName(channel);
-        const plural = await this.getPluralName(channel);
+    formatAmount(amount: number, channel: Channel): string {
+        const singular = this.getSingularName(channel);
+        const plural = this.getPluralName(channel);
 
         return util.format("%d %s", amount, pluralize(amount, singular, plural));
     }
 
     @EventHandler(ConnectedEvent)
-    handleConnected() {
+    handleConnected(): void {
         this.tickInterval = setInterval(this.tickHandler.bind(this), 5 * 60 * 1000);
     }
 
     @EventHandler(DisconnectedEvent)
-    handleDisconnected() {
+    handleDisconnected(): void {
         clearInterval(this.tickInterval);
     }
 
-    async tickHandler(): Promise<void[][]> {
-        return Promise.all(
-            this.channelManager.getAllActive()
+    async tickHandler(): Promise<void> {
+        await this.channelManager.getAllActive()
+            .then(channels => channels
                 .filter(channel => !this.isDisabled(channel))
                 .map(async channel => {
-                    const amount = await channel.getSetting(channel.online.get() ? this.onlineGain : this.offlineGain);
-                    return Promise.all(channel.getChatters().map(chatter => chatter.deposit(amount)));
+                    const amount = channel.settings.get(
+                        this.channelManager.isOnline(channel) ? 
+                            CurrencyModule.settings.onlineGain : 
+                            CurrencyModule.settings.offlineGain
+                    );
+                    return Promise.all(channel.chatters.map(chatter => chatter.deposit(amount)));
                 })
-        );
+            ).then(promises => Promise.all(promises));
     }
 }

@@ -1,14 +1,9 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {getLogger} from "../Utilities/Logger";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
-import {setting} from "../Systems/Settings/decorators";
-import {command} from "../Systems/Commands/decorators";
-import {permission} from "../Systems/Permissions/decorators";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {randomFloat} from "../Utilities/RandomUtils";
 import CurrencyModule from "./CurrencyModule";
 import {arrayRand} from "../Utilities/ArrayUtils";
@@ -16,39 +11,40 @@ import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {ChannelArg, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
+import { Service } from "typedi";
+import { Channel } from "../Database/Entities/Channel";
+import { Chatter } from "../Database/Entities/Chatter";
 
 export const MODULE_INFO = {
     name: "Gambling",
-    version: "1.1.0",
+    version: "1.2.0",
     description: "Gamble your points away or take a chance at the slot machines!"
 };
 
-const logger = getLogger(MODULE_INFO.name);
-
+@Service()
 class SlotsCommand extends Command {
-    constructor(private gamblingModule: GamblingModule) {
+    constructor(private readonly currencyModule: CurrencyModule) {
         super("slots", "");
     }
 
-    async getPrizes(channel: ChannelEntity): Promise<[Float, Float, Float, Float, Float]> {
+    getPrizes(channel: Channel): [Float, Float, Float, Float, Float] {
         return [
-            await channel.getSetting(this.gamblingModule.slotsPrize0),
-            await channel.getSetting(this.gamblingModule.slotsPrize1),
-            await channel.getSetting(this.gamblingModule.slotsPrize2),
-            await channel.getSetting(this.gamblingModule.slotsPrize3),
-            await channel.getSetting(this.gamblingModule.slotsPrize4),
-        ]
+            channel.settings.get(GamblingModule.settings.slotsPrize0),
+            channel.settings.get(GamblingModule.settings.slotsPrize1),
+            channel.settings.get(GamblingModule.settings.slotsPrize2),
+            channel.settings.get(GamblingModule.settings.slotsPrize3),
+            channel.settings.get(GamblingModule.settings.slotsPrize4),
+        ];
     }
 
-    async getEmotes(channel: ChannelEntity): Promise<[string, string, string, string, string]> {
+    getEmotes(channel: Channel): [string, string, string, string, string] {
         return [
-            await channel.getSetting(this.gamblingModule.slotsEmote0),
-            await channel.getSetting(this.gamblingModule.slotsEmote1),
-            await channel.getSetting(this.gamblingModule.slotsEmote2),
-            await channel.getSetting(this.gamblingModule.slotsEmote3),
-            await channel.getSetting(this.gamblingModule.slotsEmote4),
-        ]
+            channel.settings.get(GamblingModule.settings.slotsEmote0),
+            channel.settings.get(GamblingModule.settings.slotsEmote1),
+            channel.settings.get(GamblingModule.settings.slotsEmote2),
+            channel.settings.get(GamblingModule.settings.slotsEmote3),
+            channel.settings.get(GamblingModule.settings.slotsEmote4),
+        ];
     }
 
     getRandomIndex(): number {
@@ -61,17 +57,17 @@ class SlotsCommand extends Command {
     }
 
     @CommandHandler("slots", "slots")
-    @CheckPermission("gambling.slots")
+    @CheckPermission(() => GamblingModule.permissions.playSlots)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity, @Sender sender: ChatterEntity
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
     ): Promise<void> {
-        if (!await sender.charge(await channel.getSetting(this.gamblingModule.slotsPrice))) return;
+        if (!await sender.charge(channel.settings.get(GamblingModule.settings.slotsPrice))) return;
 
-        const emotes = await this.getEmotes(channel);
-        const prizes = await this.getPrizes(channel);
+        const emotes = this.getEmotes(channel);
+        const prizes = this.getPrizes(channel);
         const emote1 = this.getRandomIndex(), emote2 = this.getRandomIndex(), emote3 = this.getRandomIndex();
         let message = await response.translate("gambling:slots.emotes", {
-            username: sender.name, emote1: emotes[emote1], emote2: emotes[emote2], emote3: emotes[emote3]
+            username: sender.user.name, emote1: emotes[emote1], emote2: emotes[emote2], emote3: emotes[emote3]
         });
 
         let winnings = 0;
@@ -86,7 +82,7 @@ class SlotsCommand extends Command {
         if (winnings > 0) {
             await sender.deposit(winnings);
             message += " " + await response.translate("gambling:slots.win", {
-                amount: await CurrencyModule.formatAmount(winnings, channel)
+                amount: this.currencyModule.formatAmount(winnings, channel)
             });
             message += " " + arrayRand(await response.getTranslation<string[]>("gambling:win"));
         } else {
@@ -97,23 +93,33 @@ class SlotsCommand extends Command {
     }
 }
 
+@Service()
 export default class GamblingModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    @command slotsCommand = new SlotsCommand(this);
-    @permission playSlots = new Permission("gambling.slots", Role.NORMAL);
-    @setting slotsPrice = new Setting("slots.price", 75 as Float, SettingType.FLOAT);
-    @setting slotsPrize0 = new Setting("slots.prize.0", 75 as Float, SettingType.FLOAT);
-    @setting slotsPrize1 = new Setting("slots.prize.1", 150 as Float, SettingType.FLOAT);
-    @setting slotsPrize2 = new Setting("slots.prize.2", 300 as Float, SettingType.FLOAT);
-    @setting slotsPrize3 = new Setting("slots.prize.3", 450 as Float, SettingType.FLOAT);
-    @setting slotsPrize4 = new Setting("slots.prize.4", 1000 as Float, SettingType.FLOAT);
-    @setting slotsEmote0 = new Setting("slots.emote.0", "Kappa", SettingType.STRING);
-    @setting slotsEmote1 = new Setting("slots.emote.1", "KappaPride", SettingType.STRING);
-    @setting slotsEmote2 = new Setting("slots.emote.2", "BloodTrail", SettingType.STRING);
-    @setting slotsEmote3 = new Setting("slots.emote.3", "ResidentSleeper", SettingType.STRING);
-    @setting slotsEmote4 = new Setting("slots.emote.4", "4Head", SettingType.STRING);
+    static permissions = {
+        playSlots: new Permission("gambling.slots", Role.NORMAL)
+    }
+    static settings = {
+        slotsPrice: new Setting("slots.price", 75 as Float, SettingType.FLOAT),
+        slotsPrize0: new Setting("slots.prize.0", 75 as Float, SettingType.FLOAT),
+        slotsPrize1: new Setting("slots.prize.1", 150 as Float, SettingType.FLOAT),
+        slotsPrize2: new Setting("slots.prize.2", 300 as Float, SettingType.FLOAT),
+        slotsPrize3: new Setting("slots.prize.3", 450 as Float, SettingType.FLOAT),
+        slotsPrize4: new Setting("slots.prize.4", 1000 as Float, SettingType.FLOAT),
+        slotsEmote0: new Setting("slots.emote.0", "Kappa", SettingType.STRING),
+        slotsEmote1: new Setting("slots.emote.1", "KappaPride", SettingType.STRING),
+        slotsEmote2: new Setting("slots.emote.2", "BloodTrail", SettingType.STRING),
+        slotsEmote3: new Setting("slots.emote.3", "ResidentSleeper", SettingType.STRING),
+        slotsEmote4: new Setting("slots.emote.4", "4Head", SettingType.STRING)
+    }
 
-    constructor() {
+    constructor(
+        slotsCommand: SlotsCommand
+    ) {
         super(GamblingModule);
+
+        this.registerCommand(slotsCommand);
+        this.registerPermissions(GamblingModule.permissions);
+        this.registerSettings(GamblingModule.settings);
     }
 }

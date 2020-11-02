@@ -15,9 +15,9 @@ import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
 import {getLogger, logError} from "../../Utilities/Logger";
 import {NewChatterEvent} from "../../Chat/Events/NewChatterEvent";
 import GeneralConfig from "../../Systems/Config/ConfigModels/GeneralConfig";
-import { Channel } from "../../NewDatabase/Entities/Channel";
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
-import { ChatterRepository } from "../../NewDatabase/Repositories/ChatterRepository";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { ChatterRepository } from "../../Database/Repositories/ChatterRepository";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Service } from "typedi";
 

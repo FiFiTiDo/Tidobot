@@ -2,9 +2,9 @@ import Optional from "../Utilities/Patterns/Optional";
 import { Service } from "typedi";
 import Config from "../Systems/Config/Config";
 import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
-import { Channel } from "../NewDatabase/Entities/Channel";
+import { Channel } from "../Database/Entities/Channel";
 import { InjectRepository } from "typeorm-typedi-extensions";
-import { ChannelRepository } from "../NewDatabase/Repositories/ChannelRepository";
+import { ChannelRepository } from "../Database/Repositories/ChannelRepository";
 import { In } from "typeorm";
 import { ServiceManager } from "./ServiceManager";
 import { MapExt } from "../Utilities/Structures/Map";
@@ -27,8 +27,8 @@ export default class ChannelManager {
         private readonly repository: ChannelRepository,
         private readonly serviceManager: ServiceManager
     ) {
-        config.getConfig(GeneralConfig).then(config => this.channels = config.channels)
-        this.channelState = new MapExt()
+        config.getConfig(GeneralConfig).then(config => this.channels = config.channels);
+        this.channelState = new MapExt();
     }
 
     getAll(): Promise<Channel[]> {
@@ -36,7 +36,7 @@ export default class ChannelManager {
     }
 
     getAllActive(): Promise<Channel[]> {
-        return this.repository.find({ name: In(this.channels), service: this.serviceManager.service })
+        return this.repository.find({ name: In(this.channels), service: this.serviceManager.service });
     }
 
     add(channel: Channel): void {
@@ -56,5 +56,22 @@ export default class ChannelManager {
 
     save(channel: Channel): Promise<any> {
         return this.repository.save(channel);
+    }
+
+    getState(channel: Channel): ChannelState {
+        return this.channelState.getOrSet(channel.name, {
+            id: channel.id,
+            nativeId: channel.nativeId,
+            name: channel.name,
+            online: false
+        });
+    }
+
+    isOnline(channel: Channel): boolean {
+        return this.getState(channel).online;
+    }
+
+    setOnline(channel: Channel, online: boolean): void {
+        this.getState(channel).online = online;
     }
 }

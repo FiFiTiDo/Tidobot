@@ -1,9 +1,6 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import CountersEntity from "../Database/Entities/CountersEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
-import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
@@ -13,42 +10,48 @@ import {getLogger} from "../Utilities/Logger";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {permission} from "../Systems/Permissions/decorators";
-import {command} from "../Systems/Commands/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import {Argument, ChannelArg, ResponseArg} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
 import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
+import { Service } from "typedi";
+import { InjectRepository } from "typeorm-typedi-extensions";
+import { Repository } from "typeorm";
+import { Counter } from "../Database/Entities/Counter";
+import { CounterRepository } from "../Database/Repositories/CounterRepository";
+import { Channel } from "../Database/Entities/Channel";
 
 export const MODULE_INFO = {
     name: "Counter",
-    version: "1.1.0",
+    version: "1.2.0",
     description: "Add counters for anything that needs to be counted, add and subtract from them as you wish"
 };
 
 const logger = getLogger(MODULE_INFO.name);
-const CounterConverter = new EntityArg(CountersEntity, {msgKey: "counter:unknown", optionKey: "counter"});
+const CounterConverter = new EntityArg(CounterRepository, {msgKey: "counter:unknown", optionKey: "counter"});
 
+@Service()
 class CounterCommand extends Command {
-    constructor() {
+    constructor(
+        @InjectRepository() private readonly counterRepository: CounterRepository
+    ) {
         super("counter", "<inc|dec|add|sub|set|create|delete>");
     }
 
     @CommandHandler(/^counter (?!increment|inc|add|decrement|dec|subtract|sub|set|create|delete|del)/, "counter <counter name>")
-    @CheckPermission("counter.check")
+    @CheckPermission(() => CounterModule.permissions.checkCounter)
     async retrieveValueHandler(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter
     ): Promise<void> {
         return response.message("counter:value", {counter: counter.name, value: counter.value});
     }
 
     @CommandHandler(/^counter (increment|inc|add)/, "counter increment <counter name> <amount>", 1)
-    @CheckPermission("counter.change")
+    @CheckPermission(() => CounterModule.permissions.changeCounter)
     async increment(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerArg({min: 1}), "amount", false) amount: number = 1
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
+        @Argument(new IntegerArg({min: 1}), "amount", false) amount = 1
     ): Promise<void> {
         counter.value += amount;
         return counter.save()
@@ -57,10 +60,10 @@ class CounterCommand extends Command {
     }
 
     @CommandHandler(/^counter (decrement|dec|subtract|sub)/, "counter decrement <counter name> <amount>", 1)
-    @CheckPermission("counter.change")
+    @CheckPermission(() => CounterModule.permissions.changeCounter)
     async decrement(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
-        @Argument(new IntegerArg({min: 1}), "amount", false) amount: number = 1
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
+        @Argument(new IntegerArg({min: 1}), "amount", false) amount = 1
     ): Promise<void> {
         counter.value -= amount;
         return counter.save()
@@ -69,9 +72,9 @@ class CounterCommand extends Command {
     }
 
     @CommandHandler("counter set", "counter set <counter name> <amount>", 1)
-    @CheckPermission("counter.change")
+    @CheckPermission(() => CounterModule.permissions.changeCounter)
     async set(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity,
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
         @Argument(new IntegerArg({min: 1})) amount: number
     ): Promise<void> {
         counter.value = amount;
@@ -81,43 +84,47 @@ class CounterCommand extends Command {
     }
 
     @CommandHandler("counter create", "counter create <counter name>", 1)
-    @CheckPermission("counter.create")
+    @CheckPermission(() => CounterModule.permissions.createCounter)
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: ChannelEntity,
+        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg, "counter name") name: string
     ): Promise<void> {
-        return CountersEntity.make({channel}, {name, value: 0})
-            .then(entity => response.message(entity === null ? "counter:error.exists" : "counter:created", {counter: name}))
+        if (await this.counterRepository.count({ name, channel }) > 0) return response.message("counter:error.exists");
+
+        return this.counterRepository.create({ name, value: 0 }).save()
+            .then(() => response.message("counter:created", {counter: name}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
     @CommandHandler(/^counter (delete|del)/, "counter delete <counter name>", 1)
-    @CheckPermission("counter.delete")
+    @CheckPermission(() => CounterModule.permissions.deleteCounter)
     async delete(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: CountersEntity
+        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter
     ): Promise<void> {
-        return counter.delete()
+        return counter.remove()
             .then(() => response.message("counter.deleted", {counter: counter.name}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
-@HandlesEvents()
+@Service()
 export default class CounterModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    @command counterCommand = new CounterCommand();
-    @permission checkCounter = new Permission("counter.check", Role.NORMAL);
-    @permission changeCounter = new Permission("counter.change", Role.MODERATOR);
-    @permission createCounter = new Permission("counter.create", Role.MODERATOR);
-    @permission deleteCounter = new Permission("counter.delete", Role.MODERATOR);
-
-    constructor() {
-        super(CounterModule);
+    static permissions = {
+        checkCounter: new Permission("counter.check", Role.NORMAL),
+        changeCounter: new Permission("counter.change", Role.MODERATOR),
+        createCounter: new Permission("counter.create", Role.MODERATOR),
+        deleteCounter: new Permission("counter.delete", Role.MODERATOR)
     }
 
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs) {
-        await CountersEntity.createTable({channel});
+    constructor(
+        counterCommand: CounterCommand,
+        @InjectRepository() private readonly counterRepository: Repository<Counter>
+    ) {
+        super(CounterModule);
+
+        this.registerCommand(counterCommand);
+        this.registerPermissions(CounterModule.permissions);
     }
 
     @ExpressionContextResolver
@@ -125,7 +132,7 @@ export default class CounterModule extends AbstractModule {
         return {
             counters: {
                 get: validateFunction(async (name: string): Promise<object | string> => {
-                    const counter = await CountersEntity.findByName(name, msg.getChannel());
+                    const counter = await this.counterRepository.findOne({ name, channel: msg.channel });
                     if (counter === null) return "Could not find counter";
                     return {
                         value: counter.value,
@@ -147,6 +154,6 @@ export default class CounterModule extends AbstractModule {
                     };
                 }, ["string|required"], returnErrorAsync())
             }
-        }
+        };
     }
 }

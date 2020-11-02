@@ -6,73 +6,74 @@ import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import {command} from "../Systems/Commands/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
-import {permission} from "../Systems/Permissions/decorators";
-import {setting} from "../Systems/Settings/decorators";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {MessageArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
-import {returnError, returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
+import {returnError, validateFunction} from "../Utilities/ValidateFunction";
 import Application from "../Application/Application";
-import {inject} from "inversify";
 import {getLogger} from "../Utilities/Logger";
+import { Service } from "typedi";
+import { Chatter } from "../Database/Entities/Chatter";
 
 export const MODULE_INFO = {
     name: "General",
-    version: "1.1.0",
+    version: "1.2.0",
     description: "General bot commands that don't fit in other modules"
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
+@Service()
 class PingCommand extends Command {
     constructor() {
         super("ping", null);
     }
 
     @CommandHandler("ping", "ping")
-    @CheckPermission("general.ping")
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity): Promise<void> {
-        return response.message("pong", {username: sender.name});
+    @CheckPermission(() => GeneralModule.permissions.ping)
+    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
+        return response.message("pong", {username: sender.user.name});
     }
 }
 
+@Service()
 class RawCommand extends Command {
     constructor() {
         super("raw", "<text>");
     }
 
     @CommandHandler("raw", "raw <text>")
-    @CheckPermission("general.raw")
+    @CheckPermission(() => GeneralModule.permissions.raw)
     async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, {join: " "}) text: string): Promise<void> {
         return response.rawMessage(text);
     }
 }
 
+@Service()
 class EchoCommand extends Command {
     constructor() {
         super("echo", "<message>");
     }
 
     @CommandHandler("echo", "echo <message>")
-    @CheckPermission("general.echo")
+    @CheckPermission(() => GeneralModule.permissions.echo)
     async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, {join: " "}) message: string): Promise<void> {
         return response.rawMessage(">> " + message);
     }
 }
 
+@Service()
 class EvalCommand extends Command {
     constructor() {
         super("eval", "<expression>");
     }
 
     @CommandHandler("eval", "eval <expression>")
-    @CheckPermission("general.eval")
+    @CheckPermission(() => GeneralModule.permissions.eval)
     async handleCommand(
         event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
         @RestArguments(true, {join: " "}) rawExpr: string
@@ -81,15 +82,16 @@ class EvalCommand extends Command {
     }
 }
 
+@Service()
 class ShutdownCommand extends Command {
-    constructor(private readonly generalModule: GeneralModule) {
+    constructor(private readonly app: Application) {
         super("shutdown", null);
     }
 
     @CommandHandler("shutdown", "shutdown")
-    @CheckPermission("general.shutdown")
+    @CheckPermission(() => GeneralModule.permissions.shutdown)
     async handleCommand(event: CommandEvent, @ResponseArg response: Response): Promise<void> {
-        return this.generalModule.app.shutdown()
+        return this.app.shutdown()
             .then(async successful => successful ?
                 await response.broadcast(arrayRand(await response.getTranslation<string[]>("shutdown"))) :
                 await response.message("shutdown-cancelled")
@@ -97,35 +99,44 @@ class ShutdownCommand extends Command {
     }
 }
 
-export const TIMEZONE_SETTING = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE)
+export const TIMEZONE_SETTING = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE);
 
 export default class GeneralModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    @command pingCommand = new PingCommand();
-    @command rawCommand = new RawCommand();
-    @command echoCommand = new EchoCommand();
-    @command evalCommand = new EvalCommand();
-    @command shutdownCommand = new ShutdownCommand(this);
-    @permission ping = new Permission("general.ping", Role.MODERATOR);
-    @permission raw = new Permission("general.raw", Role.OWNER);
-    @permission echo = new Permission("general.echo", Role.MODERATOR);
-    @permission evalPerm = new Permission("general.eval", Role.MODERATOR);
-    @permission shutdown = new Permission("general.shutdown", Role.OWNER);
-    @setting timezone = TIMEZONE_SETTING;
+    static permissions = {
+        ping: new Permission("general.ping", Role.MODERATOR),
+        raw: new Permission("general.raw", Role.OWNER),
+        echo: new Permission("general.echo", Role.MODERATOR),
+        eval: new Permission("general.eval", Role.MODERATOR),
+        shutdown: new Permission("general.shutdown", Role.OWNER)
+    }
+    static settings = {
+        timezone: new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE)
+    }
 
-    constructor(@inject(Application) public readonly app: Application) {
+    constructor(
+        pingCommand: PingCommand, rawCommand: RawCommand, echoCommand: EchoCommand, evalCommand: EvalCommand, 
+        shutdownCommand: ShutdownCommand
+    ) {
         super(GeneralModule);
 
         this.coreModule = true;
+        this.registerCommand(pingCommand);
+        this.registerCommand(rawCommand);
+        this.registerCommand(echoCommand);
+        this.registerCommand(evalCommand);
+        this.registerCommand(shutdownCommand);
+        this.registerPermissions(GeneralModule.permissions);
+        this.registerSettings(GeneralModule.settings);
     }
 
     @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
-            datetime: validateFunction((format: string = "Y-m-d h:i:s"): string => {
-                const timezone = msg.channel.settings.get(this.timezone);
+            datetime: validateFunction((format = "Y-m-d h:i:s"): string => {
+                const timezone = msg.channel.settings.get(GeneralModule.settings.timezone);
                 return moment().tz(timezone.name).format(format);
             }, ["string"], returnError())
-        }
+        };
     }
 }

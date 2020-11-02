@@ -1,12 +1,10 @@
 import Event from "../Event/Event";
 import Message from "../../Chat/Message";
 import {Response} from "../../Chat/Response";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Command from "./Command";
-import CommandEntity from "../../Database/Entities/CommandEntity";
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
-import { Channel } from "../../NewDatabase/Entities/Channel";
+import { Command as CommandEntity } from "../../Database/Entities/Command";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { Channel } from "../../Database/Entities/Channel";
 
 export interface CommandEventArgs {
     event: CommandEvent;

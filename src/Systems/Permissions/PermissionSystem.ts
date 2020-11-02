@@ -3,11 +3,11 @@ import {getMaxRole, Role} from "./Role";
 import System from "../System";
 import {logError} from "../../Utilities/Logger";
 import { Service } from "typedi";
-import { PermissionRepository } from "../../NewDatabase/Repositories/PermissionRepository";
+import { PermissionRepository } from "../../Database/Repositories/PermissionRepository";
 import { InjectRepository } from "typeorm-typedi-extensions";
-import { Channel } from "../../NewDatabase/Entities/Channel";
-import { Permission as PermissionEntityNew } from "../../NewDatabase/Entities/Permission"  
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
+import { Channel } from "../../Database/Entities/Channel";
+import { Permission as PermissionEntityNew } from "../../Database/Entities/Permission";  
+import { Chatter } from "../../Database/Entities/Chatter";
 
 @Service()
 export default class PermissionSystem extends System {
@@ -63,7 +63,7 @@ export default class PermissionSystem extends System {
         try {
             if (chatter.checkPermission(permission) === PermissionStatus.GRANTED) return true;
 
-            return getMaxRole(roles) >= this.getPermissionRole(permission, chatter.channel);;
+            return getMaxRole(roles) >= this.getPermissionRole(permission, chatter.channel);
         } catch (e) {
             logError(this.logger, e, "Unable to check permission");
         }

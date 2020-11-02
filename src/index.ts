@@ -21,7 +21,7 @@ import * as path from "path";
 import { AdapterConstructor, AdapterManager } from "./Adapters/Adapter";
 import TwitchAdapter from "./Adapters/Twitch/TwitchAdapter";
 import { Container } from "typedi";
-import { setupDatabase } from "./NewDatabase";
+import { setupDatabase } from "./Database";
 
 require("source-map-support").install({ hookRequire: true });
 

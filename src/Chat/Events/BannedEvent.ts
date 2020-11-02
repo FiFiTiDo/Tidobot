@@ -1,19 +1,19 @@
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
 import Event from "../../Systems/Event/Event";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 
 export default class BannedEvent extends Event<BannedEvent> {
     public static readonly NAME = "chat_banned";
 
-    constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity, private readonly duration: number, private readonly reason: string | null) {
+    constructor(public readonly chatter: Chatter, public readonly channel: Channel, private readonly duration: number, private readonly reason: string | null) {
         super(BannedEvent);
     }
 
-    getChatter(): ChatterEntity {
+    getChatter(): Chatter {
         return this.chatter;
     }
 
-    getChannel(): ChannelEntity {
+    getChannel(): Channel {
         return this.channel;
     }
 

@@ -1,5 +1,5 @@
 import Command from "../Commands/Command";
-import CommandEntity from "../../Database/Entities/CommandEntity";
+import { Command as CommandEntity } from "../../Database/Entities/Command";
 import moment from "moment";
 
 export default class Cooldown {
@@ -39,7 +39,7 @@ export default class Cooldown {
         if (command instanceof Command && this.command instanceof Command) {
             return command.getLabel() === this.command.getLabel();
         } else if (command instanceof CommandEntity && this.command instanceof CommandEntity) {
-            return command.is(this.command)
+            return command.is(this.command);
         }
         return false;
     }

@@ -58,4 +58,25 @@ export class Chatter extends CustomBaseEntity {
     
         return granted > 0 ? PermissionStatus.GRANTED : PermissionStatus.NOT_DEFINED;
     }
+
+    async deposit(amount: number): Promise<void> {
+        this.balance += amount;
+        await this.save();   
+    }
+
+    async withdraw(amount: number): Promise<void> {
+        this.balance -= amount;
+        await this.save();   
+    }
+
+    async charge(amount: number): Promise<boolean> {
+        if (this.balance < amount) return false;
+        await this.withdraw(amount);
+        return true;
+    }
+
+    async resetBalance(): Promise<void> {
+        this.balance = 0;
+        await this.save();
+    }
 }

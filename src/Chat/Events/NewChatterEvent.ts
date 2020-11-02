@@ -1,5 +1,5 @@
 import Event, {EventArguments} from "../../Systems/Event/Event";
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
+import { Chatter } from "../../Database/Entities/Chatter";
 
 export class NewChatterEvent extends Event<NewChatterEvent> {
     public static readonly NAME = "chatter:new";
@@ -16,5 +16,5 @@ export class NewChatterEvent extends Event<NewChatterEvent> {
 }
 
 export interface NewChatterEventArgs extends EventArguments<NewChatterEvent> {
-    chatter: Chatter
+    chatter: Chatter;
 }

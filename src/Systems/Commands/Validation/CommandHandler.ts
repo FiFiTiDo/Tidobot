@@ -12,14 +12,14 @@ export function getCommandHandlers(target: any): string[] {
     return getMetadata(COMMAND_HANDLER_META_KEY, target.constructor);
 }
 
-export function CommandHandler(match: string | RegExp, usage: string, shiftArgs: number = 0, silent: boolean = false, cliArgs: boolean = false) {
-    return function (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<CommandHandlerFunction>) {
+export function CommandHandler(match: string | RegExp, usage: string, shiftArgs = 0, silent = false, cliArgs = false) {
+    return function (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<CommandHandlerFunction>): any {
         const originalMethod = descriptor.value;
-        descriptor.value = async function (event: CommandEvent) {
+        descriptor.value = async function (event: CommandEvent): Promise<any> {
             if (typeof match === "string") {
                 if (!event.getMessage().getRaw().substr(1).startsWith(match)) return false;
             } else {
-                if (!event.getMessage().getRaw().substr(1).match(match)) return false
+                if (!event.getMessage().getRaw().substr(1).match(match)) return false;
             }
 
             const newEvent = event.clone();
@@ -31,6 +31,6 @@ export function CommandHandler(match: string | RegExp, usage: string, shiftArgs:
             originalMethod.apply(this, args);
             return true;
         };
-        addMetadata(COMMAND_HANDLER_META_KEY, target.constructor, propertyKey)
-    }
+        addMetadata(COMMAND_HANDLER_META_KEY, target.constructor, propertyKey);
+    };
 }

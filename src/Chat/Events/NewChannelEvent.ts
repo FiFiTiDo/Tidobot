@@ -1,6 +1,5 @@
 import Event, {EventArguments} from "../../Systems/Event/Event";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import { Channel } from "../../NewDatabase/Entities/Channel";
+import { Channel } from "../../Database/Entities/Channel";
 
 export class NewChannelEvent extends Event<NewChannelEvent> {
     public static readonly NAME = "channel:new";
@@ -17,5 +16,5 @@ export class NewChannelEvent extends Event<NewChannelEvent> {
 }
 
 export interface NewChannelEventArgs extends EventArguments<NewChannelEvent> {
-    channel: Channel
+    channel: Channel;
 }

@@ -1,26 +1,27 @@
-import ChatterEntity, {filterByChannel} from "../Database/Entities/ChatterEntity";
-import EntityStateList from "../Database/EntityStateList";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
 import Optional from "../Utilities/Patterns/Optional";
+import { Service } from "typedi";
+import { Channel } from "../Database/Entities/Channel";
+import { EntityStateList } from "../Database/EntityStateLiist";
+import { Chatter } from "../Database/Entities/Chatter";
 
 class Poll {
     private _open: boolean;
-    private readonly votes: { [key: string]: ChatterEntity[] };
-    private userVotes: EntityStateList<ChatterEntity, string>;
+    private readonly votes: { [key: string]: Chatter[] };
+    private userVotes: EntityStateList<Chatter, string>;
 
-    constructor(private readonly options: string[], private channel: ChannelEntity) {
+    constructor(private readonly options: string[]) {
         this.votes = {};
-        this.userVotes = new EntityStateList<ChatterEntity, string>("");
+        this.userVotes = new EntityStateList<Chatter, string>("");
 
         for (const option of options)
             this.votes[option] = [];
     }
 
-    validateVote(option: string, chatter: ChatterEntity): boolean {
+    validateVote(option: string, chatter: Chatter): boolean {
         return this.options.indexOf(option) >= 0 && !this.userVotes.has(chatter);
     }
 
-    addVote(option: string, chatter: ChatterEntity): boolean {
+    addVote(option: string, chatter: Chatter): boolean {
         if (!this.validateVote(option, chatter)) return false;
         this.votes[option].push(chatter);
         this.userVotes.set(chatter, option);
@@ -45,10 +46,10 @@ class Poll {
     }
 
     getTotalVotes(): number {
-        return this.userVotes.size(filterByChannel(this.channel));
+        return this.userVotes.size();
     }
 
-    getResults(): { [key: string]: ChatterEntity[] } {
+    getResults(): { [key: string]: Chatter[] } {
         return this.votes;
     }
 
@@ -64,46 +65,47 @@ class Poll {
     }
 }
 
+@Service()
 export class PollService {
-    private readonly polls: EntityStateList<ChannelEntity, Poll>;
+    private readonly polls: EntityStateList<Channel, Poll>;
 
     constructor() {
-        this.polls = new EntityStateList<ChannelEntity, Poll>(null);
+        this.polls = new EntityStateList<Channel, Poll>(null);
     }
 
-    getPoll(channel: ChannelEntity): Optional<Poll> {
+    getPoll(channel: Channel): Optional<Poll> {
         const poll = this.polls.get(channel);
         return poll === null ? Optional.empty() : Optional.of(poll);
     }
 
-    getOpenPoll(channel: ChannelEntity): Optional<Poll> {
+    getOpenPoll(channel: Channel): Optional<Poll> {
         return this.getPoll(channel).filter(poll => poll.isOpen());
     }
 
-    createPoll(options: string[], channel: ChannelEntity): Optional<Poll> {
+    createPoll(options: string[], channel: Channel): Optional<Poll> {
         if (this.getOpenPoll(channel).present) return Optional.empty();
 
-        const poll = new Poll(options, channel);
+        const poll = new Poll(options);
         this.polls.set(channel, poll);
         return Optional.of(poll);
     }
 
-    addVote(option: Optional<string>, chatter: ChatterEntity, channel: ChannelEntity): Optional<boolean> {
+    addVote(option: Optional<string>, chatter: Chatter, channel: Channel): Optional<boolean> {
         return this.getOpenPoll(channel).map(poll => option.present ? poll.addVote(option.value, chatter) : null);
     }
 
-    closePoll(channel: ChannelEntity): Optional<string> {
+    closePoll(channel: Channel): Optional<string> {
         const poll = this.getOpenPoll(channel);
         if (!poll.present) return Optional.empty();
         poll.value.close();
         return Optional.of(poll.value.formatResults());
     }
 
-    getResults(channel: ChannelEntity): Optional<string> {
+    getResults(channel: Channel): Optional<string> {
         return this.getPoll(channel).map(poll => poll.formatResults());
     }
 
-    getOption(optionNum: number, channel: ChannelEntity): Optional<string> {
+    getOption(optionNum: number, channel: Channel): Optional<string> {
         return this.getPoll(channel).map(poll => poll.getOption(optionNum));
     }
 }

@@ -22,7 +22,7 @@ export class EntityStateList<EntityT extends CustomBaseEntity, ValueT> {
         this.entityMap[entity.id] = entity;
     }
 
-    public delete(entity: EntityT) {
+    public delete(entity: EntityT): void {
         delete this.valueMap[entity.id];
         delete this.entityMap[entity.id];
     }
@@ -43,7 +43,7 @@ export class EntityStateList<EntityT extends CustomBaseEntity, ValueT> {
         this.valueMap = {};
     }
 
-    public filter(f: (id: number, entity: EntityT, value: ValueT) => boolean) {
+    public filter(f: (id: number, entity: EntityT, value: ValueT) => boolean): void {
         const ids = Object.keys(this.entityMap) as unknown as number[];
         for (const id of ids) {
             if (!f(id, this.entityMap[id], this.valueMap[id])) {
@@ -53,11 +53,11 @@ export class EntityStateList<EntityT extends CustomBaseEntity, ValueT> {
         }
     }
 
-    public getAll(filter: (entry?: [EntityT, ValueT], index?: number) => boolean = () => true): [EntityT, ValueT][] {
-        return this.entries().filter(filter)
+    public getAll(filter: (entry?: [EntityT, ValueT], index?: number) => boolean = (): boolean => true): [EntityT, ValueT][] {
+        return this.entries().filter(filter);
     }
 
-    size(filter: (entry?: [EntityT, ValueT], index?: number) => boolean = () => true) {
+    size(filter: (entry?: [EntityT, ValueT], index?: number) => boolean = (): boolean => true): number {
         return this.getAll(filter).length;
     }
 }

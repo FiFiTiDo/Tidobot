@@ -14,7 +14,7 @@ export class StringArg {
 export class StringEnumArg implements ArgumentConverter<string> {
     type: string;
 
-    constructor(private accepted: string[]) {
+    constructor(private accepted: readonly string[]) {
     }
 
     convert(input: string, name: string, column: number, event: CommandEvent): string {
@@ -22,5 +22,4 @@ export class StringEnumArg implements ArgumentConverter<string> {
             throw new InvalidInputError(`${input} is not an acceptable value`);
         return input;
     }
-
 }

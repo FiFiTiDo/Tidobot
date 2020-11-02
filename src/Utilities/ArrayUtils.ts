@@ -1,12 +1,12 @@
-export function arrayRand<T>(array: T[]): T {
+export function arrayRand<T>(array: ReadonlyArray<T>): T {
     return array[Math.floor(Math.random() * array.length)];
 }
 
-export function arrayFind<T>(needle: T, haystack: T[]): number {
+export function arrayFind<T>(needle: T, haystack: ReadonlyArray<T>): number {
     return haystack.indexOf(needle);
 }
 
-export function arrayContains<T>(needle: T, haystack: T[]): boolean {
+export function arrayContains<T>(needle: T, haystack: ReadonlyArray<T>): boolean {
     return arrayFind(needle, haystack) >= 0;
 }
 

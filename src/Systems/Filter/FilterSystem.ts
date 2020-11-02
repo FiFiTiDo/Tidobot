@@ -17,9 +17,9 @@ import MessageCache from "./MessageCache";
 import {SettingType} from "../Settings/Setting";
 import RepetitionFilter from "./Filters/RepetitionFilter";
 import { Service } from "typedi";
-import { EntityStateList } from "../../NewDatabase/EntityStateLiist";
-import { Channel } from "../../NewDatabase/Entities/Channel";
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
+import { EntityStateList } from "../../Database/EntityStateLiist";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
 import PermissionSystem from "../Permissions/PermissionSystem";
 
 @HandlesEvents()

@@ -6,7 +6,7 @@ import { Service as ServiceEntity } from "../Entities/Service";
 @Service()
 @EntityRepository(Channel)
 export class ChannelRepository extends Repository<Channel> {
-    findByNativeId(nativeId: string, service: ServiceEntity) {
+    findByNativeId(nativeId: string, service: ServiceEntity): Promise<Channel> {
         return this.findOne({ nativeId, service });
     }
 }

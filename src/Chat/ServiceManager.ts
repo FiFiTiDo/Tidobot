@@ -1,8 +1,7 @@
-import Container, { Service } from "typedi";
+import { Service } from "typedi";
 import { Repository } from "typeorm";
 import { InjectRepository } from "typeorm-typedi-extensions";
-import Adapter, { AdapterManager } from "../Adapters/Adapter";
-import { Service as ServiceEntity } from "../NewDatabase/Entities/Service"
+import { Service as ServiceEntity } from "../Database/Entities/Service";
 import Config from "../Systems/Config/Config";
 import GeneralConfig from "../Systems/Config/ConfigModels/GeneralConfig";
 
@@ -16,7 +15,7 @@ export class ServiceManager {
         private readonly config: Config
     ) {}
 
-    async initialize() {
+    async initialize(): Promise<void> {
         const general = await this.config.getConfig(GeneralConfig);
         const serviceName = general.service;
         const service = await this.repository.findOne({ name: serviceName });

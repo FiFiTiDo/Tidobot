@@ -1,6 +1,6 @@
 import Cooldown from "./Cooldown";
 import Command from "../Commands/Command";
-import CommandEntity from "../../Database/Entities/CommandEntity";
+import { Command as CommandEntity } from "../../Database/Entities/Command";
 
 export default class CooldownList {
     private readonly cooldowns: Cooldown[];
@@ -9,14 +9,14 @@ export default class CooldownList {
         this.cooldowns = [];
     }
 
-    public find(command: Command | CommandEntity, subcommand?: string) {
+    public find(command: Command | CommandEntity, subcommand?: string): Cooldown {
         for (const cooldown of this.cooldowns)
             if (cooldown.is(command, subcommand))
                 return cooldown;
         return null;
     }
 
-    public replace(cooldown: Cooldown) {
+    public replace(cooldown: Cooldown): void {
         const i = this.cooldowns.findIndex(other => other.is(cooldown));
         if (i > 0)
 

@@ -1,6 +1,5 @@
 import AbstractModule from "../../Modules/AbstractModule";
 import {EventHandler, HandlesEvents} from "../Event/decorators";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Message from "../../Chat/Message";
 import MessageEvent from "../../Chat/Events/MessageEvent";
 import {EventArguments} from "../Event/Event";
@@ -12,7 +11,7 @@ import SettingsSystem from "../Settings/SettingsSystem";
 import Setting, {SettingType} from "../Settings/Setting";
 import System from "../System";
 import { Service } from "typedi";
-import { Channel } from "../../NewDatabase/Entities/Channel";
+import { Channel } from "../../Database/Entities/Channel";
 
 export interface CommandListener {
     (event: CommandEventArgs): void;
@@ -40,7 +39,7 @@ export default class CommandSystem extends System {
     }
 
     static getPrefix(channel: Channel): string {
-        return channel.settings.get(prefixSetting)
+        return channel.settings.get(prefixSetting);
     }
 
     static async showInvalidArgument(argument: string, given: any, usage: string, msg: Message): Promise<void> {

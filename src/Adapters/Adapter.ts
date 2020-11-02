@@ -1,12 +1,12 @@
 import TickEvent from "../Application/TickEvent";
 import EventSystem from "../Systems/Event/EventSystem";
 import TimerSystem, {TimeUnit} from "../Systems/Timer/TimerSystem";
-import { Channel } from "../NewDatabase/Entities/Channel";
-import { Chatter } from "../NewDatabase/Entities/Chatter";
+import { Channel } from "../Database/Entities/Channel";
+import { Chatter } from "../Database/Entities/Chatter";
 import Container, { Service } from "typedi";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Repository } from "typeorm";
-import { Service as ServiceEntity } from "../NewDatabase/Entities/Service";
+import { Service as ServiceEntity } from "../Database/Entities/Service";
 
 export type AdapterOptions = {
     identity: string;

@@ -3,12 +3,11 @@ import {arrayContains, arrayRand} from "../../Utilities/ArrayUtils";
 import {SettingType} from "../../Systems/Settings/Setting";
 import {randomChance, randomInt} from "../../Utilities/RandomUtils";
 import {ExperienceService} from "./ExperienceService";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import { Service } from "typedi";
-import { Channel } from "../../NewDatabase/Entities/Channel";
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
-import { Trainer } from "../../NewDatabase/Entities/Trainer";
-import { NATURES, Pokemon, PokemonStats, PokemonTeam } from "../../NewDatabase/Entities/Pokemon";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { Trainer } from "../../Database/Entities/Trainer";
+import { NATURES, Pokemon, PokemonTeam } from "../../Database/Entities/Pokemon";
 import { Repository } from "typeorm";
 import { InjectRepository } from "typeorm-typedi-extensions";
 
@@ -87,12 +86,6 @@ export class GameService {
         return Optional.of(pokemon);
     }
 
-    public async createMonFromStats(trainer: Trainer, stats: PokemonStats): Promise<Pokemon> {
-        const pokemon = new Pokemon();
-        pokemon.trainer = trainer;
-        pokemon.level = stats.level;
-    }
-
     public async getAllTrainerStats(channel: Channel): Promise<TrainerStats[]> {
         const trainers: TrainerStats[] = [];
         for await (const trainerData of channel.trainers) {
@@ -106,7 +99,7 @@ export class GameService {
     }
 
     public async attemptFight(self: TrainerData, target: TrainerData): Promise<GameResults> {
-        const channel = self.chatter.getChannel();
+        const channel = self.chatter.channel;
         const selfMon = arrayRand(self.team);
         const targetMon = arrayRand(target.team);
 
@@ -116,7 +109,7 @@ export class GameService {
         let targetExp = 0;
         let winner: WinState;
 
-        const draw_chance = await channel.getSetting<SettingType.INTEGER>("pokemon.chance.draw");
+        const draw_chance = channel.settings.get<SettingType.INTEGER>("pokemon.chance.draw");
         const MIN_WIN = 50 + draw_chance / 2;
         const MAX_LOSS = 50 - draw_chance / 2;
 

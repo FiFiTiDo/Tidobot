@@ -1,7 +1,7 @@
 import {TFunction} from "i18next";
 import { Token } from "typedi";
 import Adapter from "./Adapters/Adapter";
-import { Service } from "./NewDatabase/Entities/Service";
+import { Service } from "./Database/Entities/Service";
 
 export default {
     TranslateFunc: Symbol("Translation function"),

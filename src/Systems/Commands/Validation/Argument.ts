@@ -24,7 +24,7 @@ interface ArgumentMeta {
 }
 
 interface ConverterArgument<T> extends ArgumentMeta {
-    converter: ArgumentConverter<T>
+    converter: ArgumentConverter<T>;
     required: boolean;
     name: string;
 }
@@ -39,21 +39,21 @@ export interface ArgumentConverter<T> {
     convert(input: string, name: string, column: number, event: CommandEvent): AsyncResolvable<void, T>;
 }
 
-export function Argument<T>(converter: ArgumentConverter<T>, name: string = null, required: boolean = true): ParameterDecorator {
+export function Argument<T>(converter: ArgumentConverter<T>, name: string = null, required = true): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
         addPropertyMetadata<ConverterArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {
             parameterIndex,
             converter,
             name: name ?? propertyKey,
             required
-        })
-    }
+        });
+    };
 }
 
 export function makeEventReducer<T>(reducer: AsyncResolvable<CommandEvent, T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, reducer})
-    }
+        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, reducer});
+    };
 }
 
 export const MessageArg = makeEventReducer(event => event.getMessage());
@@ -61,21 +61,21 @@ export const ResponseArg = makeEventReducer(event => event.getMessage().getRespo
 export const Sender = makeEventReducer(event => event.getMessage().getChatter());
 export const ChannelArg = makeEventReducer(event => event.getMessage().getChannel());
 
-export function RestArguments(required: boolean = true, settings: RestSettings = {}): ParameterDecorator {
+export function RestArguments(required = true, settings: RestSettings = {}): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, {parameterIndex, required, settings})
-    }
+        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, {parameterIndex, required, settings});
+    };
 }
 
-function isConverter(o: Object): o is ConverterArgument<any> {
+function isConverter(o: Record<string, any>): o is ConverterArgument<any> {
     return "converter" in o;
 }
 
-function isReducer(o: Object): o is EventReducerArgument<any> {
+function isReducer(o: Record<string, any>): o is EventReducerArgument<any> {
     return "reducer" in o;
 }
 
-function handleRestArguments(target: any, propertyKey: string, args: (string | string[])[], restArgs: string[]) {
+function handleRestArguments(target: any, propertyKey: string, args: (string | string[])[], restArgs: string[]): any {
     const restArgsInfo = getPropertyMetadata<RestMeta[]>(REST_META_KEY, target, propertyKey) || [];
     for (const arg of restArgsInfo) {
         let value: string | string[] = restArgs.slice();
@@ -94,8 +94,8 @@ function handleRestArguments(target: any, propertyKey: string, args: (string | s
     }
 }
 
-export async function resolveArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean) {
-    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Object[];
+export async function resolveArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean): any {
+    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
     const message = event.getMessage();
@@ -136,7 +136,7 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
 
 
 export async function resolveCliArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean) {
-    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Object[];
+    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
     const message = event.getMessage();

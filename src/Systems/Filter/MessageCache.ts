@@ -4,8 +4,8 @@ import Setting, {Integer, SettingType} from "../Settings/Setting";
 import SettingsSystem from "../Settings/SettingsSystem";
 import SpamFilter from "./Filters/SpamFilter";
 import { Service } from "typedi";
-import { Channel } from "../../NewDatabase/Entities/Channel";
-import { EntityStateList } from "../../NewDatabase/EntityStateLiist";
+import { Channel } from "../../Database/Entities/Channel";
+import { EntityStateList } from "../../Database/EntityStateLiist";
 
 @Service()
 export default class MessageCache {
@@ -59,6 +59,6 @@ export default class MessageCache {
     }
 
     purge(): void {
-        this.messages.clear()
+        this.messages.clear();
     }
 }

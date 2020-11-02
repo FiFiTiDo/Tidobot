@@ -4,15 +4,13 @@ import TwitchAdapter from "./TwitchAdapter";
 import deepmerge from "deepmerge";
 import {helix} from "./TwitchApi";
 import moment from "moment-timezone";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import {Role} from "../../Systems/Permissions/Role";
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
 import IStream = helix.Stream;
-import { Chatter } from "../../NewDatabase/Entities/Chatter";
-import { Channel } from "../../NewDatabase/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { Channel } from "../../Database/Entities/Channel";
 import { logError } from "../../Utilities/Logger";
-import { TIMEZONE_SETTING } from "../../Modules/GeneralModule";
+import GeneralModule from "../../Modules/GeneralModule";
 
 export class TwitchMessage extends Message {
     private api: helix.Api;
@@ -28,7 +26,7 @@ export class TwitchMessage extends Message {
         if (userstate.emotes) {
             let stripped = message;
             for (const emote of Object.keys(userstate.emotes))
-                stripped.replace(emote, '');
+                stripped = stripped.replace(emote, "");
             this.stripped = stripped;
         }
     }
@@ -100,7 +98,7 @@ export class TwitchMessage extends Message {
                         to_id: this.channel.nativeId
                     }).then(async resp => {
                         if (resp.total < 1) return "Sender is not following the channel.";
-                        const timezone = this.channel.settings.get(TIMEZONE_SETTING);
+                        const timezone = this.channel.settings.get(GeneralModule.settings.timezone);
                         return moment.parseZone(resp.data[0].followed_at, timezone.name).format(format ? format : "Y-m-d h:i:s");
                     }).catch(e => {
                         logError(TwitchAdapter.LOGGER, e, "Unable to determine follow age");
@@ -121,8 +119,4 @@ export class TwitchMessage extends Message {
 
         return deepmerge(await super.getExpressionContext(), ctx);
     }
-}
-
-export interface TwitchMessageFactory {
-    (message: string, chatter: ChatterEntity, channel: ChannelEntity, userstate: tmi.ChatUserstate): TwitchMessage;
 }

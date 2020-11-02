@@ -1,7 +1,5 @@
 import Filter from "./Filter";
-import FiltersEntity from "../../../Database/Entities/FiltersEntity";
 import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
-import StrikeManager from "../StrikeManager";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {Integer, SettingType} from "../../Settings/Setting";
 import PermissionSystem from "../../Permissions/PermissionSystem";

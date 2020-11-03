@@ -14,23 +14,23 @@ import {Role} from "../Permissions/Role";
 import moment from "moment";
 import System from "../System";
 import MessageCache from "./MessageCache";
-import {SettingType} from "../Settings/Setting";
 import RepetitionFilter from "./Filters/RepetitionFilter";
 import { Service } from "typedi";
 import { EntityStateList } from "../../Database/EntityStateLiist";
 import { Channel } from "../../Database/Entities/Channel";
 import { Chatter } from "../../Database/Entities/Chatter";
 import PermissionSystem from "../Permissions/PermissionSystem";
+import FilterModule from "../../Modules/FilterModule";
+import Message from "../../Chat/Message";
 
 @HandlesEvents()
 @Service()
 export default class FilterSystem extends System {
-    private readonly strikeManager: StrikeManager = new StrikeManager();
     private readonly permits: EntityStateList<Chatter, moment.Moment> = new EntityStateList<Chatter, moment.Moment>(null);
     private readonly filters: Filter[];
-    private readonly messageCache: MessageCache = new MessageCache();
 
     constructor(
+        private readonly messageCache: MessageCache, private readonly strikeManager: StrikeManager,
         badWordFilter: BadWordFilter, capsFilter: CapsFilter, fakePurgeFilter: FakePurgeFilter,
         longMessageFilter: LongMessageFilter, spamFilter: SpamFilter, symbolFilter: SymbolFilter, urlFilter: UrlFilter,
         repetitionFilter: RepetitionFilter, perm: PermissionSystem
@@ -53,29 +53,27 @@ export default class FilterSystem extends System {
         if (await message.checkPermission("filter.ignore.all")) return;
         if (this.permits.has(sender)) {
             const timestamp = this.permits.get(sender);
-            const expires = timestamp.clone().add(channel.settings.get<SettingType.STRING>("filter.permit-length"), "seconds");
+            const expires = timestamp.clone().add(channel.settings.get(FilterModule.settings.permitLength), "seconds");
             if (moment().isBefore(expires))
                 return;
             else
                 this.permits.delete(sender);
         }
 
-
-
         for (const filter of this.filters)
             if (await filter.handleMessage(eventArgs))
                 break;
     }
 
-    pardonUser(chatter: Chatter) {
+    pardonUser(chatter: Chatter): void {
         this.strikeManager.pardonUser(chatter);
     }
 
-    permitUser(chatter: Chatter) {
+    permitUser(chatter: Chatter): void {
         this.permits.set(chatter, moment());
     }
 
-    getCachedMessages(channel: Channel) {
+    getCachedMessages(channel: Channel): Message[] {
         return this.messageCache.getAll(channel);
     }
 }

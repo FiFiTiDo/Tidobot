@@ -5,7 +5,6 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
 import {randomFloat} from "../Utilities/RandomUtils";
-import CurrencyModule from "./CurrencyModule";
 import {arrayRand} from "../Utilities/ArrayUtils";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
@@ -14,6 +13,7 @@ import {Response} from "../Chat/Response";
 import { Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
+import { CurrencySystem } from "../Systems/Currency/CurrencySystem";
 
 export const MODULE_INFO = {
     name: "Gambling",
@@ -23,7 +23,7 @@ export const MODULE_INFO = {
 
 @Service()
 class SlotsCommand extends Command {
-    constructor(private readonly currencyModule: CurrencyModule) {
+    constructor(private readonly currencySystem: CurrencySystem) {
         super("slots", "");
     }
 
@@ -82,7 +82,7 @@ class SlotsCommand extends Command {
         if (winnings > 0) {
             await sender.deposit(winnings);
             message += " " + await response.translate("gambling:slots.win", {
-                amount: this.currencyModule.formatAmount(winnings, channel)
+                amount: this.currencySystem.formatAmount(winnings, channel)
             });
             message += " " + arrayRand(await response.getTranslation<string[]>("gambling:win"));
         } else {

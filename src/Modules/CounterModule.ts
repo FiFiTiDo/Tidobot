@@ -16,7 +16,6 @@ import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {returnErrorAsync, validateFunction} from "../Utilities/ValidateFunction";
 import { Service } from "typedi";
 import { InjectRepository } from "typeorm-typedi-extensions";
-import { Repository } from "typeorm";
 import { Counter } from "../Database/Entities/Counter";
 import { CounterRepository } from "../Database/Repositories/CounterRepository";
 import { Channel } from "../Database/Entities/Channel";
@@ -118,7 +117,7 @@ export default class CounterModule extends AbstractModule {
 
     constructor(
         counterCommand: CounterCommand,
-        @InjectRepository() private readonly counterRepository: Repository<Counter>
+        @InjectRepository() private readonly counterRepository: CounterRepository
     ) {
         super(CounterModule);
 

@@ -10,7 +10,7 @@ import { User } from "../Entities/User";
 @EntityRepository(Chatter)
 export class ChatterRepository extends Repository<Chatter> {
     constructor(
-        @InjectRepository()
+        @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly serviceManager: ServiceManager
     ) {

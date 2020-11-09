@@ -97,7 +97,7 @@ export default class MessageParser {
         return parts;
     }
 
-    private static isBlank(char: string) {
+    private static isBlank(char: string): boolean {
         return char.trim().length < 1;
     }
 }

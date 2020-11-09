@@ -1,6 +1,6 @@
 import Dictionary from "../../Utilities/Structures/Dictionary";
 import {forceCast} from "../../Utilities/TypeUtils";
-import GenericObject from "../../Utilities/Interfaces/GenericObject";
+import { GenericObject } from "../../Utilities/Interfaces/GenericObject";
 
 export type EventMetadata = Dictionary;
 
@@ -40,11 +40,11 @@ export default abstract class Event<T extends Event<T>> {
         return this.metadata.getOrDefault(key, defaultValue) as T;
     }
 
-    public cancel() {
+    public cancel(): void {
         this.cancelled = false;
     }
 
-    public isCancelled() {
+    public isCancelled(): boolean {
         return this.cancelled;
     }
 }

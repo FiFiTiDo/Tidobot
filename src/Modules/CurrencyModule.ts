@@ -1,6 +1,4 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {pluralize} from "../Utilities/functions";
-import * as util from "util";
 import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
@@ -25,6 +23,8 @@ import { Inject, Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import { ChatterManager } from "../Chat/ChatterManager";
+import { TimeUnit } from "../Systems/Timer/TimerSystem";
+import { CurrencySystem } from "../Systems/Currency/CurrencySystem";
 
 export const MODULE_INFO = {
     name: "Currency",
@@ -37,7 +37,7 @@ const logger = getLogger(MODULE_INFO.name);
 @Service()
 class BankCommand extends Command {
     constructor(
-        @Inject(() => CurrencyModule) private readonly currencyModule: CurrencyModule,
+        private readonly currencySystem: CurrencySystem,
         private readonly chatterManager: ChatterManager,
         private readonly confirmationModule: ConfirmationModule
     ) {
@@ -52,7 +52,7 @@ class BankCommand extends Command {
     ): Promise<void> {
         return chatter.deposit(amount)
             .then(async () => response.message("currency:give", {
-                amount: this.currencyModule.formatAmount(amount, channel),
+                amount: this.currencySystem.formatAmount(amount, channel),
                 username: chatter.user.name
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
@@ -68,7 +68,7 @@ class BankCommand extends Command {
         if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
         return Promise.all(chatters.map(chatter => chatter.deposit(amount)))
             .then(async () => response.message("currency:give-all", {
-                amount: this.currencyModule.formatAmount(amount, channel),
+                amount: this.currencySystem.formatAmount(amount, channel),
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -81,7 +81,7 @@ class BankCommand extends Command {
     ): Promise<void> {
         return chatter.withdraw(amount)
             .then(async () => response.message("currency:take", {
-                amount: this.currencyModule.formatAmount(amount, channel),
+                amount: this.currencySystem.formatAmount(amount, channel),
                 username: chatter.user.name
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
@@ -97,7 +97,7 @@ class BankCommand extends Command {
         if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
         return Promise.all(chatters.map(chatter => chatter.withdraw(amount)))
             .then(async () => response.message("currency:take-all", {
-                amount: this.currencyModule.formatAmount(amount, channel),
+                amount: this.currencySystem.formatAmount(amount, channel),
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -109,7 +109,7 @@ class BankCommand extends Command {
     ): Promise<void> {
         return response.message("currency:balance-other", {
             username: chatter.user.name,
-            balance: this.currencyModule.formatAmount(chatter.balance, channel)
+            balance: this.currencySystem.formatAmount(chatter.balance, channel)
         });
     }
 
@@ -140,9 +140,7 @@ class BankCommand extends Command {
 
 @Service()
 class BalanceCommand extends Command {
-    constructor(
-        @Inject(() => CurrencyModule) private readonly currencyModule: CurrencyModule
-    ) {
+    constructor(private readonly currencySystem: CurrencySystem) {
         super("balance", null, ["bal"]);
     }
 
@@ -153,16 +151,14 @@ class BalanceCommand extends Command {
     ): Promise<void> {
         return response.message("currency:balance", {
             username: sender.user.name,
-            balance: this.currencyModule.formatAmount(sender.balance, channel)
+            balance: this.currencySystem.formatAmount(sender.balance, channel)
         });
     }
 }
 
 @Service()
 class PayCommand extends Command {
-    constructor(
-        @Inject(() => CurrencyModule) private readonly currencyModule: CurrencyModule
-    ) {
+    constructor(private readonly currencySystem: CurrencySystem) {
         super("pay", "<user> <amount>");
     }
 
@@ -182,7 +178,7 @@ class PayCommand extends Command {
             return chatter.deposit(amount)
                 .then(async () => response.message("currency.pay", {
                     username: chatter.user.name,
-                    amount: this.currencyModule.formatAmount(amount, channel)
+                    amount: this.currencySystem.formatAmount(amount, channel)
                 })).catch(e => response.genericErrorAndLog(e, logger));
         }
     }
@@ -224,24 +220,9 @@ export default class CurrencyModule extends AbstractModule {
         this.registerCommand(payCommand);
     }
 
-    getSingularName(channel: Channel): string {
-        return channel.settings.get(CurrencyModule.settings.singularCurrencyName);
-    }
-
-    getPluralName(channel: Channel): string {
-        return channel.settings.get(CurrencyModule.settings.pluralCurrencyName);
-    }
-
-    formatAmount(amount: number, channel: Channel): string {
-        const singular = this.getSingularName(channel);
-        const plural = this.getPluralName(channel);
-
-        return util.format("%d %s", amount, pluralize(amount, singular, plural));
-    }
-
     @EventHandler(ConnectedEvent)
     handleConnected(): void {
-        this.tickInterval = setInterval(this.tickHandler.bind(this), 5 * 60 * 1000);
+        this.tickInterval = setInterval(this.tickHandler.bind(this), TimeUnit.Minutes(5));
     }
 
     @EventHandler(DisconnectedEvent)

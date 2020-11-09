@@ -1,0 +1,16 @@
+{
+    "type": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "username": "tidobot",
+    "password": "test",
+    "database": "tidobot",
+    "syncronize": "true",
+    "logging": "false",
+    "entities": [
+        "src/Database/Entities/*.ts"
+    ],
+    "cli": {
+        "entitiesDir": "src/Database/Entities"
+    }
+}

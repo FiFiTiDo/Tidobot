@@ -1,5 +1,5 @@
 import {parseBool} from "../../Utilities/functions";
-import moment from "moment";
+import { MomentZone, tz } from "moment-timezone";
 
 export type Integer = number & { __int__: void };
 export type Float = number & { __float__: void };
@@ -13,10 +13,10 @@ export type SettingValueType<T extends SettingType> =
         T extends SettingType.INTEGER ? Integer :
             T extends SettingType.FLOAT ? Float :
                 T extends SettingType.BOOLEAN ? boolean :
-                    T extends SettingType.TIMEZONE ? moment.MomentZone :
+                    T extends SettingType.TIMEZONE ? MomentZone :
                         never;
 
-export type ConvertedSetting = string | Integer | Float | boolean | moment.MomentZone;
+export type ConvertedSetting = string | Integer | Float | boolean | MomentZone;
 
 export default class Setting<T extends SettingType> {
     constructor(readonly key: string, readonly defaultValue: SettingValueType<T>, readonly type: T) {
@@ -49,7 +49,7 @@ export default class Setting<T extends SettingType> {
             case SettingType.BOOLEAN:
                 return parseBool(value) as SettingValueType<T>;
             case SettingType.TIMEZONE:
-                return moment.tz.zone(value) as SettingValueType<T>;
+                return tz.zone(value) as SettingValueType<T>;
             case SettingType.STRING:
                 return value as SettingValueType<T>;
         }

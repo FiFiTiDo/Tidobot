@@ -8,10 +8,10 @@ export default abstract class System {
         this.logger = getLogger(name);
     }
 
-    public async initialize() {
+    public async initialize(): Promise<void> {
         this.logger.info("System initializing");
         try {
-            await this.onInitialize()
+            await this.onInitialize();
             this.logger.info("System initalization complete");
             this.onInitialized();
         } catch (e) {
@@ -20,8 +20,10 @@ export default abstract class System {
         }
     }
 
-    public async onInitialize() {}
-    public onInitialized() {}
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    public async onInitialize(): Promise<void> {}
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    public onInitialized(): void {}
 
     public getLogger(): Logger {
         return this.logger;

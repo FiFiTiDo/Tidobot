@@ -1,6 +1,5 @@
 import Optional from "../../Utilities/Patterns/Optional";
 import {arrayContains, arrayRand} from "../../Utilities/ArrayUtils";
-import {SettingType} from "../../Systems/Settings/Setting";
 import {randomChance, randomInt} from "../../Utilities/RandomUtils";
 import {ExperienceService} from "./ExperienceService";
 import { Service } from "typedi";
@@ -8,8 +7,7 @@ import { Channel } from "../../Database/Entities/Channel";
 import { Chatter } from "../../Database/Entities/Chatter";
 import { Trainer } from "../../Database/Entities/Trainer";
 import { NATURES, Pokemon, PokemonTeam } from "../../Database/Entities/Pokemon";
-import { Repository } from "typeorm";
-import { InjectRepository } from "typeorm-typedi-extensions";
+import PokemonModule from "../../Modules/PokemonModule";
 
 export interface TrainerData {
     chatter: Chatter;
@@ -36,9 +34,7 @@ export interface TrainerStats {
 @Service()
 export class GameService {
     constructor(
-        private experienceService: ExperienceService,
-        @InjectRepository()
-        private pokemonRepository: Repository<Pokemon>
+        private experienceService: ExperienceService
     ) {}
 
     public getTrainerData(chatter: Chatter): Optional<TrainerData> {
@@ -72,8 +68,8 @@ export class GameService {
         if (name !== Pokemon.GENERIC_NAME && team.some(pkmn => pkmn.name === name)) return Optional.empty();
 
         const channel = trainer.chatter.channel;
-        const minLevel = channel.settings.get<SettingType.INTEGER>("pokemon.level.min");
-        const maxLevel = channel.settings.get<SettingType.INTEGER>("pokemon.level.max");
+        const minLevel = channel.settings.get(PokemonModule.settings.minLevel);
+        const maxLevel = channel.settings.get(PokemonModule.settings.maxLevel);
         const level = randomInt(minLevel, maxLevel);
 
         const pokemon = new Pokemon();
@@ -109,7 +105,7 @@ export class GameService {
         let targetExp = 0;
         let winner: WinState;
 
-        const draw_chance = channel.settings.get<SettingType.INTEGER>("pokemon.chance.draw");
+        const draw_chance = channel.settings.get(PokemonModule.settings.drawChance);
         const MIN_WIN = 50 + draw_chance / 2;
         const MAX_LOSS = 50 - draw_chance / 2;
 
@@ -142,7 +138,7 @@ export class GameService {
     }
 
     public async attemptCatch(channel: Channel, pokemon: Pokemon): Promise<boolean> {
-        const baseChance = channel.settings.get<SettingType.INTEGER>("pokemon.chance.base-catch");
+        const baseChance = channel.settings.get(PokemonModule.settings.baseCatchChance);
         return randomChance(baseChance - (pokemon.level / 1000.0));
     }
 }

@@ -1,7 +1,6 @@
 import ExpressionParser from "./Parser";
 import ExpressionInterpreter from "./Interpreter";
 import Message from "../../Chat/Message";
-import rp from "request-promise-native";
 import cheerio from "cheerio";
 import moment from "moment";
 import {formatDuration} from "../../Utilities/TimeUtils";
@@ -14,6 +13,7 @@ import chrono from "chrono-node";
 import {IllegalStateError, OutOfBoundsError, UnknownKeyError} from "./InterpreterErrors";
 import System from "../System";
 import { Service } from "typedi";
+import Axios from "axios";
 
 export interface ExpressionContext {
     [key: string]: any;
@@ -57,7 +57,7 @@ export default class ExpressionSystem extends System {
                 });
 
                 try {
-                    return await rp(url);
+                    return await Axios({ url, responseType: "text" }).then(resp => resp.data);
                 } catch (e) {
                     this.logger.error("Web request error");
                     this.logger.error("Caused by: " + e.message);
@@ -65,35 +65,32 @@ export default class ExpressionSystem extends System {
                     return await msg.getResponse().translate("expression:error.network");
                 }
             },
-            getJson: async (url: unknown): Promise<string> => {
+            getJson: async (url: unknown): Promise<object> => {
                 if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
                     expected: await msg.getResponse().translate("expression:types.url")
                 });
 
                 try {
-                    return await rp({
-                        uri: url,
-                        json: true
-                    });
+                    return await Axios({url, responseType: "json"}).then(resp => resp.data);
                 } catch (e) {
                     this.logger.error("Web request error");
                     this.logger.error("Caused by: " + e.message);
                     this.logger.error(e.stack);
-                    return await msg.getResponse().translate("expression:error.network");
+                    return await msg.response.translate("expression:error.network");
                 }
             },
             getHtml: async (url: unknown, selector: unknown): Promise<string> => {
-                if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                if (typeof url !== "string") return await msg.response.translate("expression:error.argument", {
                     expected: await msg.getResponse().translate("expression:types.url")
                 });
 
-                if (typeof selector !== "string") return await msg.getResponse().translate("expression:error.argument", {
+                if (typeof selector !== "string") return await msg.response.translate("expression:error.argument", {
                     expected: await msg.getResponse().translate("expression:types.css-selector")
                 });
 
                 try {
-                    return await rp(url).then((html: string) => {
-                        const $ = cheerio.load(html);
+                    return await Axios({url, responseType: "document"}).then(resp => {
+                        const $ = cheerio.load(resp.data);
                         return $(selector).text();
                     });
                 } catch (e) {
@@ -139,7 +136,7 @@ export default class ExpressionSystem extends System {
                 exit: async (): Promise<string> => await msg.getResponse().translate("expression:error.shutdown")
             },
             bot: {
-                getUptime: () => prettyMilliseconds(Application.getUptime().asMilliseconds()),
+                getUptime: (): string => prettyMilliseconds(Application.getUptime().asMilliseconds()),
             },
             urlencode: (input: any) => encodeURIComponent(input)
         });

@@ -94,7 +94,7 @@ function handleRestArguments(target: any, propertyKey: string, args: (string | s
     }
 }
 
-export async function resolveArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean): any {
+export async function resolveArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
     const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
@@ -117,7 +117,7 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
             } catch (err) {
                 if (err instanceof InvalidInputError) {
                     if (!silent)
-                        await message.getResponse().rawMessage(await err.getMessage(message, usage));
+                        await message.getResponse().rawMessage(await err.getMessage(message));
                     return null;
                 } else {
                     if (!silent)
@@ -135,7 +135,7 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
 }
 
 
-export async function resolveCliArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean) {
+export async function resolveCliArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
     const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
@@ -155,7 +155,7 @@ export async function resolveCliArguments(event: CommandEvent, target: any, prop
             } catch (err) {
                 if (err instanceof InvalidInputError) {
                     if (!silent)
-                        await message.getResponse().rawMessage(await err.getMessage(message, usage));
+                        await message.getResponse().rawMessage(await err.getMessage(message));
                     return null;
                 } else {
                     if (!silent)

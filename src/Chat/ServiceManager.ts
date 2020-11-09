@@ -10,7 +10,7 @@ export class ServiceManager {
     private _service: ServiceEntity;
 
     constructor(
-        @InjectRepository()
+        @InjectRepository(ServiceEntity)
         private readonly repository: Repository<ServiceEntity>,
         private readonly config: Config
     ) {}

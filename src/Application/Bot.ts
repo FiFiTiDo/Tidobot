@@ -6,7 +6,6 @@ import JoinEvent from "../Chat/Events/JoinEvent";
 import LeaveEvent from "../Chat/Events/LeaveEvent";
 import ConnectedEvent from "../Chat/Events/ConnectedEvent";
 import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
-import ChannelManager from "../Chat/ChannelManager";
 import EventSystem from "../Systems/Event/EventSystem";
 import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
 import {NewChatterEvent, NewChatterEventArgs} from "../Chat/Events/NewChatterEvent";

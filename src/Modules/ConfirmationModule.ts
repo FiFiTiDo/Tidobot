@@ -9,7 +9,7 @@ import {generateRandomCode} from "../Utilities/RandomUtils";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
-import { Inject, Service } from "typedi";
+import Container, { Inject, Service, Token } from "typedi";
 import { EntityStateList } from "../Database/EntityStateLiist";
 import { Chatter } from "../Database/Entities/Chatter";
 
@@ -18,6 +18,10 @@ export const MODULE_INFO = {
     version: "1.2.0",
     description: "An added confirmation layer to actions that cannot be undone and are of great magnitude"
 };
+
+type Confirmations = EntityStateList<Chatter, Confirmation>;
+const ConfirmationsToken = new Token<Confirmations>("Confirmations");
+Container.set(ConfirmationsToken, new EntityStateList<Chatter, Confirmation>(null));
 
 export class ConfirmedEvent extends Event<ConfirmedEvent> {
     public static readonly NAME = "confirmed";
@@ -71,20 +75,20 @@ export interface ConfirmationFactory {
 @Service()
 class ConfirmCommand extends Command {
     constructor(
-        @Inject(() => ConfirmationModule) private confirmationModule: ConfirmationModule
+        @Inject(ConfirmationsToken) private confirmations: Confirmations
     ) {
         super("confirm", "<code>");
     }
 
     @CommandHandler("confirm", "confirm <code>")
     handleConfirm(event: CommandEvent, @Sender sender: Chatter, @ResponseArg response: Response): Promise<any> {
-        if (!this.confirmationModule.confirmations.has(sender)) return response.message("confirmation:error.expired");
+        if (!this.confirmations.has(sender)) return response.message("confirmation:error.expired");
         if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");
 
-        const confirmation = this.confirmationModule.confirmations.get(sender);
+        const confirmation = this.confirmations.get(sender);
         if (confirmation.check(event.getArgument(0))) {
             confirmation.confirm();
-            this.confirmationModule.confirmations.delete(sender);
+            this.confirmations.delete(sender);
         }
     }
 }
@@ -92,15 +96,13 @@ class ConfirmCommand extends Command {
 @Service()
 export default class ConfirmationModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    readonly confirmations: EntityStateList<Chatter, Confirmation>;
 
     constructor(
-        @Inject(() => ConfirmCommand) confirmCommand: ConfirmCommand
+        confirmCommand: ConfirmCommand, @Inject(ConfirmationsToken) private readonly confirmations: Confirmations
     ) {
         super(ConfirmationModule);
 
         this.coreModule = true;
-        this.confirmations = new EntityStateList<Chatter, Confirmation>(null);
         this.registerCommand(confirmCommand);
     }
 

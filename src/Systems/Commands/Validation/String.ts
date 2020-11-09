@@ -1,12 +1,11 @@
 import {InvalidInputError} from "./ValidationErrors";
 import {arrayFind} from "../../../Utilities/ArrayUtils";
 import {ArgumentConverter} from "./Argument";
-import {CommandEvent} from "../CommandEvent";
 
 export class StringArg {
     static type = "string";
 
-    static convert(input: string, name: string, column: number, event: CommandEvent): string {
+    static convert(input: string): string {
         return input;
     }
 }
@@ -17,7 +16,7 @@ export class StringEnumArg implements ArgumentConverter<string> {
     constructor(private accepted: readonly string[]) {
     }
 
-    convert(input: string, name: string, column: number, event: CommandEvent): string {
+    convert(input: string): string {
         if (!arrayFind(input, this.accepted))
             throw new InvalidInputError(`${input} is not an acceptable value`);
         return input;

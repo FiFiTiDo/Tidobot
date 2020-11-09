@@ -51,13 +51,9 @@ export default class Cooldown {
      */
     private getCooldown(): number {
         if (this.user) {
-            return this.command instanceof Command ?
-                this.command.getUserCooldown(this.subcommand) :
-                this.command.userCooldown;
+            return this.command instanceof Command ? 0 : this.command.userCooldown;
         } else {
-            return this.command instanceof Command ?
-                this.command.getGlobalCooldown(this.subcommand) :
-                this.command.globalCooldown;
+            return this.command instanceof Command ? 0 : this.command.globalCooldown;
         }
     }
 }

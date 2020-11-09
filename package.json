@@ -65,6 +65,7 @@
     "moment": "^2.24.0",
     "moment-timezone": "^0.5.27",
     "moo": "^0.5.1",
+    "pg": "^8.4.2",
     "picomatch": "^2.2.2",
     "pretty-ms": "^6.0.0",
     "redis": "^2.8.0",

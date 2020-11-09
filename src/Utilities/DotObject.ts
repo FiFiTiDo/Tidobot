@@ -1,4 +1,4 @@
-import GenericObject from "./Interfaces/GenericObject";
+import { GenericObject } from "./Interfaces/GenericObject";
 
 /** @ignore */
 export function normalizeSegment(seg: string): string | number {

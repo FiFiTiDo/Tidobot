@@ -8,7 +8,7 @@ import CustomBaseEntity from "./CustomBaseEntity";
 
 @Entity()
 export class ChannelSettings extends CustomBaseEntity {
-    @Column()
+    @Column("json")
     json: { [key: string]: any };
 
     @OneToOne(() => Channel)
@@ -27,7 +27,7 @@ export class ChannelSettings extends CustomBaseEntity {
         this.set(setting, setting.defaultValue);
     }
 
-    reset() {
+    reset(): void {
         const newJson: { [key: string]: any } = {};
         const settings = Container.get(SettingsSystem).getAll();
         for (const setting of settings)

@@ -46,7 +46,7 @@ export default abstract class AbstractModule {
     @Inject()
     public readonly expressionSystem: ExpressionSystem;
 
-    @InjectRepository()
+    @InjectRepository(DisabledModule)
     private readonly disabledModulesRepository: Repository<DisabledModule>;
 
     protected constructor(private readonly ctor: ModuleConstructor<any>) {

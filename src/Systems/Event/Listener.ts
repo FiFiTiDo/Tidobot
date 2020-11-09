@@ -1,6 +1,6 @@
 import Event, {EventArguments} from "./Event";
 
-export default interface Listener<T extends Event<T>, TArgs extends EventArguments<T>> {
+export interface Listener<T extends Event<T>, TArgs extends EventArguments<T>> {
     (eventArgs: TArgs): void;
 }
 

@@ -9,10 +9,6 @@ export function generateRandomCode(length: number): string {
     return text;
 }
 
-export function randomInt(min: number, max?: number): number {
-    return Math.floor(randomFloat(min, max));
-}
-
 export function randomFloat(min?: number, max?: number): number {
     if (typeof min === "undefined" && typeof max === "undefined")
         return Math.random();
@@ -24,6 +20,10 @@ export function randomFloat(min?: number, max?: number): number {
     return (Math.random() * (max - min)) + min;
 }
 
-export function randomChance(chance: number) {
+export function randomInt(min: number, max?: number): number {
+    return Math.floor(randomFloat(min, max));
+}
+
+export function randomChance(chance: number): boolean {
     return Math.random() <= chance;
 }

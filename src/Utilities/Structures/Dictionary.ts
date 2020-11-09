@@ -6,7 +6,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as util from "util";
-import GenericObject from "../Interfaces/GenericObject";
+import { GenericObject } from "../Interfaces/GenericObject";
 import { Dot } from "../DotObject";
 
 /**

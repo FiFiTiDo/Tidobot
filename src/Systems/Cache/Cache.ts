@@ -4,7 +4,7 @@ import {promisify} from "util";
 import Config from "../Config/Config";
 import CacheConfig from "../Config/ConfigModels/CacheConfig";
 import System from "../System";
-import Container, { Service } from "typedi";
+import { Service } from "typedi";
 
 @Service()
 export default class Cache extends System {
@@ -15,7 +15,7 @@ export default class Cache extends System {
         this.logger.info("System initialized");
     }
 
-    public async onInitialize() {
+    public async onInitialize(): Promise<void> {
         const config = await this.config.getConfig(CacheConfig);
         this.client = new RedisClient(config.redis);
         await new Promise((resolve, reject) => {
@@ -28,7 +28,7 @@ export default class Cache extends System {
                     this.logger.error(e.stack);
                 }
             });
-        })
+        });
     }
 
     async exists(key: string): Promise<boolean> {

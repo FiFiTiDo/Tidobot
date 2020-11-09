@@ -1,12 +1,10 @@
-import Listener, {ListenerWrapper} from "./Listener";
+import {Listener, ListenerWrapper} from "./Listener";
 import Event, {EventArguments, EventConstructor} from "./Event";
 import {EventPriority} from "./EventPriority";
 import PriorityList from "../../Utilities/Structures/PriorityList";
-import {injectable} from "inversify";
 
 type ListenerType<T extends Event<T>> = Listener<T, EventArguments<T>> | ListenerWrapper<T, EventArguments<T>>;
 
-@injectable()
 export default class Dispatcher {
     private listeners: Map<string, PriorityList<ListenerType<any>>> = new Map();
 

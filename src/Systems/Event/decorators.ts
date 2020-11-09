@@ -1,5 +1,5 @@
 import Event, {EventArguments, EventConstructor} from "./Event";
-import Listener from "./Listener";
+import { Listener } from "./Listener";
 import EventSystem from "./EventSystem";
 import {EventPriority} from "./EventPriority";
 import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
@@ -25,8 +25,8 @@ export function HandlesEvents() {
                     }, handler.priority);
                 }
             }
-        }
-    }
+        };
+    };
 }
 
 export function EventHandler<T extends Event<T>, TArgs extends EventArguments<T>>(event: EventConstructor<T>, priority = EventPriority.NORMAL): Function {

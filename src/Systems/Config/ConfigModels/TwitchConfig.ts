@@ -7,7 +7,7 @@ export default class TwitchConfig extends ConfigModel {
         [key: string]: {
             username: string;
             password: string;
-        }
+        };
     };
     @ConfigOption
     public api: {

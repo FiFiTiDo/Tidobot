@@ -1,9 +1,6 @@
-import TickEvent from "../Application/TickEvent";
-import EventSystem from "../Systems/Event/EventSystem";
-import TimerSystem, {TimeUnit} from "../Systems/Timer/TimerSystem";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
-import Container, { Service } from "typedi";
+import { Service } from "typedi";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Repository } from "typeorm";
 import { Service as ServiceEntity } from "../Database/Entities/Service";
@@ -44,7 +41,7 @@ export class AdapterManager {
     private adapters: AdapterConstructor<any>[];
 
     constructor(
-        @InjectRepository()
+        @InjectRepository(ServiceEntity)
         private serviceRepository: Repository<ServiceEntity>
     ) {
 

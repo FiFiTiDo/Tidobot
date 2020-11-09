@@ -15,7 +15,7 @@ import {BetService, PlaceBetResponse} from "../Services/BetService";
 import { Chatter } from "../Database/Entities/Chatter";
 import { Channel } from "../Database/Entities/Channel";
 import { Service } from "typedi";
-import { CurrencySystem } from "../Systems/Currency/CurrencySystem";
+import { CurrencyType } from "../Systems/Currency/CurrencyType";
 
 export const MODULE_INFO = {
     name: "Betting",
@@ -28,10 +28,7 @@ const logger = getLogger(MODULE_INFO.name);
 
 @Service()
 class BetCommand extends Command {
-    constructor(
-        private readonly betService: BetService,
-        private readonly currencySystem: CurrencySystem
-    ) {
+    constructor(private readonly betService: BetService) {
         super("bet", "<place|open|close|check>");
     }
 
@@ -50,7 +47,7 @@ class BetCommand extends Command {
                     return await response.message("bet:error.invalid-option");
                 case PlaceBetResponse.LOW_BALANCE:
                     return await response.message("currency:error.low-balance", {
-                        currency_name: this.currencySystem.getPluralName(channel)
+                        currency_name: CurrencyType.get(channel).plural
                     });
                 case PlaceBetResponse.TOO_LOW:
                     return await response.message("bet:error.too-low");
@@ -58,7 +55,7 @@ class BetCommand extends Command {
                     return await response.message("bet:error.too-high");
                 case PlaceBetResponse.BET_PLACED:
                     return await response.message("bet:placed", {
-                        amount: this.currencySystem.formatAmount(amount, channel), option
+                        amount: CurrencyType.get(channel).formatAmount(amount), option
                     });
             }
         } catch (e) {
@@ -91,7 +88,7 @@ class BetCommand extends Command {
         const winnings = await game?.close(option);
         if (winnings === null) return response.message("bet:error.invalid-option", {option});
         else return response.message("bet:closed", {
-            title: game.getTitle(), option, winnings: this.currencySystem.formatAmount(winnings, channel)
+            title: game.getTitle(), option, winnings: CurrencyType.get(channel).formatAmount(winnings)
         });
     }
 
@@ -107,7 +104,7 @@ class BetCommand extends Command {
         for (const [option, total] of optionTotals)
             parts.push(await response.translate("bet:check.part", {
                 option,
-                amount: this.currencySystem.formatAmount(total, channel),
+                amount: CurrencyType.get(channel).formatAmount(total),
                 percentage: (total / grandTotal) * 100
             }));
         await response.message("bet:check.full", {options: parts.join("; ")});

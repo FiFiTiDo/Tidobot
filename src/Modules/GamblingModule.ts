@@ -13,7 +13,7 @@ import {Response} from "../Chat/Response";
 import { Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
-import { CurrencySystem } from "../Systems/Currency/CurrencySystem";
+import { CurrencyType } from "../Systems/Currency/CurrencyType";
 
 export const MODULE_INFO = {
     name: "Gambling",
@@ -23,7 +23,7 @@ export const MODULE_INFO = {
 
 @Service()
 class SlotsCommand extends Command {
-    constructor(private readonly currencySystem: CurrencySystem) {
+    constructor() {
         super("slots", "");
     }
 
@@ -82,7 +82,7 @@ class SlotsCommand extends Command {
         if (winnings > 0) {
             await sender.deposit(winnings);
             message += " " + await response.translate("gambling:slots.win", {
-                amount: this.currencySystem.formatAmount(winnings, channel)
+                amount: CurrencyType.get(channel).formatAmount(winnings)
             });
             message += " " + arrayRand(await response.getTranslation<string[]>("gambling:win"));
         } else {

@@ -24,7 +24,7 @@ import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import { ChatterManager } from "../Chat/ChatterManager";
 import { TimeUnit } from "../Systems/Timer/TimerSystem";
-import { CurrencySystem } from "../Systems/Currency/CurrencySystem";
+import { CurrencyType } from "../Systems/Currency/CurrencyType";
 
 export const MODULE_INFO = {
     name: "Currency",
@@ -37,7 +37,6 @@ const logger = getLogger(MODULE_INFO.name);
 @Service()
 class BankCommand extends Command {
     constructor(
-        private readonly currencySystem: CurrencySystem,
         private readonly chatterManager: ChatterManager,
         private readonly confirmationModule: ConfirmationModule
     ) {
@@ -52,7 +51,7 @@ class BankCommand extends Command {
     ): Promise<void> {
         return chatter.deposit(amount)
             .then(async () => response.message("currency:give", {
-                amount: this.currencySystem.formatAmount(amount, channel),
+                amount: CurrencyType.get(channel).formatAmount(amount),
                 username: chatter.user.name
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
@@ -68,7 +67,7 @@ class BankCommand extends Command {
         if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
         return Promise.all(chatters.map(chatter => chatter.deposit(amount)))
             .then(async () => response.message("currency:give-all", {
-                amount: this.currencySystem.formatAmount(amount, channel),
+                amount: CurrencyType.get(channel).formatAmount(amount),
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -81,7 +80,7 @@ class BankCommand extends Command {
     ): Promise<void> {
         return chatter.withdraw(amount)
             .then(async () => response.message("currency:take", {
-                amount: this.currencySystem.formatAmount(amount, channel),
+                amount: CurrencyType.get(channel).formatAmount(amount),
                 username: chatter.user.name
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
@@ -97,7 +96,7 @@ class BankCommand extends Command {
         if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
         return Promise.all(chatters.map(chatter => chatter.withdraw(amount)))
             .then(async () => response.message("currency:take-all", {
-                amount: this.currencySystem.formatAmount(amount, channel),
+                amount: CurrencyType.get(channel).formatAmount(amount),
             })).catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -109,7 +108,7 @@ class BankCommand extends Command {
     ): Promise<void> {
         return response.message("currency:balance-other", {
             username: chatter.user.name,
-            balance: this.currencySystem.formatAmount(chatter.balance, channel)
+            balance: CurrencyType.get(channel).formatAmount(chatter.balance)
         });
     }
 
@@ -140,7 +139,7 @@ class BankCommand extends Command {
 
 @Service()
 class BalanceCommand extends Command {
-    constructor(private readonly currencySystem: CurrencySystem) {
+    constructor() {
         super("balance", null, ["bal"]);
     }
 
@@ -151,14 +150,14 @@ class BalanceCommand extends Command {
     ): Promise<void> {
         return response.message("currency:balance", {
             username: sender.user.name,
-            balance: this.currencySystem.formatAmount(sender.balance, channel)
+            balance: CurrencyType.get(channel).formatAmount(sender.balance)
         });
     }
 }
 
 @Service()
 class PayCommand extends Command {
-    constructor(private readonly currencySystem: CurrencySystem) {
+    constructor() {
         super("pay", "<user> <amount>");
     }
 
@@ -178,7 +177,7 @@ class PayCommand extends Command {
             return chatter.deposit(amount)
                 .then(async () => response.message("currency.pay", {
                     username: chatter.user.name,
-                    amount: this.currencySystem.formatAmount(amount, channel)
+                    amount: CurrencyType.get(channel).formatAmount(amount)
                 })).catch(e => response.genericErrorAndLog(e, logger));
         }
     }

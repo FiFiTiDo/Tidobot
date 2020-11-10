@@ -2,7 +2,6 @@ import AbstractModule, {Symbols} from "./AbstractModule";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
@@ -19,6 +18,7 @@ import { InjectRepository } from "typeorm-typedi-extensions";
 import { Counter } from "../Database/Entities/Counter";
 import { CounterRepository } from "../Database/Repositories/CounterRepository";
 import { Channel } from "../Database/Entities/Channel";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Counter",
@@ -40,7 +40,7 @@ class CounterCommand extends Command {
     @CommandHandler(/^counter (?!increment|inc|add|decrement|dec|subtract|sub|set|create|delete|del)/, "counter <counter name>")
     @CheckPermission(() => CounterModule.permissions.checkCounter)
     async retrieveValueHandler(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter
+        event: Event, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter
     ): Promise<void> {
         return response.message("counter:value", {counter: counter.name, value: counter.value});
     }
@@ -48,7 +48,7 @@ class CounterCommand extends Command {
     @CommandHandler(/^counter (increment|inc|add)/, "counter increment <counter name> <amount>", 1)
     @CheckPermission(() => CounterModule.permissions.changeCounter)
     async increment(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
+        event: Event, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
         @Argument(new IntegerArg({min: 1}), "amount", false) amount = 1
     ): Promise<void> {
         counter.value += amount;
@@ -60,7 +60,7 @@ class CounterCommand extends Command {
     @CommandHandler(/^counter (decrement|dec|subtract|sub)/, "counter decrement <counter name> <amount>", 1)
     @CheckPermission(() => CounterModule.permissions.changeCounter)
     async decrement(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
+        event: Event, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
         @Argument(new IntegerArg({min: 1}), "amount", false) amount = 1
     ): Promise<void> {
         counter.value -= amount;
@@ -72,7 +72,7 @@ class CounterCommand extends Command {
     @CommandHandler("counter set", "counter set <counter name> <amount>", 1)
     @CheckPermission(() => CounterModule.permissions.changeCounter)
     async set(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
+        event: Event, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter,
         @Argument(new IntegerArg({min: 1})) amount: number
     ): Promise<void> {
         counter.value = amount;
@@ -84,7 +84,7 @@ class CounterCommand extends Command {
     @CommandHandler("counter create", "counter create <counter name>", 1)
     @CheckPermission(() => CounterModule.permissions.createCounter)
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg, "counter name") name: string
     ): Promise<void> {
         if (await this.counterRepository.count({ name, channel }) > 0) return response.message("counter:error.exists");
@@ -97,7 +97,7 @@ class CounterCommand extends Command {
     @CommandHandler(/^counter (delete|del)/, "counter delete <counter name>", 1)
     @CheckPermission(() => CounterModule.permissions.deleteCounter)
     async delete(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter
+        event: Event, @ResponseArg response: Response, @Argument(CounterConverter) counter: Counter
     ): Promise<void> {
         return counter.remove()
             .then(() => response.message("counter.deleted", {counter: counter.name}))

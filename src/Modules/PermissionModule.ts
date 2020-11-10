@@ -2,10 +2,9 @@ import AbstractModule, {Symbols} from "./AbstractModule";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
-import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
+import {NewChannelEvent} from "../Chat/Events/NewChannelEvent";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {InvalidArgumentError} from "../Systems/Commands/Validation/ValidationErrors";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
@@ -22,6 +21,7 @@ import { Channel } from "../Database/Entities/Channel";
 import { Permission as PermissionEntity } from "../Database/Entities/Permission";
 import { PermissionRepository } from "../Database/Repositories/PermissionRepository";
 import { InjectRepository } from "typeorm-typedi-extensions";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Permission",
@@ -56,7 +56,7 @@ class PermissionCommand extends Command {
     @CommandHandler(/^perm(ission)? create/, "permission create <permission token> <default role>", 1)
     @CheckPermission(() => PermissionModule.permissions.createPerm)
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @MessageArg msg: Message, @ChannelArg channel: Channel,
         @Argument(StringArg, "permission token") token: string, @Argument(RoleArg, "default role") role: Role
     ): Promise<void> {
         if (await this.permissionRepository.count({ channel, token }) > 0) return response.message("permission:error.already-exists");
@@ -69,7 +69,7 @@ class PermissionCommand extends Command {
     @CommandHandler(/^perm(ission)? del(ete)?/, "permission delete <permission>", 1)
     @CheckPermission(() => PermissionModule.permissions.deletePerm)
     async delete(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(PermissionArg) permission: PermissionEntity
+        event: Event, @ResponseArg response: Response, @Argument(PermissionArg) permission: PermissionEntity
     ): Promise<void> {
         if (permission.moduleDefined)
             return response.message("permission:error.module-defined", {permission: permission.token});
@@ -81,7 +81,7 @@ class PermissionCommand extends Command {
     @CommandHandler(/^perm(ission)? set/, "permission set <permission> <role>", 1)
     @CheckPermission(() => PermissionModule.permissions.setPerm)
     async set(
-        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        event: Event, @ResponseArg response: Response, @MessageArg msg: Message,
         @Argument(PermissionArg) permission: PermissionEntity, @Argument(RoleArg) role: Role
     ): Promise<void> {
         if (!(await msg.checkPermission(permission.token)))
@@ -95,7 +95,7 @@ class PermissionCommand extends Command {
     @CommandHandler(/^perm(ission)? reset (.+)$/, "permission reset <permission>", 1)
     @CheckPermission(() => PermissionModule.permissions.resetPerm)
     async reset(
-        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        event: Event, @ResponseArg response: Response, @MessageArg msg: Message,
         @Argument(PermissionArg, "permission") permission: PermissionEntity = null
     ): Promise<void> {
         if (!(await msg.checkPermission(permission.token)))
@@ -108,7 +108,7 @@ class PermissionCommand extends Command {
 
     @CommandHandler(/^perm(ission)? reset$/, "permission reset")
     @CheckPermission(() => PermissionModule.permissions.resetAllPerms)
-    async resetAll(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async resetAll(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         return this.permissionSystem.resetChannelPermissions(channel)
             .then(() => response.message("permission:reset-all"))
             .catch(e => response.genericErrorAndLog(e, logger));
@@ -154,7 +154,8 @@ export default class PermissionModule extends AbstractModule {
     }
 
     @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
+    async onNewChannel(event: Event): Promise<void> {
+        const channel = event.extra.get(NewChannelEvent.EXTRA_CHANNEL);
         await this.permissionSystem.resetChannelPermissions(channel);
     }
 }

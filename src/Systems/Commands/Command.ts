@@ -1,8 +1,9 @@
 import CommandSystem from "./CommandSystem";
-import {CommandEvent, CommandEventArgs} from "./CommandEvent";
+import {CommandEvent} from "./CommandEvent";
 import {CommandHandlerFunction, getCommandHandlers} from "./Validation/CommandHandler";
 import AbstractModule from "../../Modules/AbstractModule";
 import { Channel } from "../../Database/Entities/Channel";
+import Event from "../Event/Event";
 
 export default class Command {
     private module: AbstractModule = null;
@@ -34,14 +35,15 @@ export default class Command {
         return usage;
     }
 
-    execute(args: CommandEventArgs): Promise<void> {
-        const {message, response} = args;
+    execute(event: Event): Promise<void> {
+        const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+        const response = message.response;
 
-        if (!this.executeCommandHandlers(args.event))
+        if (!this.executeCommandHandlers(event))
             return response.rawMessage(this.formatUsage(message.channel));
     }
 
-    protected executeCommandHandlers(event: CommandEvent): boolean {
+    protected executeCommandHandlers(event: Event): boolean {
         let executed = false;
         for (const commandHandler of this.commandHandlers) {
             if (commandHandler.call(this, event)) executed = true;

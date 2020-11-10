@@ -1,11 +1,11 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {Integer, SettingType} from "../../Settings/Setting";
 import PermissionSystem from "../../Permissions/PermissionSystem";
 import Permission from "../../Permissions/Permission";
 import {Role} from "../../Permissions/Role";
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 const CAPS_PATTERN = /([A-Z])/g;
 
@@ -26,7 +26,8 @@ export default class CapsFilter extends Filter {
         perm.registerPermission(CapsFilter.IGNORE_FILTER);
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(CapsFilter.IGNORE_FILTER)) return false;
         if (!channel.settings.get(CapsFilter.ENABLED)) return false;
 

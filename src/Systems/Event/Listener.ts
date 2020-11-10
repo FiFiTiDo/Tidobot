@@ -1,10 +1,10 @@
-import Event, {EventArguments} from "./Event";
+import Event from "./Event";
 
-export interface Listener<T extends Event<T>, TArgs extends EventArguments<T>> {
-    (eventArgs: TArgs): void;
+export interface Listener {
+    (event: Event): void;
 }
 
-export interface ListenerWrapper<T extends Event<T>, TArgs extends EventArguments<T>> {
+export interface ListenerWrapper {
     thisArg: object;
-    func: Listener<T, TArgs>;
+    func: Listener;
 }

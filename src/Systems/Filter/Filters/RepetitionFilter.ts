@@ -1,5 +1,4 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {Integer, SettingType} from "../../Settings/Setting";
 import PermissionSystem from "../../Permissions/PermissionSystem";
@@ -8,6 +7,7 @@ import {Role} from "../../Permissions/Role";
 
 const REPEATED_SEQ_PATTERN = /(.)(\1+)/ig;
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 @Service()
 export default class RepetitionFilter extends Filter {
@@ -24,7 +24,8 @@ export default class RepetitionFilter extends Filter {
         perm.registerPermission(RepetitionFilter.IGNORE_FILTER);
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(RepetitionFilter.IGNORE_FILTER)) return false;
         if (!channel.settings.get(RepetitionFilter.ENABLED)) return false;
 

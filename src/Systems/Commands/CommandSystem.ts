@@ -2,7 +2,7 @@ import AbstractModule from "../../Modules/AbstractModule";
 import {EventHandler, HandlesEvents} from "../Event/decorators";
 import Message from "../../Chat/Message";
 import MessageEvent from "../../Chat/Events/MessageEvent";
-import {EventArguments} from "../Event/Event";
+import Event from "../Event/Event";
 import EventSystem from "../Event/EventSystem";
 import {objectHasProperties} from "../../Utilities/ObjectUtils";
 import Command from "./Command";
@@ -51,9 +51,9 @@ export default class CommandSystem extends System {
     }
 
     @EventHandler(MessageEvent)
-    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
-        const message = event.getMessage();
-        const channel = message.getChannel();
+    async handleMessage(event: Event): Promise<void> {
+        const message = event.extra.get(MessageEvent.EXTRA_MESSAGE);
+        const channel = message.channel;
         const commandPrefix = CommandSystem.getPrefix(channel);
 
         if (message.getParts().length < 1) return;
@@ -64,9 +64,13 @@ export default class CommandSystem extends System {
             if (objectHasProperties(this.commandListeners, commandLabel)) {
                 channel.logger.debug(`Command ${commandLabel} executed by ${message.chatter.user.name}`);
                 for (const commandGroup of this.commandListeners[commandLabel]) {
-                    const event = new CommandEvent(message.getPart(0), message.getParts().slice(1), message, commandGroup.command);
-                    if (!commandGroup.module.isDisabled(event.getMessage().getChannel()))
-                        await commandGroup.command.execute(event.getEventArgs());
+                    const event = new Event(CommandEvent);
+                    event.extra.put(CommandEvent.EXTRA_TRIGGER, message.getPart(0));
+                    event.extra.put(CommandEvent.EXTRA_ARGUMENTS, message.getParts().slice(1));
+                    event.extra.put(CommandEvent.EXTRA_MESSAGE, message);
+                    event.extra.put(CommandEvent.EXTRA_COMMAND, commandGroup.command);
+                    if (!commandGroup.module.isDisabled(channel))
+                        await commandGroup.command.execute(event);
                 }
             }
         }

@@ -1,6 +1,5 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting";
@@ -17,6 +16,8 @@ import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import { Service } from "typedi";
 import { StringArg } from "../Systems/Commands/Validation/String";
+import Event from "../Systems/Event/Event";
+import { CommandEvent } from "../Systems/Commands/CommandEvent";
 
 export const MODULE_INFO = {
     name: "Pokemon",
@@ -27,7 +28,8 @@ export const MODULE_INFO = {
 const logger = getLogger(MODULE_INFO.name);
 
 const TrainerSender = makeEventReducer(async event => {
-    const chatter = event.message.chatter;
+    const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+    const chatter = message.chatter;
     const trainer = chatter.trainer;
     const team = trainer?.team ?? [];
     return {chatter, trainer, team};
@@ -37,7 +39,7 @@ class TrainerDataArg {
     static type = "trainer";
     private static chatterArg = new ChatterArg();
 
-    static async convert(input: string, name: string, column: number, event: CommandEvent): Promise<TrainerData> {
+    static async convert(input: string, name: string, column: number, event: Event): Promise<TrainerData> {
         const chatter = await this.chatterArg.convert(input, name, column, event);
         if (chatter.trainer === undefined)
             throw new TranslateMessageInputError("pokemon:error.no-trainer", {username: input});
@@ -53,14 +55,14 @@ class PokemonCommand extends Command {
 
     @CommandHandler(/^(pokemon|poke|pm) team$/, "pokemon team", 1)
     @CheckPermission(() => PokemonModule.permissions.playPokemon)
-    async team(event: CommandEvent, @ResponseArg response: Response, @Sender sender, @TrainerSender {team}: TrainerData): Promise<void> {
+    async team(event: Event, @ResponseArg response: Response, @Sender sender, @TrainerSender {team}: TrainerData): Promise<void> {
         return response.message("pokemon:team", {username: sender.name, team: team.map(pkmn => pkmn.toString())});
     }
 
     @CommandHandler(/^(pokemon|poke|pm) throw/, "pokemon throw [target]", 1)
     @CheckPermission(() => PokemonModule.permissions.playPokemon)
     async throw(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @TrainerSender trainerData: TrainerData,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @TrainerSender trainerData: TrainerData,
         @Argument(new ChatterArg(), "target", false) chatter: Chatter = null, @Sender sender: Chatter
     ): Promise<void> {
         const {team} = trainerData;
@@ -91,7 +93,7 @@ class PokemonCommand extends Command {
     @CommandHandler(/^(pokemon|poke|pm) rel(ease)?/, "pokemon release [pokemon]", 1)
     @CheckPermission(() => PokemonModule.permissions.playPokemon)
     async release(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter,
+        event: Event, @ResponseArg response: Response, @Sender sender: Chatter,
         @TrainerSender {team}: TrainerData, @Argument(StringArg, "pokemon", false) name: string = null
     ): Promise<void> {
         const specific = name === null;
@@ -107,7 +109,7 @@ class PokemonCommand extends Command {
     @CommandHandler(/^(pokemon|poke|pm) rel(ease)?-all/, "pokemon release-all", 1)
     @CheckPermission(() => PokemonModule.permissions.playPokemon)
     async releaseAll(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter, @TrainerSender {team}: TrainerData
+        event: Event, @ResponseArg response: Response, @Sender sender: Chatter, @TrainerSender {team}: TrainerData
     ): Promise<void> {
         const pokemon = team.map(pkmn => pkmn.name).join(", ");
         return this.gameService.releaseTeam(team)
@@ -118,7 +120,7 @@ class PokemonCommand extends Command {
     @CommandHandler(/^(pokemon|poke|pm) fight/, "pokemon fight <trainer>", 1)
     @CheckPermission(() => PokemonModule.permissions.playPokemon)
     async fight(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter, 
+        event: Event, @ResponseArg response: Response, @Sender sender: Chatter, 
         @TrainerSender self: TrainerData, @Argument(TrainerDataArg, "trainer") target: TrainerData
     ): Promise<void> {
         if (sender.is(target.chatter)) return response.message("pokemon:error.self");
@@ -157,9 +159,9 @@ class PokemonCommand extends Command {
     }
 
     @CommandHandler(/^(pokemon|poke|pm) stats/, "pokemon stats [trainer]", 1)
-    @CheckPermission(event => event.getArgumentCount() < 1 ? PokemonModule.permissions.viewStats : PokemonModule.permissions.viewOthersStats)
+    @CheckPermission(event => event.extra.get(CommandEvent.EXTRA_ARGUMENTS).length < 1 ? PokemonModule.permissions.viewStats : PokemonModule.permissions.viewOthersStats)
     async stats(
-        event: CommandEvent, @ResponseArg response: Response, @TrainerSender sender: TrainerData,
+        event: Event, @ResponseArg response: Response, @TrainerSender sender: TrainerData,
         @Argument(TrainerDataArg, "trainer", false) target: TrainerData = null
     ): Promise<void> {
         const {chatter, trainer: {won, lost, draw}} = target ?? sender;
@@ -170,7 +172,7 @@ class PokemonCommand extends Command {
 
     @CommandHandler(/^(pokemon|poke|pm) top/, "pokemon top", 1)
     @CheckPermission(() => PokemonModule.permissions.viewStats)
-    async top(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async top(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         return this.gameService.getAllTrainerStats(channel)
             .then(stats => response.message("pokemon:top", {
                 trainers: stats

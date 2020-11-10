@@ -1,5 +1,4 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import Setting, {Integer, SettingType} from "../../Settings/Setting";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import PermissionSystem from "../../Permissions/PermissionSystem";
@@ -9,6 +8,7 @@ import {Role} from "../../Permissions/Role";
 const NON_ALPHA_PATTERN = /([^a-z0-9 ])/ig;
 const NON_ALPHA_SEQ_PATTERN = /([^a-z0-9 ])(\1+)/ig;
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 @Service()
 export default class SymbolFilter extends Filter {
@@ -29,7 +29,8 @@ export default class SymbolFilter extends Filter {
         perm.registerPermission(new Permission("filter.ignore.symbols", Role.MODERATOR));
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(SymbolFilter.IGNORE_FILER)) return false;
         if (!channel.settings.get(SymbolFilter.ENABLED)) return false;
 

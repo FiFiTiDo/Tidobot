@@ -8,7 +8,8 @@ import EventSystem from "../Systems/Event/EventSystem";
 import ShutdownEvent from "./Events/ShutdownEvent";
 import TimerSystem, { TimeUnit } from "../Systems/Timer/TimerSystem";
 import { Service } from "typedi";
-import TickEvent from "./TickEvent";
+import TickEvent from "./Events/TickEvent";
+import Event from "../Systems/Event/Event";
 
 @Service()
 export default class Application {
@@ -37,14 +38,14 @@ export default class Application {
             .option("channels", "The channels where the bot will enter.", [Application.DEFAULT_CHANNEL])
             .parse(argv);
 
-        this.timerSystem.startTimer(() => this.eventSystem.dispatch(new TickEvent()), TimeUnit.Seconds(1));
+        this.timerSystem.startTimer(() => this.eventSystem.dispatch(new Event(TickEvent)), TimeUnit.Seconds(1));
         return this.bot.start(options as AdapterOptions);
     }
 
     public async shutdown(): Promise<boolean> {
-        const event = new ShutdownEvent();
+        const event = new Event(ShutdownEvent);
         this.eventSystem.dispatch(event);
-        if (event.isCancelled()) return false;
+        if (event.cancelled) return false;
         await this.bot.shutdown();
         this.timerSystem.shutdown();
         this.logger.info("Bot shutting down...");

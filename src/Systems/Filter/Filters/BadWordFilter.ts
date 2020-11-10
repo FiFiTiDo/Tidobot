@@ -1,11 +1,11 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {SettingType} from "../../Settings/Setting";
 import PermissionSystem from "../../Permissions/PermissionSystem";
 import Permission from "../../Permissions/Permission";
 import {Role} from "../../Permissions/Role";
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 @Service()
 export default class BadWordFilter extends Filter {
@@ -20,7 +20,8 @@ export default class BadWordFilter extends Filter {
         perm.registerPermission(BadWordFilter.IGNORE_FILTER);
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(BadWordFilter.IGNORE_FILTER)) return false;
         if (!channel.settings.get(BadWordFilter.ENABLED)) return false;
 

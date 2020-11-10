@@ -1,6 +1,5 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
@@ -14,6 +13,7 @@ import { Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import { CurrencyType } from "../Systems/Currency/CurrencyType";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Gambling",
@@ -59,7 +59,7 @@ class SlotsCommand extends Command {
     @CommandHandler("slots", "slots")
     @CheckPermission(() => GamblingModule.permissions.playSlots)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
     ): Promise<void> {
         if (!await sender.charge(channel.settings.get(GamblingModule.settings.slotsPrice))) return;
 

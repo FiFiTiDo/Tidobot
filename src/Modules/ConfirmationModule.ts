@@ -23,20 +23,12 @@ type Confirmations = EntityStateList<Chatter, Confirmation>;
 const ConfirmationsToken = new Token<Confirmations>("Confirmations");
 Container.set(ConfirmationsToken, new EntityStateList<Chatter, Confirmation>(null));
 
-export class ConfirmedEvent extends Event<ConfirmedEvent> {
-    public static readonly NAME = "confirmed";
-
-    constructor() {
-        super(ConfirmedEvent);
-    }
+export class ConfirmedEvent {
+    public static readonly EVENT_TYPE = "modules.confirmation.ConfirmedEvent";
 }
 
-export class ExpiredEvent extends Event<ExpiredEvent> {
-    public static readonly NAME = "expired";
-
-    constructor() {
-        super(ExpiredEvent);
-    }
+export class ExpiredEvent {
+    public static readonly EVENT_TYPE = "modules.confirmation.ExpiredEvent";
 }
 
 export class Confirmation extends Dispatcher {
@@ -54,13 +46,13 @@ export class Confirmation extends Dispatcher {
 
     run(): void {
         setTimeout(() => {
-            if (!this.confirmed) return this.dispatch(new ExpiredEvent());
+            if (!this.confirmed) return this.dispatch(new Event(ConfirmedEvent));
         }, 1000 * this.seconds);
     }
 
     confirm(): void {
         this.confirmed = true;
-        this.dispatch(new ConfirmedEvent()).then();
+        this.dispatch(new Event(ConfirmedEvent)).then();
     }
 
     check(code: string): boolean {
@@ -81,12 +73,13 @@ class ConfirmCommand extends Command {
     }
 
     @CommandHandler("confirm", "confirm <code>")
-    handleConfirm(event: CommandEvent, @Sender sender: Chatter, @ResponseArg response: Response): Promise<any> {
+    handleConfirm(event: Event, @Sender sender: Chatter, @ResponseArg response: Response): Promise<any> {
         if (!this.confirmations.has(sender)) return response.message("confirmation:error.expired");
-        if (event.getArgumentCount() < 1) return response.message("confirmation:error.no-code");
+        const args = event.extra.get(CommandEvent.EXTRA_ARGUMENTS);
+        if (args.length < 1) return response.message("confirmation:error.no-code");
 
         const confirmation = this.confirmations.get(sender);
-        if (confirmation.check(event.getArgument(0))) {
+        if (confirmation.check(args[0])) {
             confirmation.confirm();
             this.confirmations.delete(sender);
         }

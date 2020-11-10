@@ -1,11 +1,11 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import Setting, {Integer, SettingType} from "../../Settings/Setting";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import PermissionSystem from "../../Permissions/PermissionSystem";
 import Permission from "../../Permissions/Permission";
 import {Role} from "../../Permissions/Role";
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 @Service()
 export default class LongMessageFilter extends Filter {
@@ -22,7 +22,8 @@ export default class LongMessageFilter extends Filter {
         perm.registerPermission(LongMessageFilter.IGNORE_FILTER);
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(LongMessageFilter.IGNORE_FILTER)) return false;
         if (!channel.settings.get(LongMessageFilter.ENABLED)) return false;
         const maxLength = channel.settings.get(LongMessageFilter.LENGTH);

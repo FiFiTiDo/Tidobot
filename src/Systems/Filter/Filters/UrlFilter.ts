@@ -1,5 +1,4 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {SettingType} from "../../Settings/Setting";
 import PermissionSystem from "../../Permissions/PermissionSystem";
@@ -7,6 +6,7 @@ import Permission from "../../Permissions/Permission";
 import {Role} from "../../Permissions/Role";
 import {URL_PATTERN} from "../../../Utilities/Regex/Url";
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 const FAKE_DOT = /\s?(?:\(dot\))\s?/gi;
 const SPACE_DOT = /.+\s+\.\s+.+/gi;
@@ -30,7 +30,8 @@ export default class UrlFilter extends Filter {
         perm.registerPermission(UrlFilter.IGNORE_FILTER);
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(UrlFilter.IGNORE_FILTER)) return false;
         if (!channel.settings.get(UrlFilter.ENABLED)) return false;
         const blockList = channel.settings.get(UrlFilter.BLOCK_LIST);

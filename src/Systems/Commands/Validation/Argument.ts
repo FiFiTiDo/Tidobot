@@ -1,8 +1,9 @@
 import {addPropertyMetadata, getPropertyMetadata} from "../../../Utilities/DecoratorUtils";
-import {CommandEvent} from "../CommandEvent";
 import {AsyncResolvable, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError, MissingRequiredArgumentError, MissingRequiredCliArgumentError} from "./ValidationErrors";
 import minimist = require("minimist-string");
+import Event from "../../Event/Event";
+import { CommandEvent } from "../CommandEvent";
 
 const ARGUMENT_META_KEY = "command:argument";
 const REST_META_KEY = "command:rest_args";
@@ -30,13 +31,13 @@ interface ConverterArgument<T> extends ArgumentMeta {
 }
 
 interface EventReducerArgument<T> extends ArgumentMeta {
-    reducer: AsyncResolvable<CommandEvent, T>;
+    reducer: AsyncResolvable<Event, T>;
 }
 
 export interface ArgumentConverter<T> {
     type: string;
 
-    convert(input: string, name: string, column: number, event: CommandEvent): AsyncResolvable<void, T>;
+    convert(input: string, name: string, column: number, event: Event): AsyncResolvable<void, T>;
 }
 
 export function Argument<T>(converter: ArgumentConverter<T>, name: string = null, required = true): ParameterDecorator {
@@ -50,16 +51,16 @@ export function Argument<T>(converter: ArgumentConverter<T>, name: string = null
     };
 }
 
-export function makeEventReducer<T>(reducer: AsyncResolvable<CommandEvent, T>): ParameterDecorator {
+export function makeEventReducer<T>(reducer: AsyncResolvable<Event, T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
         addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, reducer});
     };
 }
 
-export const MessageArg = makeEventReducer(event => event.getMessage());
-export const ResponseArg = makeEventReducer(event => event.getMessage().getResponse());
-export const Sender = makeEventReducer(event => event.getMessage().getChatter());
-export const ChannelArg = makeEventReducer(event => event.getMessage().getChannel());
+export const MessageArg = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE));
+export const ResponseArg = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE).response);
+export const Sender = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE).chatter);
+export const ChannelArg = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE).channel);
 
 export function RestArguments(required = true, settings: RestSettings = {}): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
@@ -94,15 +95,15 @@ function handleRestArguments(target: any, propertyKey: string, args: (string | s
     }
 }
 
-export async function resolveArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
+export async function resolveArguments(event: Event, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
     const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
-    const message = event.getMessage();
-    const rawArgs = event.getArguments().slice();
+    const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+    const rawArgs = event.extra.get(CommandEvent.EXTRA_ARGUMENTS).slice();
     args[0] = event;
 
-    let column = event.getMessage().getPart(0).length + 1;
+    let column = message.getPart(0).length + 1;
     for (const arg of argumentInfo) {
         if (isConverter(arg)) {
             try {
@@ -135,12 +136,12 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
 }
 
 
-export async function resolveCliArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
+export async function resolveCliArguments(event: Event, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
     const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
-    const message = event.getMessage();
-    const rawArgs = minimist(event.getArguments().join(" "));
+    const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+    const rawArgs = minimist(event.extra.get(CommandEvent.EXTRA_ARGUMENTS).join(" "));
     args[0] = event;
 
     for (const arg of argumentInfo) {

@@ -3,7 +3,6 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {FloatArg} from "../Systems/Commands/Validation/Float";
 import {getLogger} from "../Utilities/Logger";
@@ -16,6 +15,7 @@ import { Chatter } from "../Database/Entities/Chatter";
 import { Channel } from "../Database/Entities/Channel";
 import { Service } from "typedi";
 import { CurrencyType } from "../Systems/Currency/CurrencyType";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Betting",
@@ -35,7 +35,7 @@ class BetCommand extends Command {
     @CommandHandler("bet place", "bet place <option> <amount>")
     @CheckPermission(() => BettingModule.permissions.placeBet)
     async place(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel,
         @Argument(StringArg) option: string,
         @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
@@ -66,7 +66,7 @@ class BetCommand extends Command {
     @CommandHandler("bet open", "bet open \"<title>\" <option 1> <option 2> ... <option n>")
     @CheckPermission(() => BettingModule.permissions.openBet)
     async open(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg) title: string,
         @RestArguments() options: string[]
     ): Promise<void> {
@@ -80,7 +80,7 @@ class BetCommand extends Command {
     @CommandHandler("bet close", "bet close <winning option>")
     @CheckPermission(() => BettingModule.permissions.closeBet)
     async close(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg, "winning option") option: string
     ): Promise<void> {
         const game = this.betService.getGame(channel);
@@ -95,7 +95,7 @@ class BetCommand extends Command {
     @CommandHandler("bet check", "bet check")
     @CheckPermission(() => BettingModule.permissions.checkBet)
     async check(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel
     ): Promise<void> {
         const parts = [];
         const totals = await this.betService.getTotals(channel);

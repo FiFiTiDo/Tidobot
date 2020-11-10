@@ -1,6 +1,5 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
@@ -15,6 +14,8 @@ import {JoinQueueResponse, QueueService} from "../Services/QueueService";
 import { Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
+import Event from "../Systems/Event/Event";
+import { CommandEvent } from "../Systems/Commands/CommandEvent";
 
 export const MODULE_INFO = {
     name: "Queue",
@@ -31,7 +32,7 @@ class QueueCommand extends Command {
     @CommandHandler("queue join", "queue join", 1)
     @CheckPermission(() => QueueModule.permissions.joinQueue)
     async join(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
     ): Promise<void> {
         const result = await this.queueService.joinQueue(sender, channel);
         if (typeof result === "number") {
@@ -51,7 +52,7 @@ class QueueCommand extends Command {
     @CommandHandler("queue leave", "queue leave", 1)
     @CheckPermission(() => QueueModule.permissions.leaveQueue)
     async leave(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
     ): Promise<void> {
         const result = this.queueService.leaveQueue(sender, channel);
         if (!result.present) return response.message("queue:error.closed");
@@ -59,9 +60,9 @@ class QueueCommand extends Command {
     }
 
     @CommandHandler("queue check", "queue check [user]", 1)
-    @CheckPermission(event => event.getArgumentCount() < 1 ? QueueModule.permissions.checkPos : QueueModule.permissions.checkPosOther)
+    @CheckPermission(event => event.extra.get(CommandEvent.EXTRA_ARGUMENTS).length < 1 ? QueueModule.permissions.checkPos : QueueModule.permissions.checkPosOther)
     async check(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
         @Argument(new ChatterArg(), "user", false) target: Chatter = null
     ): Promise<void> {
         const chatter = target ?? sender;
@@ -73,7 +74,7 @@ class QueueCommand extends Command {
 
     @CommandHandler("queue pop", "queue pop", 1)
     @CheckPermission(() => QueueModule.permissions.popQueue)
-    async pop(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async pop(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         const chatter = this.queueService.removeNext(channel);
         if (!chatter.present) return response.message("queue:error.empty");
         return response.message("queue:next", {username: chatter.value.user.name});
@@ -81,7 +82,7 @@ class QueueCommand extends Command {
 
     @CommandHandler("queue peek", "queue peek", 1)
     @CheckPermission(() => QueueModule.permissions.peekQueue)
-    async peek(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async peek(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         const chatter = this.queueService.getNext(channel);
         if (!chatter.present) return response.message("queue:error.empty");
         return response.message("queue:next", {username: chatter.value.user.name});
@@ -89,14 +90,14 @@ class QueueCommand extends Command {
 
     @CommandHandler("queue clear", "queue clear", 1)
     @CheckPermission(() => QueueModule.permissions.clearQueue)
-    async clear(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async clear(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         this.queueService.clearQueue(channel);
         return response.message("queue:emptied");
     }
 
     @CommandHandler("queue open", "queue open", 1)
     @CheckPermission(() => QueueModule.permissions.openQueue)
-    async open(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async open(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         return this.queueService.openQueue(channel).present ?
             await response.message("queue:opened", {prefix: CommandSystem.getPrefix(channel)}) :
             await response.message("queue:error.open");
@@ -104,7 +105,7 @@ class QueueCommand extends Command {
 
     @CommandHandler("queue close", "queue close", 1)
     @CheckPermission(() => QueueModule.permissions.closeQueue)
-    async close(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async close(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         return this.queueService.closeQueue(channel).present ?
             await response.message("queue:closed") :
             await response.message("queue:error.closed");

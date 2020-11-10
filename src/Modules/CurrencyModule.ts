@@ -5,7 +5,6 @@ import Permission from "../Systems/Permissions/Permission";
 import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
 import ChannelManager from "../Chat/ChannelManager";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {FloatArg} from "../Systems/Commands/Validation/Float";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {getLogger} from "../Utilities/Logger";
@@ -25,6 +24,7 @@ import { Chatter } from "../Database/Entities/Chatter";
 import { ChatterManager } from "../Chat/ChatterManager";
 import { TimeUnit } from "../Systems/Timer/TimerSystem";
 import { CurrencyType } from "../Systems/Currency/CurrencyType";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Currency",
@@ -46,7 +46,7 @@ class BankCommand extends Command {
     @CommandHandler("bank give", "bank give <user> <amount>", 1)
     @CheckPermission(() => CurrencyModule.permissions.bankGive)
     async give(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new ChatterArg()) chatter: Chatter, @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         return chatter.deposit(amount)
@@ -59,7 +59,7 @@ class BankCommand extends Command {
     @CommandHandler("bank give-all", "bank give-all <amount>", 1)
     @CheckPermission(() => CurrencyModule.permissions.bankGiveAll)
     async giveAll(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
@@ -74,7 +74,7 @@ class BankCommand extends Command {
     @CommandHandler("bank take", "bank take <user> <amount>", 1)
     @CheckPermission(() => CurrencyModule.permissions.bankTake)
     async take(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new ChatterArg()) chatter: Chatter,
         @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
@@ -88,7 +88,7 @@ class BankCommand extends Command {
     @CommandHandler("bank take", "bank take-all <amount>", 1)
     @CheckPermission(() => CurrencyModule.permissions.bankTakeAll)
     async takeAll(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
@@ -103,7 +103,7 @@ class BankCommand extends Command {
     @CommandHandler(/^bank (balance|bal)/, "bank balance <username>", 1)
     @CheckPermission(() => CurrencyModule.permissions.bankBalance)
     async balance(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         return response.message("currency:balance-other", {
@@ -115,7 +115,7 @@ class BankCommand extends Command {
     @CommandHandler("bank reset", "bank reset <username>", 1)
     @CheckPermission(() => CurrencyModule.permissions.bankReset)
     async reset(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter
+        event: Event, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         chatter.balance = 0;
         return chatter.save()
@@ -126,7 +126,7 @@ class BankCommand extends Command {
     @CommandHandler("bank reset-all", "bank reset", 1)
     @CheckPermission(() => CurrencyModule.permissions.bankResetAll)
     async resetAll(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message
     ): Promise<void> {
         const confirmation = await this.confirmationModule.make(msg, await response.translate("currency.reset.all-confirm"), 30);
         confirmation.addListener(ConfirmedEvent, () => Promise.all(channel.chatters.map(chatter => chatter.resetBalance()))
@@ -146,7 +146,7 @@ class BalanceCommand extends Command {
     @CommandHandler(/^(balance|bal)/, "balance")
     @CheckPermission(() => CurrencyModule.permissions.getBalance)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter
     ): Promise<void> {
         return response.message("currency:balance", {
             username: sender.user.name,
@@ -164,7 +164,7 @@ class PayCommand extends Command {
     @CommandHandler("pay", "pay <user> <amount>")
     @CheckPermission(() => CurrencyModule.permissions.payUser)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel,
         @Argument(new ChatterArg()) chatter: Chatter,
         @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {

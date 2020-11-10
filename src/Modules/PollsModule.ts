@@ -3,7 +3,6 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
 import {StringArg, StringEnumArg} from "../Systems/Commands/Validation/String";
@@ -20,6 +19,7 @@ import { Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import { EntityStateList } from "../Database/EntityStateLiist";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Poll",
@@ -59,7 +59,7 @@ class StrawpollCommand extends Command {
     @CommandHandler(/^(strawpoll|sp) check/, "strawpoll check [poll id]", 1)
     @CheckPermission(() => PollsModule.permissions.checkStrawpoll)
     async check(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new IntegerArg({min: 0}), "poll id") pollId: number = null
     ): Promise<void> {
         if (pollId === null) {
@@ -82,7 +82,7 @@ class StrawpollCommand extends Command {
     @CommandHandler("strawpoll create", "strawpoll create --title \"title\" <option 1> <option 2> ... [option n]", 1, false, true)
     @CheckPermission(() => PollsModule.permissions.createStrawpoll)
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg) title: string,
         @Argument(BooleanArg, "multi", false) multi = false,
         @Argument(new StringEnumArg(["normal", "permissive", "disabled"]), "dupcheck", false) dupcheck = "normal",
@@ -112,7 +112,7 @@ class VoteCommand extends Command {
     @CommandHandler("vote", "vote <option #>", 0, true)
     @CheckPermission(() => PollsModule.permissions.vote)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
         @Argument(new IntegerArg({min: 0})) optionNum: number
     ): Promise<void> {
         const announce = channel.settings.get(PollsModule.settings.announceVotes);
@@ -134,7 +134,7 @@ class PollCommand extends Command {
     @CommandHandler("poll run", "poll run <option 1> <option 2> ... <option n>", 1)
     @CheckPermission(() => PollsModule.permissions.runPoll)
     async run(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @RestArguments(true, {min: 2}) options: string[]
     ): Promise<void> {
         const prefix = await CommandSystem.getPrefix(channel);
@@ -150,7 +150,7 @@ class PollCommand extends Command {
     @CommandHandler("poll stop", "poll stop", 1)
     @CheckPermission(() => PollsModule.permissions.stopPoll)
     async stop(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel
     ): Promise<void> {
         const prefix = CommandSystem.getPrefix(channel);
         const results = this.pollService.closePoll(channel);
@@ -165,7 +165,7 @@ class PollCommand extends Command {
     @CommandHandler(/^poll res(ults)?/, "poll results", 1)
     @CheckPermission(() => PollsModule.permissions.viewResults)
     async results(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel
     ): Promise<void> {
         const prefix = CommandSystem.getPrefix(channel);
         const results = this.pollService.getResults(channel);

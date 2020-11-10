@@ -8,7 +8,7 @@ import FakePurgeFilter from "./Filters/FakePurgeFilter";
 import SymbolFilter from "./Filters/SymbolFilter";
 import UrlFilter from "./Filters/UrlFilter";
 import {EventHandler, HandlesEvents} from "../Event/decorators";
-import MessageEvent, {MessageEventArgs} from "../../Chat/Events/MessageEvent";
+import MessageEvent from "../../Chat/Events/MessageEvent";
 import Permission from "../Permissions/Permission";
 import {Role} from "../Permissions/Role";
 import moment from "moment";
@@ -22,6 +22,7 @@ import { Chatter } from "../../Database/Entities/Chatter";
 import PermissionSystem from "../Permissions/PermissionSystem";
 import FilterModule from "../../Modules/FilterModule";
 import Message from "../../Chat/Message";
+import Event from "../Event/Event";
 
 @HandlesEvents()
 @Service()
@@ -47,8 +48,11 @@ export default class FilterSystem extends System {
     }
 
     @EventHandler(MessageEvent)
-    async onMessage(eventArgs: MessageEventArgs): Promise<void> {
-        const {sender, channel, message} = eventArgs;
+    async onMessage(event: Event): Promise<void> {
+        const message = event.extra.get(MessageEvent.EXTRA_MESSAGE);
+        const sender = message.chatter;
+        const channel = message.channel;
+
         this.messageCache.add(message);
         if (await message.checkPermission("filter.ignore.all")) return;
         if (this.permits.has(sender)) {
@@ -61,7 +65,7 @@ export default class FilterSystem extends System {
         }
 
         for (const filter of this.filters)
-            if (await filter.handleMessage(eventArgs))
+            if (await filter.handleMessage(message))
                 break;
     }
 

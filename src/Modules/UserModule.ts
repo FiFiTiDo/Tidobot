@@ -1,7 +1,6 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
@@ -16,6 +15,7 @@ import { InjectRepository } from "typeorm-typedi-extensions";
 import { ChatterPermissionRepoistory } from "../Database/Repositories/ChatterPermissionRepository";
 import { Chatter } from "../Database/Entities/Chatter";
 import Permission from "../Systems/Permissions/Permission";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "User",
@@ -36,7 +36,7 @@ class UserCommand extends Command {
     @CommandHandler(/^u(ser)? grant/, "user grant <user> <permission>")
     @CheckPermission(() => PermissionModule.permissions.grantPerm)
     async grant(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter, 
+        event: Event, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter, 
         @Argument(PermissionArg) permission: Permission, @MessageArg msg: Message
     ): Promise<void> {
         if (!msg.checkPermission(permission)) response.message("permission:error.not-permitted");
@@ -48,7 +48,7 @@ class UserCommand extends Command {
     @CommandHandler(/^u(ser)? deny/, "user deny <user> <permission>")
     @CheckPermission(() => PermissionModule.permissions.denyPerm)
     async deny(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter, 
+        event: Event, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter, 
         @Argument(PermissionArg) permission: Permission, @MessageArg msg: Message
     ): Promise<void> {
         if (!msg.checkPermission(permission)) response.message("permission:error.not-permitted");
@@ -60,7 +60,7 @@ class UserCommand extends Command {
     @CommandHandler(/^u(ser)? reset (.*)/, "user reset <user> <permission>")
     @CheckPermission(() => PermissionModule.permissions.resetPerm)
     async reset(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter,
+        event: Event, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter,
         @Argument(StringArg, "permission") permission: Permission, @MessageArg msg: Message
     ): Promise<void> {
         if (!msg.checkPermission(permission)) response.message("permission:error.not-permitted");
@@ -74,7 +74,7 @@ class UserCommand extends Command {
     @CommandHandler(/^u(ser)? reset$/, "user reset <user>")
     @CheckPermission(() => PermissionModule.permissions.resetAllPerms)
     async resetAll(
-        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        event: Event, @ResponseArg response: Response, @MessageArg msg: Message,
         @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         const permissions = await this.chatterPermissionRepository.find({ chatter });

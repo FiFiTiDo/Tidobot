@@ -4,7 +4,6 @@ import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {ConvertedSetting} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
@@ -17,6 +16,7 @@ import Container, { Service } from "typedi";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
 import { Channel } from "../Database/Entities/Channel";
 import { InvalidArgumentError } from "../Systems/Commands/Validation/ValidationErrors";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Settings",
@@ -45,7 +45,7 @@ class SetCommand extends Command {
     @CommandHandler("set", "set <key> <value>")
     @CheckPermission(() => SettingsModule.permissions.setSetting)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(SettingArg) setting: Setting<any>, @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         channel.settings.set(setting, value);
@@ -64,7 +64,7 @@ class UnsetCommand extends Command {
     @CommandHandler("unset", "unset <key>")
     @CheckPermission(() => SettingsModule.permissions.resetSetting)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Argument(SettingArg) setting: Setting<any>
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Argument(SettingArg) setting: Setting<any>
     ): Promise<void> {
         channel.settings.unset(setting);
         return channel.settings.save()
@@ -82,7 +82,7 @@ class ResetCommand extends Command {
     @CommandHandler("reset", "reset")
     @CheckPermission(() => SettingsModule.permissions.resetAllSettings)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message
     ): Promise<void> {
         const confirmMsg = await response.translate("setting:confirm-reset");
         const confirm = await this.confirmationModule.make(msg, confirmMsg, 30);

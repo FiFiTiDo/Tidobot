@@ -4,6 +4,7 @@ import {CommandEvent} from "../CommandEvent";
 import { ConvertingRepository, ConvertingRepositoryConstructor } from "../../../Database/Repositories/ConvertingRepository";
 import { BaseEntity } from "typeorm";
 import Container from "typedi";
+import Event from "../../Event/Event";
 
 interface ErrorInfo {
     msgKey: string;
@@ -19,9 +20,9 @@ export class EntityArg<T extends BaseEntity> implements ArgumentConverter<T> {
         this.repository = Container.get(repositoryCtor);
     }
 
-    async convert(input: string, name: string, column: number, event: CommandEvent): Promise<T> {
-        const msg = event.getMessage();
-        const channel = msg.getChannel();
+    async convert(input: string, name: string, column: number, event: Event): Promise<T> {
+        const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+        const channel = message.channel;
 
         const entity = await this.repository.convert(input, channel);
         if (entity === null) {

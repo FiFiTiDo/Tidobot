@@ -5,7 +5,6 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
@@ -34,7 +33,7 @@ class PingCommand extends Command {
 
     @CommandHandler("ping", "ping")
     @CheckPermission(() => GeneralModule.permissions.ping)
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
         return response.message("pong", {username: sender.user.name});
     }
 }
@@ -47,7 +46,7 @@ class RawCommand extends Command {
 
     @CommandHandler("raw", "raw <text>")
     @CheckPermission(() => GeneralModule.permissions.raw)
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, {join: " "}) text: string): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response, @RestArguments(true, {join: " "}) text: string): Promise<void> {
         return response.rawMessage(text);
     }
 }
@@ -60,7 +59,7 @@ class EchoCommand extends Command {
 
     @CommandHandler("echo", "echo <message>")
     @CheckPermission(() => GeneralModule.permissions.echo)
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @RestArguments(true, {join: " "}) message: string): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response, @RestArguments(true, {join: " "}) message: string): Promise<void> {
         return response.rawMessage(">> " + message);
     }
 }
@@ -74,7 +73,7 @@ class EvalCommand extends Command {
     @CommandHandler("eval", "eval <expression>")
     @CheckPermission(() => GeneralModule.permissions.eval)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @MessageArg msg: Message,
+        event: Event, @ResponseArg response: Response, @MessageArg msg: Message,
         @RestArguments(true, {join: " "}) rawExpr: string
     ): Promise<void> {
         await response.rawMessage(">> " + await msg.evaluateExpression(rawExpr));
@@ -89,7 +88,7 @@ class ShutdownCommand extends Command {
 
     @CommandHandler("shutdown", "shutdown")
     @CheckPermission(() => GeneralModule.permissions.shutdown)
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response): Promise<void> {
         return this.app.shutdown()
             .then(async successful => successful ?
                 await response.broadcast(arrayRand(await response.getTranslation<string[]>("shutdown"))) :

@@ -3,7 +3,6 @@ import {arrayRand} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Adapter from "../Adapters/Adapter";
 import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
@@ -15,6 +14,7 @@ import {TimeUnit} from "../Systems/Timer/TimerSystem";
 import { Inject, Service } from "typedi";
 import { AdapterToken } from "../symbols";
 import { Chatter } from "../Database/Entities/Chatter";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Fun",
@@ -30,7 +30,7 @@ class RouletteCommand extends Command {
 
     @CommandHandler("roulette", "roulette")
     @CheckPermission(() => FunModule.permissions.playRoulette)
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
         await response.action("fun:roulette.lead_up", {username: sender.user.name});
         await wait(TimeUnit.Seconds(1));
         if (randomFloat() > 1 / 6) {
@@ -50,7 +50,7 @@ class SeppukuCommand extends Command {
 
     @CommandHandler("seppuku", "seppuku")
     @CheckPermission(() => FunModule.permissions.playSeppuku)
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
         const successful = await this.adapter.tempbanChatter(sender, 30, await response.translate("fun:seppuku.reason"));
         if (!successful) await response.message("error.bot-not-permitted");
     }
@@ -64,7 +64,7 @@ class Magic8BallCommand extends Command {
 
     @CommandHandler("8ball", "8ball")
     @CheckPermission(() => FunModule.permissions.play8Ball)
-    async handleCommand(event: CommandEvent, @ResponseArg response: Response): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response): Promise<void> {
         const resp = arrayRand(await response.getTranslation<string[]>("fun:8ball.responses"));
         await response.message("fun:8ball.response", {response: resp});
     }

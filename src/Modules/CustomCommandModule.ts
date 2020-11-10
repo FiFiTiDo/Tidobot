@@ -2,7 +2,6 @@ import AbstractModule, {Symbols} from "./AbstractModule";
 import MessageEvent from "../Chat/Events/MessageEvent";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {CommandEvent} from "../Systems/Commands/CommandEvent";
@@ -24,6 +23,7 @@ import { CommandRepository } from "../Database/Repositories/CommandRepository";
 import { Command as CommandEntity, CommandConditionResponse } from "../Database/Entities/Command";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Channel } from "../Database/Entities/Channel";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
@@ -166,36 +166,38 @@ export default class CustomCommandModule extends AbstractModule {
         this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    expressionContextResolver(msg: Message): ExpressionContext {
+    expressionContextResolver(message: Message): ExpressionContext {
         return {
             alias: validateFunction(async (command: string): Promise<string> => new Promise(resolve => {
-                if (msg.checkLoopProtection(command)) return msg.getResponse().translate("expression:error.infinite-loop");
-                const newMsg = msg.extend(`${command} ${msg.getParts().slice(1).join(" ")}`, resolve);
+                if (message.checkLoopProtection(command)) return message.response.translate("expression:error.infinite-loop");
+                const newMsg = message.extend(`${command} ${message.parts.slice(1).join(" ")}`, resolve);
                 newMsg.addToLoopProtection(command);
-                this.handleMessage({event: new MessageEvent(newMsg)});
+                const event = new Event(MessageEvent);
+                event.extra.put(MessageEvent.EXTRA_MESSAGE, newMsg);
+                this.handleMessage(event);
             }), ["string|required"], returnErrorAsync())
         };
     }
 
     @EventHandler(MessageEvent)
-    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
-        const msg = event.getMessage();
+    async handleMessage(event: Event): Promise<void> {
+        const message = event.extra.get(MessageEvent.EXTRA_MESSAGE);
 
-        if (this.isDisabled(msg.getChannel())) return;
-        if (msg.getParts().length < 1) return;
+        if (this.isDisabled(message.channel)) return;
+        if (message.parts.length < 1) return;
 
-        const trigger = msg.getPart(0);
-        const commands = msg.channel.commands.filter(command => command.trigger === trigger);
+        const trigger = message.getPart(0);
+        const commands = message.channel.commands.filter(command => command.trigger === trigger);
         if (commands.length < 1) return;
 
         let executed = 0;
         const defCommands = [];
         for (const command of commands) {
-            const res = await command.checkCondition(msg);
+            const res = await command.checkCondition(message);
             if (res === CommandConditionResponse.RUN_NOW) {
-                if (command.price > 0 && !(await msg.getChatter().charge(command.price))) continue;
+                if (command.price > 0 && !(await message.chatter.charge(command.price))) continue;
                 executed++;
-                await msg.getResponse().rawMessage(await command.getResponse(msg));
+                await message.response.rawMessage(await command.getResponse(message));
             } else if (res === CommandConditionResponse.RUN_DEFAULT) {
                 defCommands.push(command);
             }
@@ -203,12 +205,12 @@ export default class CustomCommandModule extends AbstractModule {
 
         if (executed === 0) {
             for (const command of defCommands) {
-                if (command.price > 0 && !(await msg.getChatter().charge(command.price))) continue;
+                if (command.price > 0 && !(await message.chatter.charge(command.price))) continue;
                 executed++;
-                await msg.getResponse().rawMessage(await command.getResponse(msg));
+                await message.response.rawMessage(await command.getResponse(message));
             }
         }
 
-        msg.channel.logger.debug(`Custom command ${trigger} triggered by ${msg.chatter.user.name} triggering ${executed} commands.`);
+        message.channel.logger.debug(`Custom command ${trigger} triggered by ${message.chatter.user.name} triggering ${executed} commands.`);
     }
 }

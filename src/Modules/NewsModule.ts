@@ -2,7 +2,7 @@ import AbstractModule, {Symbols} from "./AbstractModule";
 import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import moment from "moment";
 import MessageEvent from "../Chat/Events/MessageEvent";
-import TickEvent from "../Application/TickEvent";
+import TickEvent from "../Application/Events/TickEvent";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";

@@ -20,6 +20,7 @@ import { List } from "../Database/Entities/List";
 import { Channel } from "../Database/Entities/Channel";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { ListItemRepository } from "../Database/Repositories/ListItemRepository";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "List",
@@ -40,9 +41,9 @@ class ListCommand extends Command {
     }
 
     @CommandHandler(/^list (?!create|delete|del|add|edit|remove|rem)/, "list <list> [item number]", 1)
-    @CheckPermission(event => event.getArgumentCount() > 1 ? ListModule.permissions.viewSpecificItem : ListModule.permissions.viewRandomItem)
+    @CheckPermission(event => event.extra.get(CommandEvent.EXTRA_ARGUMENTS).length > 1 ? ListModule.permissions.viewSpecificItem : ListModule.permissions.viewRandomItem)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: List,
+        event: Event, @ResponseArg response: Response, @Argument(ListArg) list: List,
         @Argument(new IntegerArg({min: 0}), "item number", false) itemNum: number = null
     ): Promise<void> {
         const random = itemNum === null;
@@ -56,7 +57,7 @@ class ListCommand extends Command {
     @CommandHandler("list create", "list create <name>", 1)
     @CheckPermission(() => ListModule.permissions.createList)
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Argument(StringArg) name: string
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Argument(StringArg) name: string
     ): Promise<void> {
         return this.listRepository.create({ name, channel }).save()
             .then(list => response.message(list === null ? "lists:exists" : "lists:created", {list: name}))
@@ -65,7 +66,7 @@ class ListCommand extends Command {
 
     @CommandHandler(/^list del(ete)?/, "list delete <name>", 1)
     @CheckPermission(() => ListModule.permissions.deleteList)
-    async delete(event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: List): Promise<void> {
+    async delete(event: Event, @ResponseArg response: Response, @Argument(ListArg) list: List): Promise<void> {
         return list.remove()
             .then(() => response.message("lists:deleted", {list: list.name}))
             .catch(e => response.genericErrorAndLog(e, logger));
@@ -74,7 +75,7 @@ class ListCommand extends Command {
     @CommandHandler("list add", "list add <list> <value>", 1)
     @CheckPermission(() => ListModule.permissions.addToList)
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: List,
+        event: Event, @ResponseArg response: Response, @Argument(ListArg) list: List,
         @RestArguments(true, {join: " "}) content: string
     ): Promise<void> {
         return this.listItemRepository.add(list, content)
@@ -85,7 +86,7 @@ class ListCommand extends Command {
     @CommandHandler("list edit", "list edit <list> <item> <new value>", 1)
     @CheckPermission(() => ListModule.permissions.editItem)
     async edit(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: List,
+        event: Event, @ResponseArg response: Response, @Argument(ListArg) list: List,
         @Argument(new IntegerArg({min: 0}), "item number") itemNum: number,
         @RestArguments(true, {join: " "}) content: string
     ): Promise<void> {
@@ -104,7 +105,7 @@ class ListCommand extends Command {
     @CommandHandler(/^list rem(ove)?/, "list remove <list> <item number>", 1)
     @CheckPermission(() => ListModule.permissions.removeFromList)
     async remove(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(ListArg) list: List,
+        event: Event, @ResponseArg response: Response, @Argument(ListArg) list: List,
         @Argument(new IntegerArg({min: 0}), "item number") itemNum: number
     ): Promise<void> {
         const item = list.getItem(itemNum);
@@ -166,8 +167,12 @@ export default class ListModule extends AbstractModule {
                         }
                         const command = `${prefix}list`;
                         const raw = `${command} ${args.join(" ")}`;
-                        const event = new CommandEvent(command, args, msg.extend(raw, resolve), this.listCommand);
-                        this.listCommand.execute(event.getEventArgs());
+                        const event = new Event(CommandEvent);
+                        event.extra.put(CommandEvent.EXTRA_TRIGGER, command);
+                        event.extra.put(CommandEvent.EXTRA_ARGUMENTS, args);
+                        event.extra.put(CommandEvent.EXTRA_MESSAGE, msg.extend(raw, resolve));
+                        event.extra.put(CommandEvent.EXTRA_COMMAND, this.listCommand);
+                        this.listCommand.execute(event);
                     });
                 }, ["string|required"], returnErrorAsync())
             }

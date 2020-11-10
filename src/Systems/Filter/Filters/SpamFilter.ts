@@ -1,5 +1,4 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {Integer, SettingType} from "../../Settings/Setting";
 import PermissionSystem from "../../Permissions/PermissionSystem";
@@ -7,6 +6,7 @@ import Permission from "../../Permissions/Permission";
 import {Role} from "../../Permissions/Role";
 import MessageCache from "../MessageCache";
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 @Service()
 export default class SpamFilter extends Filter {
@@ -24,7 +24,8 @@ export default class SpamFilter extends Filter {
         perm.registerPermission(SpamFilter.IGNORE_FILTER);
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(SpamFilter.IGNORE_FILTER)) return false;
         if (!channel.settings.get(SpamFilter.ENABLED)) return false;
         if (!(await this.messageCache.checkSpam(message))) return false;

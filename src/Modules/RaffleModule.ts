@@ -3,10 +3,8 @@ import MessageEvent from "../Chat/Events/MessageEvent";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting";
-import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {wait} from "../Utilities/functions";
 import {RaffleService} from "../Services/RaffleService";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
@@ -15,6 +13,7 @@ import {ChannelArg, ResponseArg, RestArguments} from "../Systems/Commands/Valida
 import {Response} from "../Chat/Response";
 import { Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Raffle",
@@ -32,7 +31,7 @@ class RaffleCommand extends Command {
     @CommandHandler("raffle open", "raffle open <keyword>", 1)
     @CheckPermission(() => RaffleModule.permissions.openRaffle)
     async open(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @RestArguments(true, {join: " "}) keyword: string
     ): Promise<void> {
         const raffle = this.raffleService.openRaffle(keyword, channel, {
@@ -48,19 +47,19 @@ class RaffleCommand extends Command {
 
     @CommandHandler("raffle close", "raffle close", 1)
     @CheckPermission(() => RaffleModule.permissions.closeRaffle)
-    async close(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async close(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         this.raffleService.closeRaffle(channel).ifPresent(() => response.message("raffle:closed"));
     }
 
     @CommandHandler("raffle reset", "raffle reset", 1)
     @CheckPermission(() => RaffleModule.permissions.resetRaffle)
-    async reset(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async reset(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         this.raffleService.resetRaffle(channel).ifPresent(() => response.message("raffle:reset"));
     }
 
     @CommandHandler(/^raffle (pull|draw)/, "raffle pull", 1)
     @CheckPermission(() => RaffleModule.permissions.pullWinner)
-    async pull(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async pull(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         this.raffleService.pullWinner(channel).ifPresent(async value => {
             if (value === false) return response.message("raffle:error.no-entries");
 
@@ -94,8 +93,8 @@ export default class RaffleModule extends AbstractModule {
     }
 
     @EventHandler(MessageEvent)
-    async handleMessage({event}: EventArguments<MessageEvent>): Promise<void> {
-        const message = event.getMessage();
+    async handleMessage(event: Event): Promise<void> {
+        const message = event.extra.get(MessageEvent.EXTRA_MESSAGE);
 
         if (this.isDisabled(message.getChannel())) return;
         await this.raffleService.tryEnter(message);

@@ -7,8 +7,8 @@ import LeaveEvent from "../Chat/Events/LeaveEvent";
 import ConnectedEvent from "../Chat/Events/ConnectedEvent";
 import DisconnectedEvent from "../Chat/Events/DisconnectedEvent";
 import EventSystem from "../Systems/Event/EventSystem";
-import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {NewChatterEvent, NewChatterEventArgs} from "../Chat/Events/NewChatterEvent";
+import {NewChannelEvent} from "../Chat/Events/NewChannelEvent";
+import {NewChatterEvent} from "../Chat/Events/NewChatterEvent";
 import {getLogger} from "../Utilities/Logger";
 import { Service } from "typedi";
 
@@ -21,8 +21,8 @@ export default class Bot {
 
     async start(options: AdapterOptions): Promise<void> {
         Bot.LOGGER.info("Starting the service " + this.adapter.getName() + "...");
-        this.eventSystem.addListener(MessageEvent, async ({event}) => {
-            const message = event.getMessage();
+        this.eventSystem.addListener(MessageEvent, event => {
+            const message = event.extra.get(MessageEvent.EXTRA_MESSAGE);
             const sender = message.chatter;
             const senderUser = sender.user;
             const channel = message.channel;
@@ -31,22 +31,29 @@ export default class Bot {
             if (senderUser.ignored) event.cancel();
             if (sender.banned) event.cancel();
         }, EventPriority.HIGHEST);
-        this.eventSystem.addListener(JoinEvent, ({event}) => {
-            event.channel.logger.info(util.format("%s has joined %s", event.chatter.user.name, event.channel.name));
+        this.eventSystem.addListener(JoinEvent, event => {
+            const channel = event.extra.get(JoinEvent.EXTRA_CHANNEL);
+            const chatter = event.extra.get(JoinEvent.EXTRA_CHATTER);
+            channel.logger.info(util.format("%s has joined %s", chatter.user.name, channel.name));
         });
-        this.eventSystem.addListener(LeaveEvent, ({event}) => {
-            event.channel.logger.info(util.format("%s has left %s", event.chatter.user.name, event.channel.name));
+        this.eventSystem.addListener(LeaveEvent, event => {
+            const channel = event.extra.get(LeaveEvent.EXTRA_CHANNEL);
+            const chatter = event.extra.get(LeaveEvent.EXTRA_CHATTER);
+            channel.logger.info(util.format("%s has left %s", chatter.user.name, channel.name));
         });
         this.eventSystem.addListener(ConnectedEvent, () => {
             Bot.LOGGER.info("Connected to the service.");
         }, EventPriority.MONITOR);
-        this.eventSystem.addListener(DisconnectedEvent, ({event}) => {
-            Bot.LOGGER.info("Disconnected from the service.", {reason: event.getMetadata("reason", "Unknown reason")});
+        this.eventSystem.addListener(DisconnectedEvent, event => {
+            const reason = event.extra.get(DisconnectedEvent.EXTRA_REASON) || "Unknown reason";
+            Bot.LOGGER.info("Disconnected from the service.", {reason});
         }, EventPriority.MONITOR);
-        this.eventSystem.addListener(NewChannelEvent, async ({channel}: NewChannelEventArgs) => {
+        this.eventSystem.addListener(NewChannelEvent, event => {
+            const channel = event.extra.get(NewChannelEvent.EXTRA_CHANNEL);
             Bot.LOGGER.info("Connected to a new channel: ", channel.name);
         });
-        this.eventSystem.addListener(NewChatterEvent, async ({chatter}: NewChatterEventArgs) => {
+        this.eventSystem.addListener(NewChatterEvent, event => {
+            const chatter = event.extra.get(NewChatterEvent.EXTRA_CHATTER);
             chatter.channel.logger.info(`New chatter joined the channel: ${chatter.user.name}`);
         });
         this.adapter.run(options);

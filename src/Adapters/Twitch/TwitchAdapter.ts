@@ -21,6 +21,7 @@ import { ChatterRepository } from "../../Database/Repositories/ChatterRepository
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Service } from "typedi";
 import { ChatterManager } from "../../Chat/ChatterManager";
+import Event from "../../Systems/Event/Event";
 
 @Service()
 export default class TwitchAdapter extends Adapter {
@@ -59,8 +60,9 @@ export default class TwitchAdapter extends Adapter {
             const chatter = await this.getChatter(userstate, channel);
 
             const msg = new TwitchMessage(message, chatter, channel, userstate, this);
-
-            this.eventSystem.dispatch(new MessageEvent(msg));
+            const event = new Event(MessageEvent);
+            event.extra.put(MessageEvent.EXTRA_MESSAGE, msg);
+            this.eventSystem.dispatch(event);
         });
 
         this.client.on("join", async (channelName: string, username: string, self: boolean) => {
@@ -73,7 +75,10 @@ export default class TwitchAdapter extends Adapter {
             const chatter = await this.getChatter(username, channel);
 
             this.chatterManager.setActive(chatter, true);
-            this.eventSystem.dispatch(new JoinEvent(chatter, channel));
+            const event = new Event(JoinEvent);
+            event.extra.put(JoinEvent.EXTRA_CHANNEL, channel);
+            event.extra.put(JoinEvent.EXTRA_CHATTER, chatter);
+            this.eventSystem.dispatch(event);
         });
 
         this.client.on("part", async (channelName: string, username: string, self: boolean) => {
@@ -83,20 +88,19 @@ export default class TwitchAdapter extends Adapter {
             const chatter = await this.getChatter(username, channel);
 
             this.chatterManager.setActive(chatter, false);
-            this.eventSystem.dispatch(new LeaveEvent(chatter, channel));
-        });
-
-        this.client.on("connected", (server: string, port: number) => {
-            const event = new ConnectedEvent();
-            event.setMetadata({server, port});
-
+            const event = new Event(LeaveEvent);
+            event.extra.put(LeaveEvent.EXTRA_CHANNEL, channel);
+            event.extra.put(LeaveEvent.EXTRA_CHATTER, chatter);
             this.eventSystem.dispatch(event);
         });
 
-        this.client.on("disconnected", (reason: string) => {
-            const event = new DisconnectedEvent();
-            event.setMetadata({reason});
+        this.client.on("connected", () => {
+            this.eventSystem.dispatch(new Event(ConnectedEvent));
+        });
 
+        this.client.on("disconnected", (reason: string) => {
+            const event = new Event(DisconnectedEvent);
+            event.extra.put(DisconnectedEvent.EXTRA_REASON, reason);
             this.eventSystem.dispatch(event);
         });
 
@@ -137,7 +141,9 @@ export default class TwitchAdapter extends Adapter {
 
 
         const chatter = await this.chatterRepository.make(id, name, channel);
-        this.eventSystem.dispatch(new NewChatterEvent(chatter));
+        const event = new Event(NewChatterEvent);
+        event.extra.put(NewChatterEvent.EXTRA_CHATTER, chatter);
+        this.eventSystem.dispatch(event);
         return chatter;
     }
 
@@ -159,7 +165,9 @@ export default class TwitchAdapter extends Adapter {
         channel.name = name;
         channel.nativeId = id;
         await this.channelManager.save(channel);
-        this.eventSystem.dispatch(new NewChannelEvent(channel));
+        const event = new Event(NewChannelEvent);
+        event.extra.put(NewChannelEvent.EXTRA_CHANNEL, channel);
+        this.eventSystem.dispatch(event);
         return channel;
     }
 

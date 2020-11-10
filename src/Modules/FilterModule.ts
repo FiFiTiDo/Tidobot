@@ -6,7 +6,6 @@ import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import {HandlesEvents} from "../Systems/Event/decorators";
 import { AdapterToken } from "../symbols";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import FilterSystem from "../Systems/Filter/FilterSystem";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {StringEnumArg} from "../Systems/Commands/Validation/String";
@@ -33,6 +32,7 @@ import { InjectRepository } from "typeorm-typedi-extensions";
 import { DomainFilterRepository } from "../Database/Repositories/DomainFilterRepository";
 import { BadWordFilterRepository } from "../Database/Repositories/BadWordFilterRepository";
 import { FilterRepository } from "../Database/Repositories/FilterRepository";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Filter",
@@ -51,7 +51,7 @@ class NukeCommand extends Command {
     @CommandHandler("nuke", "nuke [--regex] <match>")
     @CheckPermission(() => FilterModule.permissions.nuke)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @RestArguments(true, {join: " "}) match: string
     ): Promise<void> {
         const {newString, removed} = removePrefix("--regex ", match);
@@ -87,7 +87,7 @@ class PermitCommand extends Command {
     @CommandHandler("permit", "permit <user>")
     @CheckPermission(() => FilterModule.permissions.permitUser)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         this.filterSystem.permitUser(chatter);
@@ -106,7 +106,7 @@ class PardonCommand extends Command {
     @CommandHandler("pardon", "pardon <user>")
     @CheckPermission(() => FilterModule.permissions.pardonUser)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter
+        event: Event, @ResponseArg response: Response, @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         this.filterSystem.pardonUser(chatter);
         return response.message("filter:strikes-cleared", {username: chatter.user.name});
@@ -122,7 +122,7 @@ class PurgeCommand extends Command {
     @CommandHandler("purge", "purge <user>")
     @CheckPermission(() => FilterModule.permissions.purgeUser)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
         @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
         await this.adapter.tempbanChatter(chatter,
@@ -157,7 +157,7 @@ class FilterCommand extends Command {
     @CommandHandler("list add", "list add <list> <item>", 1)
     @CheckPermission(() => FilterModule.permissions.addList)
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(ListConverter) listType: ListType, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         this.getRepository(listType)
@@ -175,7 +175,7 @@ class FilterCommand extends Command {
     @CommandHandler(/^list (remove|rem)/, "list remove <list> <item>", 1)
     @CheckPermission(() => FilterModule.permissions.removeList)
     async remove(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(ListConverter) listType: ListType, @RestArguments(true, {join: " "}) item: string
     ): Promise<void> {
         this.getRepository(listType)
@@ -193,7 +193,7 @@ class FilterCommand extends Command {
     @CommandHandler("list reset", "list reset <list>", 1)
     @CheckPermission(() => FilterModule.permissions.resetList)
     async reset(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message,
         @Argument(ListConverter, "list", false) list: ListType
     ): Promise<void> {
         const confirmation = await this.confirmationModule.make(msg, await response.translate(`filter:list.reset.confirm-${list ? "specific" : "all"}`), 30);

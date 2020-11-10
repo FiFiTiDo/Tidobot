@@ -1,5 +1,4 @@
 import Filter from "./Filter";
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import SettingsSystem from "../../Settings/SettingsSystem";
 import Setting, {SettingType} from "../../Settings/Setting";
 import PermissionSystem from "../../Permissions/PermissionSystem";
@@ -8,6 +7,7 @@ import {Role} from "../../Permissions/Role";
 
 const FAKE_PURGE = /^<message \w+>|^<\w+ deleted>/i;
 import { Service } from "typedi";
+import Message from "../../../Chat/Message";
 
 @Service()
 export default class FakePurgeFilter extends Filter {
@@ -22,7 +22,8 @@ export default class FakePurgeFilter extends Filter {
         perm.registerPermission(FakePurgeFilter.IGNORE_FILTER);
     }
 
-    async handleMessage({message, channel}: MessageEventArgs): Promise<boolean> {
+    async handleMessage(message: Message): Promise<boolean> {
+        const channel = message.channel;
         if (await message.checkPermission(FakePurgeFilter.IGNORE_FILTER)) return false;
         if (!channel.settings.get(FakePurgeFilter.ENABLED)) return false;
 

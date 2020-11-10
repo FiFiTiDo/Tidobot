@@ -6,11 +6,9 @@ import TickEvent from "../Application/Events/TickEvent";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
-import {EventArguments} from "../Systems/Event/Event";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import ChannelManager from "../Chat/ChannelManager";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import Adapter from "../Adapters/Adapter";
 import {getLogger} from "../Utilities/Logger";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
@@ -25,6 +23,7 @@ import { NewsRepository } from "../Database/Repositories/NewsRepository";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { News } from "../Database/Entities/News";
 import { AdapterToken } from "../symbols";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "News",
@@ -53,7 +52,7 @@ class NewsCommand extends Command {
     @CommandHandler("news add", "news add <message>", 1)
     @CheckPermission(() => NewsModule.permissions.addItem)
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @RestArguments(true, {join: " "}) content: string
     ): Promise<void> {
         return this.newsRepository.make(content, channel)
@@ -63,7 +62,7 @@ class NewsCommand extends Command {
 
     @CommandHandler(/^news rem(ove)?/, "news remove <id>", 1)
     @CheckPermission(() => NewsModule.permissions.removeItem)
-    async remove(event: CommandEvent, @ResponseArg response: Response, @Argument(NewsItemArg) item: News): Promise<void> {
+    async remove(event: Event, @ResponseArg response: Response, @Argument(NewsItemArg) item: News): Promise<void> {
         return item.remove()
             .then(() => response.message("news:removed", {id: item.id}))
             .catch(e => response.genericErrorAndLog(e, logger));
@@ -72,7 +71,7 @@ class NewsCommand extends Command {
     @CommandHandler("news edit", "news edit <id> <message>", 1)
     @CheckPermission(() => NewsModule.permissions.editItem)
     async edit(
-        event: CommandEvent, @ResponseArg response: Response,
+        event: Event, @ResponseArg response: Response,
         @Argument(NewsItemArg) item: News, @RestArguments(true, {join: " "}) content: string
     ): Promise<void> {
         item.content = content;
@@ -83,7 +82,7 @@ class NewsCommand extends Command {
 
     @CommandHandler("news clear", "news clear", 1)
     @CheckPermission(() => NewsModule.permissions.clearItems)
-    async clear(event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message): Promise<void> {
+    async clear(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message): Promise<void> {
         const confirmMsg = await response.translate("news:clear-confirm");
         const confirm = await this.confirmationModule.make(msg, confirmMsg, 30);
         confirm.addListener(ConfirmedEvent, async () => this.newsRepository.remove(channel.newsItems)
@@ -146,8 +145,8 @@ export default class NewsModule extends AbstractModule {
     }
 
     @EventHandler(MessageEvent)
-    async messageHandler({event}: EventArguments<MessageEvent>): Promise<void> {
-        this.tryNext(event.getMessage().channel, true);
+    async messageHandler(event: Event): Promise<void> {
+        this.tryNext(event.extra.get(MessageEvent.EXTRA_MESSAGE).channel, true);
     }
 
     private async showNextMessage(channel: Channel): Promise<void> {

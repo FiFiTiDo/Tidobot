@@ -4,7 +4,6 @@ import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
 import Message from "../Chat/Message";
@@ -43,7 +42,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) add/, "command add <trigger> <response>", 1)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async add(
-        event: CommandEvent, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg) trigger: string,
         @RestArguments(true, {join: " "}) resp: string
     ): Promise<void> {
@@ -55,7 +54,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit trigger/, "command edit trigger <id> <new trigger>", 2)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editTrigger(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.trigger = value;
@@ -67,7 +66,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (condition|cond)/, "command edit condition <id> <new condition>", 2)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editCondition(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.condition = value;
@@ -79,7 +78,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (response|resp)/, "command edit response <id> <new response>", 2)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editResponse(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
         command.response = value;
@@ -91,7 +90,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit price/, "command edit price <id> <new price>", 2)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editPrice(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(new FloatArg({min: 0})) value: number
     ): Promise<void> {
         command.price = value;
@@ -103,7 +102,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (global-cooldwn|gc)/, "command edit global-cooldown <id> <new cooldown>", 2)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editGlobalCooldown(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
         command.globalCooldown = value;
@@ -115,7 +114,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit (user-cooldown|uc)/, "command edit user-cooldown <id> <new cooldown>", 2)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editUserCooldown(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(new IntegerArg({min: 0})) value: number
     ): Promise<void> {
         command.userCooldown = value;
@@ -127,7 +126,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) edit enabled/, "command edit enabled <id> <new value>", 2)
     @CheckPermission(() => CustomCommandModule.permissions.editCommand)
     async editEnabled(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity,
         @Argument(BooleanArg) value: boolean
     ): Promise<void> {
         command.enabled = value;
@@ -139,7 +138,7 @@ class CommandCommand extends Command {
     @CommandHandler(/^(c|cmd|command) (delete|del)/, "command delete <id>", 1)
     @CheckPermission(() => CustomCommandModule.permissions.deleteCommand)
     async delete(
-        event: CommandEvent, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity
+        event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity
     ): Promise<void> {
         command.remove()
             .then(() => response.message("command:deleted", {id: command.id}))

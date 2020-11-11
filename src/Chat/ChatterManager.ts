@@ -12,14 +12,12 @@ interface ChatterState {
 
 @Service()
 export class ChatterManager {
-    private chatterState: MapExt<number, ChatterState>
+    private chatterState: MapExt<number, ChatterState> = new MapExt();
 
     constructor(
         @InjectRepository()
         private readonly repository: ChatterRepository
-    ) {
-
-    }
+    ) {}
 
     public getState(chatter: Chatter): ChatterState {
         return this.chatterState.getOrSet(chatter.id, {

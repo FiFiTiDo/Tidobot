@@ -14,7 +14,6 @@ import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
 import {getLogger, logError} from "../../Utilities/Logger";
 import {NewChatterEvent} from "../../Chat/Events/NewChatterEvent";
-import GeneralConfig from "../../Systems/Config/ConfigModels/GeneralConfig";
 import { Channel } from "../../Database/Entities/Channel";
 import { Chatter } from "../../Database/Entities/Chatter";
 import { ChatterRepository } from "../../Database/Repositories/ChatterRepository";
@@ -22,6 +21,7 @@ import { InjectRepository } from "typeorm-typedi-extensions";
 import { Service } from "typedi";
 import { ChatterManager } from "../../Chat/ChatterManager";
 import Event from "../../Systems/Event/Event";
+import { ChannelRepository } from "../../Database/Repositories/ChannelRepository";
 
 @Service()
 export default class TwitchAdapter extends Adapter {
@@ -30,10 +30,13 @@ export default class TwitchAdapter extends Adapter {
 
     public client: tmi.Client;
     public oldApi: kraken.Api;
+    private _connectedChannels: string[] = [];
 
     constructor(
         private readonly channelManager: ChannelManager,
         private readonly chatterManager: ChatterManager,
+        @InjectRepository()
+        private readonly channelRepository: ChannelRepository,
         @InjectRepository()
         private readonly chatterRepository: ChatterRepository,
         public readonly api: helix.Api,
@@ -45,13 +48,14 @@ export default class TwitchAdapter extends Adapter {
 
     async run(options: AdapterOptions): Promise<void> {
         const config = await this.config.getConfig(TwitchConfig);
-        const general = await this.config.getConfig(GeneralConfig);
         this.api.setCredentials(config.api.clientId, config.api.clientSecret);
         this.oldApi = new kraken.Api(config.api.clientId);
         this.client = tmi.Client({
             identity: config.identities[options.identity] || config.identities["default"],
-            channels: general.channels
+            channels: config.channels
         });
+        this._connectedChannels = config.channels;
+        this.channelManager.setActive(this.connectedChannels);
 
         this.client.on("message", async (channelName: string, userstate: tmi.ChatUserstate, message: string, self: boolean) => {
             if (self) return;
@@ -149,7 +153,6 @@ export default class TwitchAdapter extends Adapter {
 
     async getChannelByName(channelName: string): Promise<Channel> {
         const channelOptional = await this.channelManager.findByName(channelName);
-
         if (channelOptional.present) return channelOptional.value;
 
         let resp: helix.Response<helix.User>;
@@ -161,10 +164,7 @@ export default class TwitchAdapter extends Adapter {
         }
         const {id, login: name} = resp.data[0];
 
-        const channel = new Channel();
-        channel.name = name;
-        channel.nativeId = id;
-        await this.channelManager.save(channel);
+        const channel = await this.channelRepository.make(name, id);
         const event = new Event(NewChannelEvent);
         event.extra.put(NewChannelEvent.EXTRA_CHANNEL, channel);
         this.eventSystem.dispatch(event);
@@ -201,7 +201,11 @@ export default class TwitchAdapter extends Adapter {
         }
     }
 
-    getName(): string {
+    get name(): string {
         return "twitch";
+    }
+
+    get connectedChannels(): string[] {
+        return this._connectedChannels;
     }
 }

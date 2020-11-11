@@ -20,22 +20,10 @@ export default class MessageCache {
     add(message: Message): void {
         const channel = message.getChannel();
         const messages = this.messages.get(channel);
-        const maxMessages = this.getMaxMessages(channel);
+        const maxMessages = channel.settings.get(MessageCache.MAX_CACHE);
         messages.push(message);
         messages.slice(Math.max(0, messages.length - maxMessages), Math.min(messages.length, maxMessages));
         this.messages.set(channel, messages);
-    }
-
-    getMaxPercentage(channel: Channel): number {
-        return channel.settings.get(SpamFilter.SIMILARITY);
-    }
-
-    getMaxMessages(channel: Channel): number {
-        return channel.settings.get(MessageCache.MAX_CACHE);
-    }
-
-    getMaxMatches(channel: Channel): number {
-        return channel.settings.get(SpamFilter.AMOUNT);
     }
 
     getAll(channel: Channel): Message[] {
@@ -47,7 +35,7 @@ export default class MessageCache {
         const messageRaw = message.getRaw();
         let matches = 0;
         const messages = this.messages.get(channel);
-        const maxPercentage = await this.getMaxPercentage(channel);
+        const maxPercentage = channel.settings.get(SpamFilter.SIMILARITY);
         for (const cached of messages) {
             const cachedRaw = cached.getRaw();
             const distance = leven(messageRaw, cachedRaw);
@@ -55,7 +43,7 @@ export default class MessageCache {
             const percentage = ((1 - distance) / bigger) * 100;
             if (percentage >= maxPercentage) matches++;
         }
-        return matches < await this.getMaxMatches(channel);
+        return matches >= channel.settings.get(SpamFilter.AMOUNT);
     }
 
     purge(): void {

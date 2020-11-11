@@ -1,7 +1,7 @@
 import {addPropertyMetadata, getPropertyMetadata} from "../../../Utilities/DecoratorUtils";
 import {AsyncResolvable, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError, MissingRequiredArgumentError, MissingRequiredCliArgumentError} from "./ValidationErrors";
-import minimist = require("minimist-string");
+import * as minimist from "minimist-string";
 import Event from "../../Event/Event";
 import { CommandEvent } from "../CommandEvent";
 
@@ -130,7 +130,6 @@ export async function resolveArguments(event: Event, target: any, propertyKey: s
             args[arg.parameterIndex] = await resolveAsync(arg.reducer, event);
         }
     }
-
     handleRestArguments(target, propertyKey, args, rawArgs.slice());
     return args;
 }

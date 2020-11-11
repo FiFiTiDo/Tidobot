@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { setupDatabase } from "./Database";
+import { setupDatabase } from "./Database/init";
 setupDatabase().then(() => {
     require("./init");
 });

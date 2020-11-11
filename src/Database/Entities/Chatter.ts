@@ -18,16 +18,16 @@ export class Chatter extends CustomBaseEntity {
     @Column({ default: false })
     banned: boolean;
 
-    @ManyToOne(() => User, user => user.chatters)
+    @ManyToOne(() => User, user => user.chatters, { eager: true, nullable: false })
     user: User;
 
-    @ManyToOne(() => Channel, channel => channel.chatters)
+    @ManyToOne(() => Channel, channel => channel.chatters, { nullable: false })
     channel: Channel;
 
-    @OneToMany(() => ChatterPermission, permission => permission.chatter)
+    @OneToMany(() => ChatterPermission, permission => permission.chatter, { eager: true })
     permissions: ChatterPermission[];
 
-    @ManyToMany(() => Group, group => group.members)
+    @ManyToMany(() => Group, group => group.members, { eager: true })
     groups: Group[];
 
     @OneToOne(() => Trainer, trainer => trainer.chatter)
@@ -41,14 +41,16 @@ export class Chatter extends CustomBaseEntity {
     }
 
     checkPermission(permission: Permission): PermissionStatus {
-        for (const entity of this.permissions)
+        const permissions = this.permissions || [];
+        for (const entity of permissions)
             if (entity.permission.token == permission.token)
                 return entity.granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED;
 
-        if (this.groups.length < 1) return PermissionStatus.NOT_DEFINED;
+        const groups = this.groups || [];
+        if (groups.length < 1) return PermissionStatus.NOT_DEFINED;
 
         let granted = 0;
-        for (const group of this.groups) {
+        for (const group of groups) {
             const status = group.checkPermission(permission);
             if (status === PermissionStatus.DENIED)
                 return PermissionStatus.DENIED;

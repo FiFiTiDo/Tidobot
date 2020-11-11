@@ -10,17 +10,18 @@ import EventSystem from "../Systems/Event/EventSystem";
 import {NewChannelEvent} from "../Chat/Events/NewChannelEvent";
 import {NewChatterEvent} from "../Chat/Events/NewChatterEvent";
 import {getLogger} from "../Utilities/Logger";
-import { Service } from "typedi";
+import { Inject, Service } from "typedi";
+import { AdapterToken } from "../symbols";
 
 @Service()
 export default class Bot {
     public static readonly LOGGER = getLogger("Bot");
 
-    constructor(private adapter: Adapter, private readonly eventSystem: EventSystem) {
+    constructor(@Inject(AdapterToken) private adapter: Adapter, private readonly eventSystem: EventSystem) {
     }
 
     async start(options: AdapterOptions): Promise<void> {
-        Bot.LOGGER.info("Starting the service " + this.adapter.getName() + "...");
+        Bot.LOGGER.info("Starting the service " + this.adapter.name + "...");
         this.eventSystem.addListener(MessageEvent, event => {
             const message = event.extra.get(MessageEvent.EXTRA_MESSAGE);
             const sender = message.chatter;

@@ -7,7 +7,6 @@ import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import ChannelManager from "../Chat/ChannelManager";
 import Command from "../Systems/Commands/Command";
 import Adapter from "../Adapters/Adapter";
 import {getLogger} from "../Utilities/Logger";
@@ -24,6 +23,8 @@ import { InjectRepository } from "typeorm-typedi-extensions";
 import { News } from "../Database/Entities/News";
 import { AdapterToken } from "../symbols";
 import Event from "../Systems/Event/Event";
+import ChannelManager from "../Chat/ChannelManager";
+import EventSystem from "../Systems/Event/EventSystem";
 
 export const MODULE_INFO = {
     name: "News",
@@ -94,7 +95,6 @@ class NewsCommand extends Command {
 }
 
 @Service()
-@HandlesEvents()
 export default class NewsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     static permissions = {
@@ -113,7 +113,8 @@ export default class NewsModule extends AbstractModule {
 
     constructor(
         @InjectRepository() private readonly newsRepository: NewsRepository, newsCommand: NewsCommand,
-        private readonly channelManager: ChannelManager, @Inject(AdapterToken) private readonly adapter: Adapter
+        private readonly channelManager: ChannelManager, @Inject(AdapterToken) private readonly adapter: Adapter,
+        eventSystem: EventSystem
     ) {
         super(NewsModule);
 
@@ -121,6 +122,8 @@ export default class NewsModule extends AbstractModule {
         this.registerCommand(newsCommand);
         this.registerPermissions(NewsModule.permissions);
         this.registerSettings(NewsModule.settings);
+        eventSystem.addListener(MessageEvent, this.messageHandler.bind(this));
+        eventSystem.addListener(TickEvent, this.tickHandler.bind(this));
     }
 
     async tryNext(channel: Channel, increment = false): Promise<void> {
@@ -140,8 +143,8 @@ export default class NewsModule extends AbstractModule {
     }
 
     @EventHandler(TickEvent)
-    async tickHandler(): Promise<void> {
-        await Promise.all((await this.channelManager.getAllActive()).map(channel => this.tryNext(channel)));
+    async tickHandler(): Promise<void> {/* TODO: Fix
+        await Promise.all((await this.channelManager.getAllActive()).map(channel => this.tryNext(channel)));*/
     }
 
     @EventHandler(MessageEvent)

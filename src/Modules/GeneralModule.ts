@@ -16,6 +16,7 @@ import Application from "../Application/Application";
 import {getLogger} from "../Utilities/Logger";
 import { Service } from "typedi";
 import { Chatter } from "../Database/Entities/Chatter";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "General",
@@ -99,6 +100,7 @@ class ShutdownCommand extends Command {
 
 export const TIMEZONE_SETTING = new Setting("timezone", moment.tz.zone("America/New_York"), SettingType.TIMEZONE);
 
+@Service()
 export default class GeneralModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     static permissions = {

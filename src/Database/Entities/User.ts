@@ -14,7 +14,7 @@ export class User extends CustomBaseEntity {
     @Column({ default: false })
     ignored: boolean;
 
-    @ManyToOne(() => Service, service => service.users)
+    @ManyToOne(() => Service, service => service.users, { nullable: false })
     service: Service;
 
     @OneToMany(() => Chatter, chatter => chatter.user)

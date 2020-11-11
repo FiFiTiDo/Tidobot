@@ -21,12 +21,12 @@ import PokemonModule from "./PokemonModule";
 import GamblingModule from "./GamblingModule";
 import Container from "typedi";
 
-export const ALL_MODULES = [
-    ConfirmationModule, PermissionModule, GroupsModule, SettingsModule, GeneralModule, CustomCommandModule, ListModule,
-    PollsModule, CounterModule, FunModule, NewsModule, RaffleModule, CurrencyModule, FilterModule, BettingModule,
-    TidobotModule, UserModule, QueueModule, PokemonModule, GamblingModule
-];
-
 export function getAllModules(): AbstractModule[] {
-    return ALL_MODULES.map(Container.get) as AbstractModule[];
+    return [
+        Container.get(ConfirmationModule), Container.get(PermissionModule), Container.get(GroupsModule), Container.get(SettingsModule), 
+        Container.get(GeneralModule), Container.get(CustomCommandModule), Container.get(ListModule), Container.get(PollsModule), 
+        Container.get(CounterModule), Container.get(FunModule), Container.get(NewsModule), Container.get(RaffleModule), 
+        Container.get(CurrencyModule), Container.get(FilterModule), Container.get(BettingModule), Container.get(TidobotModule), 
+        Container.get(UserModule), Container.get(QueueModule), Container.get(PokemonModule), Container.get(GamblingModule)
+    ];
 }

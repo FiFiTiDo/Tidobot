@@ -4,7 +4,7 @@ import Application from "./Application/Application";
 import ModuleManager from "./Modules/ModuleManager";
 import FilterSystem from "./Systems/Filter/FilterSystem";
 import Config from "./Systems/Config/Config";
-import { AdapterToken, TranslationProviderToken } from "./symbols";
+import { AdapterToken, ServiceToken, TranslationProviderToken } from "./symbols";
 import LastFMSystem from "./Systems/LastFM/LastFMSystem";
 import {getLogger} from "./Utilities/Logger";
 import CommandSystem from "./Systems/Commands/CommandSystem";
@@ -51,8 +51,8 @@ async function initialize(): Promise<void> {
     await serviceManager.initialize();
 
     logger.info("Registered service: " + serviceManager.service.name);
-
-    Container.set(AdapterToken, adapterManager.findAdapterByName(serviceManager.service.name));
+    Container.set(ServiceToken, serviceManager.service);
+    Container.set(AdapterToken, Container.get(adapterManager.findAdapterByName(serviceManager.service.name)));
 
     logger.info("Initializing systems");
 

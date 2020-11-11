@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToMany, ManyToOne, OneToMany } from "typeorm";
+import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from "typeorm";
 import Permission, { PermissionStatus } from "../../Systems/Permissions/Permission";
 import { Channel } from "./Channel";
 import { Chatter } from "./Chatter";
@@ -14,6 +14,11 @@ export class Group extends CustomBaseEntity {
     channel: Channel;
 
     @ManyToMany(() => Chatter, chatter => chatter.groups)
+    @JoinTable({
+        name: "group_member",
+        joinColumns: [{ name: "group", referencedColumnName: "id" }],
+        inverseJoinColumns: [{ name: "member", referencedColumnName: "id" }]
+    })
     members: Chatter[];
 
     @OneToMany(() => GroupPermission, groupPermission => groupPermission.group)

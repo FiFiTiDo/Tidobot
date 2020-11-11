@@ -19,11 +19,18 @@ export class ServiceManager {
         const general = await this.config.getConfig(GeneralConfig);
         const serviceName = general.service;
         const service = await this.repository.findOne({ name: serviceName });
-        if (service === null) throw new Error("Unable to find service: " + serviceName);
+        if (service === undefined) throw new Error("Unable to find service: " + serviceName);
         this._service = service;
     }
 
     get service(): ServiceEntity {
         return this._service;
+    }
+
+    async getService(): Promise<ServiceEntity|null> {
+        const general = await this.config.getConfig(GeneralConfig);
+        const serviceName = general.service;
+        const service = await this.repository.findOne({ name: serviceName });
+        return service || null;
     }
 }

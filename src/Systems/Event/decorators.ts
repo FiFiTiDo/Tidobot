@@ -18,7 +18,8 @@ export function HandlesEvents() {
         return class extends constructor {
             constructor(...args: any[]) {
                 super(...args);
-                for (const handler of getMetadata<EventHandler[]>(EVENT_META_KEY, this.constructor)) {
+                const handlers = getMetadata<EventHandler[]>(EVENT_META_KEY, this.constructor) || [];
+                for (const handler of handlers) {
                     Container.get(EventSystem).addListener(handler.type, {
                         thisArg: this,
                         func: handler.func

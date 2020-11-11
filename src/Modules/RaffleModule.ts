@@ -71,6 +71,7 @@ class RaffleCommand extends Command {
 }
 
 @HandlesEvents()
+@Service()
 export default class RaffleModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     static permissions = {

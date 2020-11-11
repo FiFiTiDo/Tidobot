@@ -18,6 +18,6 @@ export class PermissionRepository extends ConvertingRepository<Permission> {
     }
 
     removeByChannel(channel: Channel): Promise<Permission[]> {
-        return this.remove(channel.permissions);
+        return this.find({ channel }).then(permissions => this.remove(permissions));
     }
 }

@@ -116,6 +116,7 @@ class ListCommand extends Command {
     }
 }
 
+@Service()
 export default class ListModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     static permissions = {

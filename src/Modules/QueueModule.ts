@@ -112,6 +112,7 @@ class QueueCommand extends Command {
     }
 }
 
+@Service()
 export default class QueueModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     static permissions = {

@@ -51,9 +51,9 @@ export class ExperienceService {
     }
 
     async decayAllMonLevels(channelManager: ChannelManager): Promise<void> {
-        logger.debug("Decaying pokemon levels");
+        logger.debug("Decaying pokemon levels");/* TODO: Fix
         for (const channel of await channelManager.getAllActive())
             for await (const trainerData of channel.trainers)
-                await Promise.all(trainerData.team.map(pkmn => this.decayLevel(pkmn)));
+                await Promise.all(trainerData.team.map(pkmn => this.decayLevel(pkmn)));*/
     }
 }

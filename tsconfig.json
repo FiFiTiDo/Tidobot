@@ -7,7 +7,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "module": "commonjs",
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
     "target": "ES6",
     "types": [
       "node", "reflect-metadata", "mocha"

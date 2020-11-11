@@ -10,7 +10,7 @@ export default function CheckPermission(perm: Resolvable<Event, Permission>) {
         descriptor.value = function (event: Event, ...args: any[]): any {
             const permission = resolve(perm, event);
             if (!event.extra.get(CommandEvent.EXTRA_MESSAGE).checkPermission(permission)) return;
-            originalMethod.apply(this, args);
+            originalMethod.apply(this, [event, ...args]);
         };
     };
 }

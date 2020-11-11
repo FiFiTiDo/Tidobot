@@ -9,11 +9,11 @@ export default class Event {
     private _cancelled: boolean;
 
     constructor(public readonly type: EventType) {
-        this._cancelled = true;
+        this._cancelled = false;
     }
 
     public cancel(): void {
-        this._cancelled = false;
+        this._cancelled = true;
     }
 
     public get cancelled(): boolean {

@@ -2,7 +2,7 @@ import AbstractModule from "./AbstractModule";
 import {getLogger, logError} from "../Utilities/Logger";
 import { Channel } from "../Database/Entities/Channel";
 import { Service } from "typedi";
-import { getAllModules } from ".";
+import { getAllModules } from "./modules";
 
 @Service()
 export default class ModuleManager {

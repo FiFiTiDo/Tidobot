@@ -4,6 +4,10 @@ import { Service } from "typedi";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Repository } from "typeorm";
 import { Service as ServiceEntity } from "../Database/Entities/Service";
+import { PG_UNIQUE_CONSTRAINT_VIOLATION } from "../symbols";
+import { getLogger, logError } from "../Utilities/Logger";
+
+const logger = getLogger("Adapter");
 
 export type AdapterOptions = {
     identity: string;
@@ -23,7 +27,9 @@ export default abstract class Adapter {
 
     public abstract stop(): void | Promise<void>;
 
-    public abstract getName(): string;
+    public abstract get name(): string;
+
+    public abstract get connectedChannels(): string[];
 
     public abstract async sendMessage(message: string, channel: Channel): Promise<void>;
 
@@ -38,19 +44,26 @@ export default abstract class Adapter {
 
 @Service()
 export class AdapterManager {
-    private adapters: AdapterConstructor<any>[];
+    private adapters: AdapterConstructor<any>[] = [];
 
     constructor(
         @InjectRepository(ServiceEntity)
         private serviceRepository: Repository<ServiceEntity>
-    ) {
-
-    }
+    ) {}
 
     public async registerAdapter(adapter: AdapterConstructor<any>): Promise<void> {
         this.adapters.push(adapter);
 
-        await this.serviceRepository.save({ name: adapter.serviceName });
+        try {
+            await this.serviceRepository.save({ name: adapter.serviceName });
+        } catch (e) {
+            if (e.code === PG_UNIQUE_CONSTRAINT_VIOLATION) {
+                return;
+            } else {
+                logError(logger, e, "Failed to insert service into database", true);
+                process.exit(1);
+            }
+        }
     }
 
     public findAdapterByName(name: string): AdapterConstructor<any> {

@@ -5,7 +5,7 @@ import { Service } from "typedi";
 @Service()
 export default class TimerSystem extends System {
     private static instance: TimerSystem = null;
-    private readonly timers: Timer[];
+    private readonly timers: Timer[] = [];
 
     private constructor() {
         super("Timer");

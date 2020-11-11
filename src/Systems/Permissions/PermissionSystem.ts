@@ -6,7 +6,6 @@ import { Service } from "typedi";
 import { PermissionRepository } from "../../Database/Repositories/PermissionRepository";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Channel } from "../../Database/Entities/Channel";
-import { Permission as PermissionEntityNew } from "../../Database/Entities/Permission";  
 import { Chatter } from "../../Database/Entities/Chatter";
 
 @Service()
@@ -74,11 +73,12 @@ export default class PermissionSystem extends System {
     public async resetChannelPermissions(channel: Channel): Promise<void> {
         await this.repository.removeByChannel(channel);
         await this.repository.save(this.permissions.map(permission => {
-            const entity = new PermissionEntityNew();
-            entity.role = permission.getDefaultRole();
-            entity.defaultRole = permission.getDefaultRole();
-            entity.moduleDefined = true;
-            return entity;
+            return this.repository.create({
+                token: permission.token,
+                role: permission.getDefaultRole(),
+                defaultRole: permission.getDefaultRole(),
+                moduleDefined: true
+            });
         }));
     }
 }

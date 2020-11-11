@@ -1,5 +1,4 @@
 import AbstractModule from "../../Modules/AbstractModule";
-import {EventHandler, HandlesEvents} from "../Event/decorators";
 import Message from "../../Chat/Message";
 import MessageEvent from "../../Chat/Events/MessageEvent";
 import Event from "../Event/Event";
@@ -12,6 +11,7 @@ import Setting, {SettingType} from "../Settings/Setting";
 import System from "../System";
 import { Service } from "typedi";
 import { Channel } from "../../Database/Entities/Channel";
+import { EventHandler, HandlesEvents } from "../Event/decorators";
 
 export interface CommandListener {
     (event: CommandEventArgs): void;
@@ -60,7 +60,6 @@ export default class CommandSystem extends System {
         if (message.getPart(0).startsWith(commandPrefix)) {
             const commandLabel = message.getPart(0).toLowerCase().substring(commandPrefix.length);
 
-            this.eventSystem.dispatch(event);
             if (objectHasProperties(this.commandListeners, commandLabel)) {
                 channel.logger.debug(`Command ${commandLabel} executed by ${message.chatter.user.name}`);
                 for (const commandGroup of this.commandListeners[commandLabel]) {

@@ -175,6 +175,7 @@ class PollCommand extends Command {
     }
 }
 
+@Service()
 export default class PollsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     static permissions = {

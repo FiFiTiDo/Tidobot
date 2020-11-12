@@ -1,16 +1,17 @@
 import Message from "../../Chat/Message";
 import * as tmi from "tmi.js";
 import TwitchAdapter from "./TwitchAdapter";
-import deepmerge from "deepmerge";
 import {helix} from "./TwitchApi";
 import moment from "moment-timezone";
 import {Role} from "../../Systems/Permissions/Role";
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
-import IStream = helix.Stream;
+import Stream = helix.Stream;
+import ChannelInformation = helix.ChannelInformation;
 import { Chatter } from "../../Database/Entities/Chatter";
 import { Channel } from "../../Database/Entities/Channel";
 import { logError } from "../../Utilities/Logger";
 import GeneralModule from "../../Modules/GeneralModule";
+import _ from "lodash";
 
 export class TwitchMessage extends Message {
     private api: helix.Api;
@@ -53,7 +54,17 @@ export class TwitchMessage extends Message {
     }
 
     public async getExpressionContext(): Promise<ExpressionContext> {
-        const getStreamProperty = async (key: keyof IStream): Promise<string | number | string[]> => {
+        const getChannelProperty = async (key: keyof ChannelInformation): Promise<string> => {
+            try {
+                const chanResp = await this.api.getChannel({broadcaster_id: this.channel.nativeId});
+                return chanResp[key];
+            } catch (e) {
+                logError(TwitchAdapter.LOGGER, e, "Twitch API Error");
+                return "<<An error has occurred with the Twitch API.>>";
+            }
+        };
+
+        const getStreamProperty = async (key: keyof Stream, defVal: string|number|string[] = "Channel is not live."): Promise<string | number | string[]> => {
             try {
                 const chanResp = await this.api.getStreams({user_id: this.channel.nativeId});
                 if (chanResp.data.length > 0) {
@@ -61,7 +72,7 @@ export class TwitchMessage extends Message {
 
                     return chanData[key];
                 } else {
-                    return "Channel is not live.";
+                    return defVal;
                 }
             } catch (e) {
                 logError(TwitchAdapter.LOGGER, e, "Twitch API Error");
@@ -71,24 +82,8 @@ export class TwitchMessage extends Message {
 
         const ctx: ExpressionContext = {
             channel: {
-                getTitle: (): Promise<string> => getStreamProperty("title") as Promise<string>,
-                getGame: async (): Promise<string> => {
-                    try {
-                        const chanResp = await this.api.getStreams({user_id: this.channel.nativeId});
-                        if (chanResp.data.length > 0) {
-                            const chanData = chanResp.data[0];
-                            const gameResp = await this.api.getGames({id: chanData.game_id});
-                            const gameData = gameResp.data[0];
-
-                            return gameData.name;
-                        } else {
-                            return "Channel is not live.";
-                        }
-                    } catch (e) {
-                        logError(TwitchAdapter.LOGGER, e, "Twitch API Error");
-                        return "<<An error has occurred with the Twitch API.>>";
-                    }
-                },
+                getTitle: (): Promise<string> => getChannelProperty("title") as Promise<string>,
+                getGame: async (): Promise<string> => getChannelProperty("game_name") as Promise<string>,
                 getViewerCount: (): Promise<number> => getStreamProperty("viewer_count") as Promise<number>
             },
             sender: {
@@ -117,6 +112,6 @@ export class TwitchMessage extends Message {
             }
         };
 
-        return deepmerge(await super.getExpressionContext(), ctx);
+        return _.merge(await super.getExpressionContext(), ctx);
     }
 }

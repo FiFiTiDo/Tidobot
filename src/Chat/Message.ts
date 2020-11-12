@@ -18,11 +18,11 @@ export default class Message {
     private loopProtection: string[];
 
     constructor(
-        public readonly raw: string, public readonly chatter: Chatter, public readonly channel: Channel, private readonly adapter: Adapter
+        public readonly raw: string, public readonly chatter: Chatter, public readonly channel: Channel, public readonly adapter: Adapter
     ) {
         this.parts = MessageParser.parse(raw);
         this.loopProtection = [];
-        this.response = new Response(this);
+        this.response = new Response(this, adapter);
         this.stripped = raw;
     }
 

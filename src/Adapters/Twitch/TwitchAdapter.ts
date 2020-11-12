@@ -116,11 +116,19 @@ export default class TwitchAdapter extends Adapter {
     }
 
     async sendMessage(message: string, channel: Channel): Promise<void> {
-        await this.client.say(channel.name, message);
+        try {
+            await this.client.say(channel.name, message);
+        } catch(e) {
+            logError(TwitchAdapter.LOGGER, e, "Unable to send message");
+        }
     }
 
     async sendAction(action: string, channel: Channel): Promise<void> {
-        await this.client.action(channel.name, action);
+        try {
+            await this.client.action(channel.name, action);
+        } catch(e) {
+            logError(TwitchAdapter.LOGGER, e, "Unable to send action");
+        }
     }
 
     async getChatter(user: string | tmi.Userstate, channel: Channel): Promise<Chatter> {

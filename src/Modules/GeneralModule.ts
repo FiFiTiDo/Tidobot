@@ -13,7 +13,7 @@ import {MessageArg, ResponseArg, RestArguments, Sender} from "../Systems/Command
 import {Response} from "../Chat/Response";
 import {returnError, validateFunction} from "../Utilities/ValidateFunction";
 import Application from "../Application/Application";
-import {getLogger} from "../Utilities/Logger";
+import {getLogger, logError} from "../Utilities/Logger";
 import { Service } from "typedi";
 import { Chatter } from "../Database/Entities/Chatter";
 import Event from "../Systems/Event/Event";
@@ -35,7 +35,11 @@ class PingCommand extends Command {
     @CommandHandler("ping", "ping")
     @CheckPermission(() => GeneralModule.permissions.ping)
     async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
-        return response.message("pong", {username: sender.user.name});
+        try {
+            return response.message("pong", {username: sender.user.name});
+        } catch (e) {
+            logError(logger, e);
+        }
     }
 }
 

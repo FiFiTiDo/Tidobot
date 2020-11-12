@@ -1,21 +1,19 @@
-import Adapter from "../Adapters/Adapter";
 import ChannelManager from "./ChannelManager";
 import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
 import {arrayRand} from "../Utilities/ArrayUtils";
-import {AdapterToken, TranslationProvider, TranslationProviderToken} from "../symbols";
+import {TranslationProvider, TranslationProviderToken} from "../symbols";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {Logger} from "log4js";
 import {logError} from "../Utilities/Logger";
 import Container from "typedi";
+import Adapter from "../Adapters/Adapter";
 
 export class Response {
-    private adapter: Adapter;
     private translator: TranslationProvider;
     private channelManager: ChannelManager;
 
-    constructor(private msg: Message) {
-        this.adapter = Container.get(AdapterToken);
+    constructor(private readonly msg: Message, private readonly adapter: Adapter) {
         this.translator = Container.get(TranslationProviderToken);
         this.channelManager = Container.get(ChannelManager);
     }
@@ -88,7 +86,10 @@ export class Response {
     }
 }
 
+export class ResponseFactory {
+    constructor(private readonly adapter: Adapter) {}
 
-export interface ResponseFactory {
-    (msg: Message): Response;
+    make(message: Message): Response {
+        return new Response(message, this.adapter);
+    }
 }

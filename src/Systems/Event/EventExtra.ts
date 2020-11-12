@@ -1,4 +1,4 @@
-import { cloneDeep } from "lodash";
+import _ from "lodash";
 
 export class ExtraKey<T> {
     constructor(public readonly tag: string) {}
@@ -22,6 +22,6 @@ export class EventExtra {
     }
 
     public clone(): EventExtra {
-        return new EventExtra(cloneDeep(this.data));
+        return new EventExtra(_.cloneDeep(this.data));
     }
 }

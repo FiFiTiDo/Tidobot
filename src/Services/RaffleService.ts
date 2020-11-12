@@ -1,5 +1,4 @@
 import {Role} from "../Systems/Permissions/Role";
-import {arrayRand} from "../Utilities/ArrayUtils";
 import Optional from "../Utilities/Patterns/Optional";
 import Message from "../Chat/Message";
 import { Chatter } from "../Database/Entities/Chatter";
@@ -7,6 +6,7 @@ import { EntityStateList } from "../Database/EntityStateLiist";
 import { Channel } from "../Database/Entities/Channel";
 import { Service } from "typedi";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
+import _ from "lodash";
 
 enum RaffleState {
     OPEN = 1,
@@ -67,7 +67,7 @@ class Raffle {
         if (this.winners.length === Object.keys(this.userEntries).length && !this.settings.duplicateWins) return null;
         let winner;
         do {
-            winner = arrayRand(this.entries);
+            winner = _.sample(this.entries);
         } while (this.winners.indexOf(winner) >= 0 && !this.settings.duplicateWins);
         this.winners.push(winner);
         return winner;

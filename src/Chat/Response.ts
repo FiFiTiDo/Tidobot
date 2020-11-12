@@ -1,12 +1,12 @@
 import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
-import {arrayRand} from "../Utilities/ArrayUtils";
 import {TranslationProvider, TranslationProviderToken} from "../symbols";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {Logger} from "log4js";
 import {logError} from "../Utilities/Logger";
 import Container from "typedi";
 import Adapter from "../Adapters/Adapter";
+import _ from "lodash";
 
 export class Response {
     private translator: TranslationProvider;
@@ -61,7 +61,7 @@ export class Response {
 
     async genericError(): Promise<void> {
         const errors: string[] = await this.getTranslation<string[]>("generic-error");
-        const error = arrayRand(errors);
+        const error = _.sample(errors);
         return this.rawMessage(error);
     }
 

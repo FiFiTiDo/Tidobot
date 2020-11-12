@@ -3,7 +3,6 @@ import Command from "../Systems/Commands/Command";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, Integer, SettingType} from "../Systems/Settings/Setting";
-import {arrayRand} from "../Utilities/ArrayUtils";
 import {Response} from "../Chat/Response";
 import {ChatterArg} from "../Systems/Commands/Validation/Chatter";
 import {getLogger} from "../Utilities/Logger";
@@ -18,6 +17,7 @@ import { Service } from "typedi";
 import { StringArg } from "../Systems/Commands/Validation/String";
 import Event from "../Systems/Event/Event";
 import { CommandEvent } from "../Systems/Commands/CommandEvent";
+import _ from "lodash";
 
 export const MODULE_INFO = {
     name: "Pokemon",
@@ -81,7 +81,7 @@ class PokemonCommand extends Command {
             if (await this.gameService.attemptCatch(channel, pkmn.value)) {
                 result = await response.translate("pokemon:catch.success", {nature: pkmn.value.nature});
             } else {
-                result = arrayRand(await response.getTranslation("pokemon:catch.failed"));
+                result = _.sample(await response.getTranslation("pokemon:catch.failed"));
             }
 
             return await response.message("pokemon:catch.full", {username: sender.user.name, pokemon, result});

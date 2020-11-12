@@ -3,7 +3,6 @@ import Message from "../../Chat/Message";
 import MessageEvent from "../../Chat/Events/MessageEvent";
 import Event from "../Event/Event";
 import EventSystem from "../Event/EventSystem";
-import {objectHasProperties} from "../../Utilities/ObjectUtils";
 import Command from "./Command";
 import {CommandEvent, CommandEventArgs} from "./CommandEvent";
 import SettingsSystem from "../Settings/SettingsSystem";
@@ -12,6 +11,7 @@ import System from "../System";
 import { Service } from "typedi";
 import { Channel } from "../../Database/Entities/Channel";
 import { EventHandler, HandlesEvents } from "../Event/decorators";
+import _ from "lodash";
 
 export interface CommandListener {
     (event: CommandEventArgs): void;
@@ -60,7 +60,7 @@ export default class CommandSystem extends System {
         if (message.getPart(0).startsWith(commandPrefix)) {
             const commandLabel = message.getPart(0).toLowerCase().substring(commandPrefix.length);
 
-            if (objectHasProperties(this.commandListeners, commandLabel)) {
+            if (_.has(this.commandListeners, commandLabel)) {
                 channel.logger.debug(`Command ${commandLabel} executed by ${message.chatter.user.name}`);
                 for (const commandGroup of this.commandListeners[commandLabel]) {
                     const event = new Event(CommandEvent);
@@ -77,7 +77,7 @@ export default class CommandSystem extends System {
 
     registerCommand(command: Command, module: AbstractModule): void {
         const register = (label: string): void => {
-            if (!objectHasProperties(this.commandListeners, label)) this.commandListeners[label] = [];
+            if (!_.has(this.commandListeners, label)) this.commandListeners[label] = [];
             this.commandListeners[label].push({command, module});
         };
 

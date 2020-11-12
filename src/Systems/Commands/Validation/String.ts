@@ -1,6 +1,6 @@
 import {InvalidInputError} from "./ValidationErrors";
-import {arrayFind} from "../../../Utilities/ArrayUtils";
 import {ArgumentConverter} from "./Argument";
+import _ from "lodash";
 
 export class StringArg {
     static type = "string";
@@ -17,7 +17,7 @@ export class StringEnumArg implements ArgumentConverter<string> {
     }
 
     convert(input: string): string {
-        if (!arrayFind(input, this.accepted))
+        if (!_.includes(this.accepted, input))
             throw new InvalidInputError(`${input} is not an acceptable value`);
         return input;
     }

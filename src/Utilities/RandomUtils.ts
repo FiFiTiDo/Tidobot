@@ -1,12 +1,8 @@
-import {arrayRand} from "./ArrayUtils";
+import _ from "lodash";
 
 export function generateRandomCode(length: number): string {
-    let text = "";
     const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
-
-    for (let i = 0; i < length; i++) text += arrayRand(possible);
-
-    return text;
+    return _.sampleSize(possible, length).join("");
 }
 
 export function randomFloat(min?: number, max?: number): number {

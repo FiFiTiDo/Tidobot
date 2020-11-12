@@ -1,5 +1,4 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {arrayRand} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Command from "../Systems/Commands/Command";
@@ -15,6 +14,7 @@ import { Inject, Service } from "typedi";
 import { AdapterToken } from "../symbols";
 import { Chatter } from "../Database/Entities/Chatter";
 import Event from "../Systems/Event/Event";
+import _ from "lodash";
 
 export const MODULE_INFO = {
     name: "Fun",
@@ -65,7 +65,7 @@ class Magic8BallCommand extends Command {
     @CommandHandler("8ball", "8ball")
     @CheckPermission(() => FunModule.permissions.play8Ball)
     async handleCommand(event: Event, @ResponseArg response: Response): Promise<void> {
-        const resp = arrayRand(await response.getTranslation<string[]>("fun:8ball.responses"));
+        const resp = _.sample(await response.getTranslation<string[]>("fun:8ball.responses"));
         await response.message("fun:8ball.response", {response: resp});
     }
 }

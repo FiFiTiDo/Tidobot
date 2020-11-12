@@ -1,5 +1,4 @@
 import Optional from "../../Utilities/Patterns/Optional";
-import {arrayContains, arrayRand} from "../../Utilities/ArrayUtils";
 import {randomChance, randomInt} from "../../Utilities/RandomUtils";
 import {ExperienceService} from "./ExperienceService";
 import { Service } from "typedi";
@@ -8,6 +7,7 @@ import { Chatter } from "../../Database/Entities/Chatter";
 import { Trainer } from "../../Database/Entities/Trainer";
 import { NATURES, Pokemon, PokemonTeam } from "../../Database/Entities/Pokemon";
 import PokemonModule from "../../Modules/PokemonModule";
+import _ from "lodash";
 
 export interface TrainerData {
     chatter: Chatter;
@@ -49,7 +49,7 @@ export class GameService {
     }
 
     public getRandomMon(team: PokemonTeam): Optional<Pokemon> {
-        return team.length < 1 ? Optional.empty() : Optional.of(arrayRand(team));
+        return team.length < 1 ? Optional.empty() : Optional.of(_.sample(team));
     }
 
     public async releaseTeam(team: PokemonTeam): Promise<void> {
@@ -59,8 +59,8 @@ export class GameService {
     public generateRandom(data: TrainerData): Optional<Pokemon> {
         const channel = data.trainer.chatter.channel;
         const current = [data.chatter.user.name, ...data.team.map(pkmn => pkmn.name)];
-        const chatters = channel.chatters.filter(chatter => arrayContains(chatter.user.name, current));
-        const name = arrayRand(chatters).user.name || Pokemon.GENERIC_NAME;
+        const chatters = channel.chatters.filter(chatter => _.includes(current, chatter.user.name));
+        const name = _.sample(chatters).user.name || Pokemon.GENERIC_NAME;
         return this.generate(name, data);
     }
 
@@ -75,7 +75,7 @@ export class GameService {
         const pokemon = new Pokemon();
         pokemon.name = name;
         pokemon.level = level;
-        pokemon.nature = arrayRand(NATURES);
+        pokemon.nature = _.sample(NATURES);
         pokemon.shiny = randomChance(0.05);
         pokemon.rus = randomChance(0.01);
 
@@ -96,8 +96,8 @@ export class GameService {
 
     public async attemptFight(self: TrainerData, target: TrainerData): Promise<GameResults> {
         const channel = self.chatter.channel;
-        const selfMon = arrayRand(self.team);
-        const targetMon = arrayRand(target.team);
+        const selfMon = _.sample(self.team);
+        const targetMon = _.sample(target.team);
 
         const win = (Math.random() * 100) - ((targetMon.level - selfMon.level) / 2.1);
 

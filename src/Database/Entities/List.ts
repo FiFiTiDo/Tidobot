@@ -1,5 +1,5 @@
+import _ from "lodash";
 import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
-import { arrayRand } from "../../Utilities/ArrayUtils";
 import { Channel } from "./Channel";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { ListItem } from "./ListItem";
@@ -23,6 +23,6 @@ export class List extends CustomBaseEntity {
     }
 
     getRandomItem(): ListItem|null {
-        return arrayRand(this.items) || null;
+        return _.sample(this.items) || null;
     }
 }

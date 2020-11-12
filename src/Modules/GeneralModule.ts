@@ -1,6 +1,5 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
 import moment from "moment-timezone";
-import {arrayRand} from "../Utilities/ArrayUtils";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {SettingType} from "../Systems/Settings/Setting";
@@ -17,6 +16,7 @@ import {getLogger} from "../Utilities/Logger";
 import { Service } from "typedi";
 import { Chatter } from "../Database/Entities/Chatter";
 import Event from "../Systems/Event/Event";
+import _ from "lodash";
 
 export const MODULE_INFO = {
     name: "General",
@@ -92,7 +92,7 @@ class ShutdownCommand extends Command {
     async handleCommand(event: Event, @ResponseArg response: Response): Promise<void> {
         return this.app.shutdown()
             .then(async successful => successful ?
-                await response.broadcast(arrayRand(await response.getTranslation<string[]>("shutdown"))) :
+                await response.broadcast(_.sample(await response.getTranslation<string[]>("shutdown"))) :
                 await response.message("shutdown-cancelled")
             ).catch(e => response.genericErrorAndLog(e, logger));
     }

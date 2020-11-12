@@ -4,7 +4,6 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Float, SettingType} from "../Systems/Settings/Setting";
 import {randomFloat} from "../Utilities/RandomUtils";
-import {arrayRand} from "../Utilities/ArrayUtils";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {ChannelArg, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
@@ -14,6 +13,7 @@ import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import { CurrencyType } from "../Systems/Currency/CurrencyType";
 import Event from "../Systems/Event/Event";
+import _ from "lodash";
 
 export const MODULE_INFO = {
     name: "Gambling",
@@ -84,9 +84,9 @@ class SlotsCommand extends Command {
             message += " " + await response.translate("gambling:slots.win", {
                 amount: CurrencyType.get(channel).formatAmount(winnings)
             });
-            message += " " + arrayRand(await response.getTranslation<string[]>("gambling:win"));
+            message += " " + _.sample(await response.getTranslation<string[]>("gambling:win"));
         } else {
-            message += " " + arrayRand(await response.getTranslation<string[]>("gambling:loss"));
+            message += " " + _.sample(await response.getTranslation<string[]>("gambling:loss"));
         }
 
         return response.rawMessage(message);

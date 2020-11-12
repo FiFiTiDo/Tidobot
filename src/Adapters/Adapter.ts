@@ -40,6 +40,8 @@ export default abstract class Adapter {
     public abstract async banChatter(chatter: Chatter, reason?: string): Promise<boolean>;
 
     public abstract async tempbanChatter(chatter: Chatter, length: number, reason?: string): Promise<boolean>;
+
+    public abstract async broadcastMessage(message: string): Promise<void>;
 }
 
 @Service()

@@ -1,9 +1,10 @@
 import {addPropertyMetadata, getPropertyMetadata} from "../../../Utilities/DecoratorUtils";
-import {AsyncResolvable, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
+import {AsyncResolvable, Resolvable, resolve, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError, MissingRequiredArgumentError, MissingRequiredCliArgumentError} from "./ValidationErrors";
 import * as minimist from "minimist-string";
 import Event from "../../Event/Event";
 import { CommandEvent } from "../CommandEvent";
+import Message from "../../../Chat/Message";
 
 const ARGUMENT_META_KEY = "command:argument";
 const REST_META_KEY = "command:rest_args";
@@ -31,7 +32,11 @@ interface ConverterArgument<T> extends ArgumentMeta {
 }
 
 interface EventReducerArgument<T> extends ArgumentMeta {
-    reducer: AsyncResolvable<Event, T>;
+    eventReducer: Resolvable<Event, T>;
+}
+
+interface MessageReducerArgument<T> extends ArgumentMeta {
+    messageReducer: Resolvable<Message, T>;
 }
 
 export interface ArgumentConverter<T> {
@@ -51,16 +56,22 @@ export function Argument<T>(converter: ArgumentConverter<T>, name: string = null
     };
 }
 
-export function makeEventReducer<T>(reducer: AsyncResolvable<Event, T>): ParameterDecorator {
+export function makeEventReducer<T>(eventReducer: Resolvable<Event, T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, reducer});
+        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, eventReducer});
+    };
+}
+
+export function makeMessageReducer<T>(messageReducer: Resolvable<Message, T>): ParameterDecorator {
+    return function (target: any, propertyKey: string, parameterIndex: number): void {
+        addPropertyMetadata<MessageReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, messageReducer});
     };
 }
 
 export const MessageArg = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE));
-export const ResponseArg = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE).response);
-export const Sender = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE).chatter);
-export const ChannelArg = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE).channel);
+export const ResponseArg = makeMessageReducer(message => message.response);
+export const Sender = makeMessageReducer(message => message.chatter);
+export const ChannelArg = makeMessageReducer(message => message.channel);
 
 export function RestArguments(required = true, settings: RestSettings = {}): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
@@ -72,8 +83,12 @@ function isConverter(o: Record<string, any>): o is ConverterArgument<any> {
     return "converter" in o;
 }
 
-function isReducer(o: Record<string, any>): o is EventReducerArgument<any> {
-    return "reducer" in o;
+function isEventReducer(o: Record<string, any>): o is EventReducerArgument<any> {
+    return "eventReducer" in o;
+}
+
+function isMessageReducer(o: Record<string, any>): o is MessageReducerArgument<any> {
+    return "messageReducer" in o;
 }
 
 function handleRestArguments(target: any, propertyKey: string, args: (string | string[])[], restArgs: string[]): any {
@@ -126,8 +141,10 @@ export async function resolveArguments(event: Event, target: any, propertyKey: s
                     return null;
                 }
             }
-        } else if (isReducer(arg)) {
-            args[arg.parameterIndex] = await resolveAsync(arg.reducer, event);
+        } else if (isEventReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.eventReducer, event);
+        } else if (isMessageReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.messageReducer, message);
         }
     }
     handleRestArguments(target, propertyKey, args, rawArgs.slice());
@@ -163,8 +180,10 @@ export async function resolveCliArguments(event: Event, target: any, propertyKey
                     return null;
                 }
             }
-        } else if (isReducer(arg)) {
-            args[arg.parameterIndex] = await resolveAsync(arg.reducer, event);
+        } else if (isEventReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.eventReducer, event);
+        } else if (isMessageReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.messageReducer, message);
         }
     }
 

@@ -1,4 +1,3 @@
-import ChannelManager from "./ChannelManager";
 import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
 import {arrayRand} from "../Utilities/ArrayUtils";
@@ -11,11 +10,8 @@ import Adapter from "../Adapters/Adapter";
 
 export class Response {
     private translator: TranslationProvider;
-    private channelManager: ChannelManager;
-
     constructor(private readonly msg: Message, private readonly adapter: Adapter) {
         this.translator = Container.get(TranslationProviderToken);
-        this.channelManager = Container.get(ChannelManager);
     }
 
     rawMessage(message: string): Promise<void> {
@@ -46,10 +42,7 @@ export class Response {
 
     async broadcast<TKeys extends TFunctionKeys = string,
         TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
-        const ops = [];
-        for (const channel of await this.channelManager.getAllActive())
-            ops.push(this.adapter.sendMessage(await this.translate(key, options), channel));
-        await Promise.all(ops);
+        await this.adapter.broadcastMessage(await this.translate(key, options));
     }
 
     async translate<TResult extends TFunctionResult = string,

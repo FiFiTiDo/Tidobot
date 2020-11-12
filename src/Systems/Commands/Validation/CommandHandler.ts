@@ -25,12 +25,14 @@ export function CommandHandler(match: string | RegExp, usage: string, shiftArgs 
                 if (!message.getRaw().substr(1).match(match)) return false;
             }
 
-            const newEventExtra = event.extra.clone();
-            const newEvent = new Event(CommandEvent);
-            const newArguments = newEventExtra.get(CommandEvent.EXTRA_ARGUMENTS);
+            const newArguments = event.extra.get(CommandEvent.EXTRA_ARGUMENTS).slice();
             for (let i = 0; i < shiftArgs; i++) newArguments.shift();
-            newEventExtra.put(CommandEvent.EXTRA_ARGUMENTS, newArguments);
-            newEvent.extra.putAll(newEventExtra);
+
+            const newEvent = new Event(CommandEvent);
+            newEvent.extra.put(CommandEvent.EXTRA_TRIGGER, event.extra.get(CommandEvent.EXTRA_TRIGGER));
+            newEvent.extra.put(CommandEvent.EXTRA_MESSAGE, message);
+            newEvent.extra.put(CommandEvent.EXTRA_ARGUMENTS, newArguments);
+            newEvent.extra.put(CommandEvent.EXTRA_COMMAND, event.extra.get(CommandEvent.EXTRA_COMMAND));
 
             const args = cliArgs ?
                 await resolveCliArguments(newEvent, target, propertyKey, usage, silent) :

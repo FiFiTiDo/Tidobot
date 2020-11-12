@@ -123,6 +123,13 @@ export default class TwitchAdapter extends Adapter {
         }
     }
 
+    async broadcastMessage(message: string): Promise<void> {
+        const ops = [];
+        for (const channel of await this.channelManager.getAllActive())
+            ops.push(this.sendMessage(message, channel));
+        await Promise.all(ops);
+    }
+
     async sendAction(action: string, channel: Channel): Promise<void> {
         try {
             await this.client.action(channel.name, action);

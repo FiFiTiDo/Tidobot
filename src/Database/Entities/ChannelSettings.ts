@@ -27,11 +27,7 @@ export class ChannelSettings extends CustomBaseEntity {
         this.set(setting, setting.defaultValue);
     }
 
-    reset(): void {
-        const newJson: { [key: string]: any } = {};
-        const settings = Container.get(SettingsSystem).getAll();
-        for (const setting of settings)
-            Dot.put(newJson, setting.key, setting.defaultValue);
-        this.json = newJson;
+    clear(): void {
+        this.json = {};
     }
 }

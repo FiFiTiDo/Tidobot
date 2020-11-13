@@ -2,8 +2,6 @@ import AbstractModule, {Symbols} from "./AbstractModule";
 import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
-import {NewChannelEvent} from "../Chat/Events/NewChannelEvent";
-import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
 import Command from "../Systems/Commands/Command";
 import {InvalidArgumentError} from "../Systems/Commands/Validation/ValidationErrors";
 import {StringArg} from "../Systems/Commands/Validation/String";
@@ -115,7 +113,6 @@ class PermissionCommand extends Command {
     }
 }
 
-@HandlesEvents()
 @Service()
 export default class PermissionModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
@@ -151,11 +148,5 @@ export default class PermissionModule extends AbstractModule {
                 )
             }
         };
-    }
-
-    @EventHandler(NewChannelEvent)
-    async onNewChannel(event: Event): Promise<void> {
-        const channel = event.extra.get(NewChannelEvent.EXTRA_CHANNEL);
-        await this.permissionSystem.resetChannelPermissions(channel);
     }
 }

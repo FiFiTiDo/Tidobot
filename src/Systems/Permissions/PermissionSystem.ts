@@ -7,8 +7,12 @@ import { PermissionRepository } from "../../Database/Repositories/PermissionRepo
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Channel } from "../../Database/Entities/Channel";
 import { Chatter } from "../../Database/Entities/Chatter";
+import { EventHandler, HandlesEvents } from "../Event/decorators";
+import { NewChannelEvent } from "../../Chat/Events/NewChannelEvent";
+import Event from "../Event/Event";
 
 @Service()
+@HandlesEvents()
 export default class PermissionSystem extends System {
     private permissions: Permission[] = [];
 
@@ -80,5 +84,11 @@ export default class PermissionSystem extends System {
                 moduleDefined: true
             });
         }));
+    }
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel(event: Event): Promise<void> {
+        const channel = event.extra.get(NewChannelEvent.EXTRA_CHANNEL);
+        await this.resetChannelPermissions(channel);
     }
 }

@@ -1,8 +1,13 @@
 import Setting, {SettingType} from "./Setting";
 import System from "../System";
 import { Service } from "typedi";
+import { EventHandler, HandlesEvents } from "../Event/decorators";
+import Event from "../Event/Event";
+import { NewChannelEvent } from "../../Chat/Events/NewChannelEvent";
+import { Channel } from "../../Database/Entities/Channel";
 
 @Service()
+@HandlesEvents()
 export default class SettingsSystem extends System {
     private readonly settings: Map<string, Setting<any>>;
 
@@ -25,5 +30,18 @@ export default class SettingsSystem extends System {
         for (const [, setting] of this.settings)
             settings.push(setting);
         return settings;
+    }
+
+    async resetSettings(channel: Channel): Promise<void> {
+        channel.settings.clear();
+        for (const setting of this.settings.values())
+            channel.settings.set(setting, setting.defaultValue);
+        await channel.settings.save();
+    }
+
+    @EventHandler(NewChannelEvent)
+    async onNewChannel(event: Event): Promise<void> {
+        const channel = event.extra.get(NewChannelEvent.EXTRA_CHANNEL);
+        await this.resetSettings(channel);
     }
 }

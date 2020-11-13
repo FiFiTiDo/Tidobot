@@ -87,8 +87,7 @@ class ResetCommand extends Command {
         const confirmMsg = await response.translate("setting:confirm-reset");
         const confirm = await this.confirmationModule.make(msg, confirmMsg, 30);
         confirm.addListener(ConfirmedEvent, () => {
-            channel.settings.reset();
-            return channel.settings.save()
+            return this.settingsSystem.resetSettings(channel)
                 .then(() => response.message("setting:reset"))
                 .catch(e => response.genericErrorAndLog(e, logger));
         });

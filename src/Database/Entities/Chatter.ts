@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToMany, ManyToOne, OneToMany, OneToOne } from "typeorm";
+import { Column, Entity, ManyToMany, ManyToOne, OneToMany, OneToOne, Unique } from "typeorm";
 import Permission, { PermissionStatus } from "../../Systems/Permissions/Permission";
 import { Channel } from "./Channel";
 import { ChatterPermission } from "./ChatterPermission";
@@ -8,6 +8,7 @@ import { Trainer } from "./Trainer";
 import { User } from "./User";
 
 @Entity()
+@Unique("UQ_Chatter_UserId_ChannelId", ["userId", "channelId"])
 export class Chatter extends CustomBaseEntity {
     @Column({ default: 0 })
     balance: number;

@@ -1,9 +1,10 @@
-import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany, Unique } from "typeorm";
 import { Chatter } from "./Chatter";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { Service } from "./Service";
 
 @Entity()
+@Unique("UQ_User_NativeId_ServiceId", ["nativeId", "serviceId"])
 export class User extends CustomBaseEntity {
     @Column()
     name: string;

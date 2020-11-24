@@ -22,6 +22,8 @@ import { Service } from "typedi";
 import { ChatterManager } from "../../Chat/ChatterManager";
 import Event from "../../Systems/Event/Event";
 import { ChannelRepository } from "../../Database/Repositories/ChannelRepository";
+import { User } from "../../Database/Entities/User";
+import { Repository } from "typeorm";
 
 @Service()
 export default class TwitchAdapter extends Adapter {
@@ -35,6 +37,8 @@ export default class TwitchAdapter extends Adapter {
     constructor(
         private readonly channelManager: ChannelManager,
         private readonly chatterManager: ChatterManager,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
         @InjectRepository()
         private readonly channelRepository: ChannelRepository,
         @InjectRepository()
@@ -138,26 +142,33 @@ export default class TwitchAdapter extends Adapter {
         }
     }
 
-    async getChatter(user: string | tmi.Userstate, channel: Channel): Promise<Chatter> {
-        const chatterOptional = typeof user === "string" ? 
-            channel.findChatterByName(user) : channel.findChatterByNativeId(user.id);
-        if (chatterOptional.present) return chatterOptional.value;
+    async getChatter(userInfo: string | tmi.Userstate, channel: Channel): Promise<Chatter> {
+        let user: User;
+        if (typeof userInfo === "string") {
+            user = await this.userRepository.findOne({ name: userInfo, service: channel.service });
+        } else {
+            user = await this.userRepository.findOne({ nativeId: userInfo["user-id"], service: channel.service });
+        }
+
+        if (user) {
+            const chatter = await this.chatterRepository.findOne({ user, channel });
+            if (chatter) return chatter;
+        }
 
         let id: string, name: string;
-        if (typeof user !== "string") {
-            id = user["user-id"];
-            name = user.username;
+        if (typeof userInfo !== "string") {
+            id = userInfo["user-id"];
+            name = userInfo.username;
         } else {
             try {
-                const resp = await this.api.getUsers({login: user});
+                const resp = await this.api.getUsers({login: userInfo});
                 id = resp.data[0].id;
-                name = user;
+                name = userInfo;
             } catch (e) {
                 logError(TwitchAdapter.LOGGER, e, "Unable to retrieve user from the API", true);
                 process.exit(1);
             }
         }
-
 
         const chatter = await this.chatterRepository.make(id, name, channel);
         const event = new Event(NewChatterEvent);

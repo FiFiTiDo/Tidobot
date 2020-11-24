@@ -1,7 +1,5 @@
-import Container from "typedi";
 import { Column, Entity, JoinColumn, OneToOne } from "typeorm";
 import Setting, { SettingType, SettingValueType } from "../../Systems/Settings/Setting";
-import SettingsSystem from "../../Systems/Settings/SettingsSystem";
 import { Dot } from "../../Utilities/DotObject";
 import { Channel } from "./Channel";
 import CustomBaseEntity from "./CustomBaseEntity";

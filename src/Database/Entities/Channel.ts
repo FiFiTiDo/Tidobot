@@ -1,5 +1,5 @@
 import { Logger } from "log4js";
-import { Column, Entity, ManyToOne, OneToMany, OneToOne } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany, OneToOne, Unique } from "typeorm";
 import { getLogger } from "../../Utilities/Logger";
 import Optional from "../../Utilities/Patterns/Optional";
 import { BadWord } from "./BadWord";
@@ -18,6 +18,7 @@ import { Service } from "./Service";
 import { Trainer } from "./Trainer";
 
 @Entity()
+@Unique("UQ_Channel_NativeId_ServiceId", ["nativeId", "serviceId"])
 export class Channel extends CustomBaseEntity {
     @Column()
     nativeId: string;

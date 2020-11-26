@@ -5,7 +5,7 @@ import System from "../System";
 import {logError} from "../../Utilities/Logger";
 import { Service } from "typedi";
 import { Chatter } from "../../Database/Entities/Chatter";
-import { EntityStateList } from "../../Database/EntityStateLiist";
+import { EntityStateList } from "../../Database/EntityStateList";
 
 @Service()
 export default class StrikeManager extends System {

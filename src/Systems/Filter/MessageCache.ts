@@ -5,7 +5,7 @@ import SettingsSystem from "../Settings/SettingsSystem";
 import SpamFilter from "./Filters/SpamFilter";
 import { Service } from "typedi";
 import { Channel } from "../../Database/Entities/Channel";
-import { EntityStateList } from "../../Database/EntityStateLiist";
+import { EntityStateList } from "../../Database/EntityStateList";
 
 @Service()
 export default class MessageCache {

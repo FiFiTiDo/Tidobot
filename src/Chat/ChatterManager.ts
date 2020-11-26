@@ -1,7 +1,5 @@
 import { Service } from "typedi";
-import { InjectRepository } from "typeorm-typedi-extensions";
 import { Chatter } from "../Database/Entities/Chatter";
-import { ChatterRepository } from "../Database/Repositories/ChatterRepository";
 import { Role } from "../Systems/Permissions/Role";
 import { MapExt } from "../Utilities/Structures/Map";
 
@@ -13,11 +11,6 @@ interface ChatterState {
 @Service()
 export class ChatterManager {
     private chatterState: MapExt<number, ChatterState> = new MapExt();
-
-    constructor(
-        @InjectRepository()
-        private readonly repository: ChatterRepository
-    ) {}
 
     public getState(chatter: Chatter): ChatterState {
         return this.chatterState.getOrSet(chatter.id, {
@@ -42,9 +35,5 @@ export class ChatterManager {
         const roles = this.getState(chatter).roles;
         const i = roles.findIndex(other => other === role);
         delete roles[i];
-    }
-
-    public save(chatter: Chatter): Promise<Chatter> {
-        return this.repository.save(chatter);
     }
 }

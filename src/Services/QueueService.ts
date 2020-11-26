@@ -1,6 +1,6 @@
 import Optional from "../Utilities/Patterns/Optional";
 import { Service } from "typedi";
-import { EntityStateList } from "../Database/EntityStateLiist";
+import { EntityStateList } from "../Database/EntityStateList";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import QueueModule from "../Modules/QueueModule";

@@ -16,7 +16,7 @@ import System from "../System";
 import MessageCache from "./MessageCache";
 import RepetitionFilter from "./Filters/RepetitionFilter";
 import { Service } from "typedi";
-import { EntityStateList } from "../../Database/EntityStateLiist";
+import { EntityStateList } from "../../Database/EntityStateList";
 import { Channel } from "../../Database/Entities/Channel";
 import { Chatter } from "../../Database/Entities/Chatter";
 import PermissionSystem from "../Permissions/PermissionSystem";

@@ -1,5 +1,5 @@
 import BettingModule from "../Modules/BettingModule";
-import { EntityStateList } from "../Database/EntityStateLiist";
+import { EntityStateList } from "../Database/EntityStateList";
 import { Chatter } from "../Database/Entities/Chatter";
 import { Channel } from "../Database/Entities/Channel";
 import { Service } from "typedi";

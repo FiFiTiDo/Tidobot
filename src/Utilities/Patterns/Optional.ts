@@ -61,7 +61,7 @@ export default class Optional<T> {
     }
 
     public async orElseThrowAsync<X extends Error>(resolvable: AsyncResolvable<void, X>): Promise<T> {
-        if (!this._present) throw await resolve(resolvable);
+        if (!this._present) throw await resolveAsync(resolvable);
         return this._value;
     }
 }

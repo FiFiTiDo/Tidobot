@@ -18,7 +18,7 @@ import {wait} from "../Utilities/functions";
 import { Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
-import { EntityStateList } from "../Database/EntityStateLiist";
+import { EntityStateList } from "../Database/EntityStateList";
 import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {

@@ -1,31 +1,27 @@
-import Container, { Service } from "typedi";
+import { Service } from "typedi";
 import { EntityRepository, Repository } from "typeorm";
-import { InjectRepository } from "typeorm-typedi-extensions";
 import { Channel } from "../Entities/Channel";
 import { Chatter } from "../Entities/Chatter";
 import { User } from "../Entities/User";
-import { ServiceToken } from "../../symbols";
+import EventSystem from "../../Systems/Event/EventSystem";
+import Event from "../../Systems/Event/Event";
+import { NewChatterEvent } from "../../Chat/Events/NewChatterEvent";
 
 @Service()
 @EntityRepository(Chatter)
 export class ChatterRepository extends Repository<Chatter> {
-    constructor(
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>
-    ) {
+    constructor(private readonly eventSystem: EventSystem) {
         super();
     }
 
-    async make(nativeId: string, name: string, channel: Channel): Promise<Chatter> {
-        let user = new User();
-        user.nativeId = nativeId;
-        user.name = name;
-        user.service = Container.get(ServiceToken);
-        user = await this.userRepository.save(user);
+    async retreiveOrMake(user: User, channel: Channel): Promise<Chatter> {
+        const chatter = this.findOne({ user, channel });
+        if (chatter) return chatter;
 
-        const chatter = new Chatter();
-        chatter.user = user;
-        chatter.channel = channel;
-        return this.save(chatter);
+        const newChatter = await this.create({ user, channel }).save();
+        const event = new Event(NewChatterEvent);
+        event.extra.put(NewChatterEvent.EXTRA_CHATTER, newChatter);
+        this.eventSystem.dispatch(event);
+        return newChatter;
     }
 }

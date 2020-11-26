@@ -1,38 +1,32 @@
-import Container, { Service } from "typedi";
-import { EntityRepository, Repository } from "typeorm";
+import { Service } from "typedi";
+import { DeepPartial, EntityRepository, Repository } from "typeorm";
 import { Channel } from "../Entities/Channel";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { ChannelSettings } from "../Entities/ChannelSettings";
-import { ServiceToken } from "../../symbols";
+import Event from "../../Systems/Event/Event";
+import EventSystem from "../../Systems/Event/EventSystem";
+import { NewChannelEvent } from "../../Chat/Events/NewChannelEvent";
 
 @Service()
 @EntityRepository(Channel)
 export class ChannelRepository extends Repository<Channel> {
     constructor(
         @InjectRepository(ChannelSettings) 
-        private readonly channelSettingsRepository: Repository<ChannelSettings>
+        private readonly channelSettingsRepository: Repository<ChannelSettings>,
+        private readonly eventSystem: EventSystem
     ) {
         super();
     }
 
-    findByNativeId(nativeId: string): Promise<Channel> {
-        const service = Container.get(ServiceToken);
-        return this.findOne({ nativeId, service });
-    }
-
-    async make(name: string, nativeId: string): Promise<Channel> {
-        let channel = new Channel();
-        channel.name = name;
-        channel.nativeId = nativeId;
-        channel.service = Container.get(ServiceToken);
-        channel = await this.save(channel);
-
-        let channelSettings = new ChannelSettings();
-        channelSettings.json = {};
-        channelSettings.channel = channel;
-        channelSettings = await this.channelSettingsRepository.save(channelSettings);
-
+    async make(entityLike: DeepPartial<Channel>): Promise<Channel> {
+        const channel = await this.create(entityLike).save();
+        const channelSettings = await this.channelSettingsRepository.create({ json: {}, channel }).save();
         channel.settings = channelSettings;
-        return channel.save();
+
+        const event = new Event(NewChannelEvent);
+        event.extra.put(NewChannelEvent.EXTRA_CHANNEL, channel);
+        this.eventSystem.dispatch(event);
+
+        return channel;
     }
 }

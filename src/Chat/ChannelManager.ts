@@ -1,4 +1,3 @@
-import Optional from "../Utilities/Patterns/Optional";
 import { Inject, Service } from "typedi";
 import { Channel } from "../Database/Entities/Channel";
 import { InjectRepository } from "typeorm-typedi-extensions";
@@ -31,31 +30,8 @@ export default class ChannelManager {
         this.channels = channels;
     }
 
-    getAll(): Promise<Channel[]> {
-        return this.repository.find();
-    }
-
     getAllActive(): Promise<Channel[]> {
         return this.repository.find({ name: In(this.channels), service: this.service });
-    }
-
-    add(channel: Channel): void {
-        this.channels.push(channel.name);
-        this.repository.save(channel);
-    }
-
-    async findByNativeId(id: string): Promise<Optional<Channel>> {
-        const channel = await this.repository.findByNativeId(id);
-        return Optional.ofUndefable(channel);
-    }
-
-    async findByName(name: string): Promise<Optional<Channel>> {
-        const channel = await this.repository.findOne({ name, service: this.service });
-        return Optional.ofUndefable(channel);
-    }
-
-    save(channel: Channel): Promise<any> {
-        return this.repository.save(channel);
     }
 
     getState(channel: Channel): ChannelState {

@@ -10,7 +10,7 @@ import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import Container, { Inject, Service, Token } from "typedi";
-import { EntityStateList } from "../Database/EntityStateLiist";
+import { EntityStateList } from "../Database/EntityStateList";
 import { Chatter } from "../Database/Entities/Chatter";
 
 export const MODULE_INFO = {

@@ -1,5 +1,5 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {getMaxRole, parseRole, Role} from "../Systems/Permissions/Role";
+import {parseRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import Permission from "../Systems/Permissions/Permission";
 import Command from "../Systems/Commands/Command";
@@ -23,7 +23,7 @@ import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Permission",
-    version: "1.2.0",
+    version: "1.2.1",
     description: "Change the minimum role required for predefined permissions or make your own"
 };
 
@@ -126,7 +126,7 @@ export default class PermissionModule extends AbstractModule {
         resetAllPerms: new Permission("permission.reset.all", Role.BROADCASTER)
     }
 
-    constructor(permissionCommand: PermissionCommand, private readonly permissionSystem: PermissionSystem) {
+    constructor(permissionCommand: PermissionCommand) {
         super(PermissionModule);
 
         this.coreModule = true;
@@ -139,7 +139,7 @@ export default class PermissionModule extends AbstractModule {
         return {
             sender: {
                 isA: validateFunction(
-                    async (role: Role) => getMaxRole(await msg.getUserRoles()) >= role, 
+                    async (role: Role) => msg.checkRole(role), 
                     ["role|required"], logWarningOnFail(logger, Promise.resolve(false))
                 ),
                 can: validateFunction(

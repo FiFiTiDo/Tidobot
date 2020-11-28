@@ -1,6 +1,7 @@
+import { PermissionLike } from "../../Utilities/Interfaces/PermissionLike";
 import {Role} from "./Role";
 
-export default class Permission {
+export default class Permission implements PermissionLike {
     constructor(public readonly token: string, public readonly defaultRole: Role) {
     }
 

@@ -16,8 +16,10 @@ export class TwitchUserAdapter extends UserAdapter<string|tmi.Userstate> {
         if (typeof param === "string") {
             return this.findByName(param).then(optional => optional.orElseAsync(async () => {
                 try {
-                    const resp = await this.api.getUsers({ login: name });
-                    return await this.createUser(name, resp.data[0].id);
+                    const resp = await this.api.getUsers({login: param});
+                    const {id, login: name} = resp.data[0];
+                    console.debug(id, name);
+                    return await this.createUser(name, id);
                 } catch (e) {
                     logError(TwitchAdapter.LOGGER, e, "Unable to create new user", true);
                     process.exit(1);

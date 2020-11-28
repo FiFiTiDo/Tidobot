@@ -6,6 +6,7 @@ import { Repository } from "typeorm";
 import { Service as ServiceEntity } from "../Database/Entities/Service";
 import { PG_UNIQUE_CONSTRAINT_VIOLATION } from "../symbols";
 import { getLogger, logError } from "../Utilities/Logger";
+import { User } from "../Database/Entities/User";
 
 const logger = getLogger("Adapter");
 
@@ -35,11 +36,11 @@ export default abstract class Adapter {
 
     public abstract async sendAction(action: string, channel: Channel): Promise<void>;
 
-    public abstract async unbanChatter(chatter: Chatter): Promise<boolean>;
+    public abstract async unbanChatter(user: User, channel: Channel): Promise<boolean>;
 
-    public abstract async banChatter(chatter: Chatter, reason?: string): Promise<boolean>;
+    public abstract async banChatter(user: User, channel: Channel, reason?: string): Promise<boolean>;
 
-    public abstract async tempbanChatter(chatter: Chatter, length: number, reason?: string): Promise<boolean>;
+    public abstract async tempbanChatter(user: User, channel: Channel, length: number, reason?: string): Promise<boolean>;
 
     public abstract async broadcastMessage(message: string): Promise<void>;
 }

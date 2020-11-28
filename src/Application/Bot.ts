@@ -55,7 +55,8 @@ export default class Bot {
         });
         this.eventSystem.addListener(NewChatterEvent, event => {
             const chatter = event.extra.get(NewChatterEvent.EXTRA_CHATTER);
-            chatter.channel.logger.info(`New chatter joined the channel: ${chatter.user.name}`);
+            const channel = event.extra.get(NewChatterEvent.EXTRA_CHANNEL);
+            channel.logger.info(`New chatter joined the channel: ${chatter.user.name}`);
         });
         this.adapter.run(options);
     }

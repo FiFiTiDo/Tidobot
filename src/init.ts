@@ -25,8 +25,9 @@ require("source-map-support").install({ hookRequire: true });
 
 Container.set(TranslationProviderToken, async () => i18next.use(Backend).init({
     ns: [
-        "bet", "command", "confirmation", "counter", "default", "expression", "filter", "fun", "groups", "lists",
-        "news", "permission", "poll", "raffle", "setting", "user", "queue", "pokemon", "tidobot"
+        "bet", "command", "confirmation", "counter", "currency", "default", "expression", "filter", "fun",
+        "gambling", "groups", "lists", "news", "permission", "pokemon", "poll", "queue", "raffle", "setting", 
+        "tidobot", "user"
     ],
     defaultNS: "default",
     lng: process.env.LANGUAGE,

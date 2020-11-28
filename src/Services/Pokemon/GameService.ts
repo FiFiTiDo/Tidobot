@@ -10,6 +10,7 @@ import PokemonModule from "../../Modules/PokemonModule";
 import _ from "lodash";
 
 export interface TrainerData {
+    channel: Channel;
     chatter: Chatter;
     trainer: Trainer;
     team: Pokemon[];
@@ -37,11 +38,11 @@ export class GameService {
         private experienceService: ExperienceService
     ) {}
 
-    public getTrainerData(chatter: Chatter): Optional<TrainerData> {
+    public getTrainerData(chatter: Chatter, channel: Channel): Optional<TrainerData> {
         const trainer = chatter.trainer;
         if (trainer === null) return Optional.empty();
         const team = trainer.team;
-        return Optional.of({chatter, trainer, team});
+        return Optional.of({channel, chatter, trainer, team});
     }
 
     public findMonByName(name: string, team: PokemonTeam): Optional<Pokemon> {
@@ -57,17 +58,16 @@ export class GameService {
     }
 
     public generateRandom(data: TrainerData): Optional<Pokemon> {
-        const channel = data.trainer.chatter.channel;
-        const current = [data.chatter.user.name, ...data.team.map(pkmn => pkmn.name)];
+        const { channel, chatter, team } = data;
+        const current = [chatter.user.name, ...team.map(pkmn => pkmn.name)];
         const chatters = channel.chatters.filter(chatter => _.includes(current, chatter.user.name));
         const name = _.sample(chatters).user.name || Pokemon.GENERIC_NAME;
         return this.generate(name, data);
     }
 
-    public generate(name: string, {trainer, team}: TrainerData): Optional<Pokemon> {
+    public generate(name: string, {team, channel}: TrainerData): Optional<Pokemon> {
         if (name !== Pokemon.GENERIC_NAME && team.some(pkmn => pkmn.name === name)) return Optional.empty();
 
-        const channel = trainer.chatter.channel;
         const minLevel = channel.settings.get(PokemonModule.settings.minLevel);
         const maxLevel = channel.settings.get(PokemonModule.settings.maxLevel);
         const level = randomInt(minLevel, maxLevel);
@@ -95,7 +95,7 @@ export class GameService {
     }
 
     public async attemptFight(self: TrainerData, target: TrainerData): Promise<GameResults> {
-        const channel = self.chatter.channel;
+        const channel = self.channel;
         const selfMon = _.sample(self.team);
         const targetMon = _.sample(target.team);
 

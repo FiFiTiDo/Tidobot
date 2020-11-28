@@ -1,4 +1,4 @@
-import { Service } from "typedi";
+import Container, { Service } from "typedi";
 import { DeepPartial, EntityRepository, Repository } from "typeorm";
 import { Channel } from "../Entities/Channel";
 import { InjectRepository } from "typeorm-typedi-extensions";
@@ -10,14 +10,17 @@ import { NewChannelEvent } from "../../Chat/Events/NewChannelEvent";
 @Service()
 @EntityRepository(Channel)
 export class ChannelRepository extends Repository<Channel> {
+    private readonly eventSystem: EventSystem;
+
     constructor(
         @InjectRepository(ChannelSettings) 
-        private readonly channelSettingsRepository: Repository<ChannelSettings>,
-        private readonly eventSystem: EventSystem
+        private readonly channelSettingsRepository: Repository<ChannelSettings>
     ) {
         super();
-    }
 
+        this.eventSystem = Container.get(EventSystem);
+    }
+    
     async make(entityLike: DeepPartial<Channel>): Promise<Channel> {
         const channel = await this.create(entityLike).save();
         const channelSettings = await this.channelSettingsRepository.create({ json: {}, channel }).save();

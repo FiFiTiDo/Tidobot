@@ -1,5 +1,6 @@
 import { Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany } from "typeorm";
-import Permission, { PermissionStatus } from "../../Systems/Permissions/Permission";
+import { PermissionStatus } from "../../Systems/Permissions/Permission";
+import { PermissionLike } from "../../Utilities/Interfaces/PermissionLike";
 import { Channel } from "./Channel";
 import { Chatter } from "./Chatter";
 import CustomBaseEntity from "./CustomBaseEntity";
@@ -24,7 +25,7 @@ export class Group extends CustomBaseEntity {
     @OneToMany(() => GroupPermission, groupPermission => groupPermission.group)
     permissions: GroupPermission[]
 
-    checkPermission(permission: Permission): PermissionStatus {
+    checkPermission(permission: PermissionLike): PermissionStatus {
         for (const entity of this.permissions)
             if (entity.permission.token === permission.token)
                 return entity.granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED;

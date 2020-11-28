@@ -13,7 +13,6 @@
     "lint": "gulp lint"
   },
   "devDependencies": {
-    "@mixer/client-node": "^3.5.0",
     "@types/args": "^3.0.0",
     "@types/axios": "^0.14.0",
     "@types/chai": "^4.2.14",
@@ -82,7 +81,6 @@
     "typedi": "^0.8.0",
     "typeorm": "^0.2.29",
     "typeorm-typedi-extensions": "^0.2.3",
-    "ws": "^7.4.0",
     "yaml": "^1.10.0"
   }
 }

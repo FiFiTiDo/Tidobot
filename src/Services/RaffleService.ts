@@ -7,6 +7,7 @@ import { Channel } from "../Database/Entities/Channel";
 import { Service } from "typedi";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import _ from "lodash";
+import RaffleModule from "../Modules/RaffleModule";
 
 enum RaffleState {
     OPEN = 1,
@@ -50,11 +51,11 @@ class Raffle {
         return this.state === RaffleState.OPEN;
     }
 
-    async canEnter(chatter: Chatter, roles: Role[]): Promise<boolean> {
+    canEnter(chatter: Chatter, roles: Role[]): boolean {
         if (!this.isOpen()) return false;
         if (this.userEntries.get(chatter) >= this.settings.maxEntries) return false;
 
-        return this.raffleService.permissionSystem.check("raffle.enter", chatter, roles);
+        return this.raffleService.permissionSystem.check(RaffleModule.permissions.enterRaffle, chatter, this.channel, roles);
     }
 
     addEntry(chatter: Chatter): void {
@@ -74,7 +75,7 @@ class Raffle {
     }
 
     reset(): void {
-        this.userEntries.filter((id, entity) => !entity.channel.is(this.channel));
+        this.userEntries.clear();
         this.entries = [];
         this.winners = [];
     }

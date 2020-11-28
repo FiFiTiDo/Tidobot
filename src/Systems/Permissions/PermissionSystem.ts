@@ -10,6 +10,7 @@ import { Chatter } from "../../Database/Entities/Chatter";
 import { EventHandler, HandlesEvents } from "../Event/decorators";
 import { NewChannelEvent } from "../../Chat/Events/NewChannelEvent";
 import Event from "../Event/Event";
+import { PermissionLike } from "../../Utilities/Interfaces/PermissionLike";
 
 @Service()
 @HandlesEvents()
@@ -41,7 +42,7 @@ export default class PermissionSystem extends System {
         return this.permissions;
     }
 
-    public getPermissionRole(permission: Permission, channel: Channel): Role {
+    public getPermissionRole(permission: PermissionLike, channel: Channel): Role {
         try {
             for (const entity of channel.permissions)
                 if (entity.token === permission.token)
@@ -53,7 +54,7 @@ export default class PermissionSystem extends System {
         }
     }
 
-    public check(permission: Permission | string, chatter: Chatter, roles: Role[] = []): boolean {
+    public check(permission: PermissionLike | string, chatter: Chatter, channel: Channel, roles: Role[] = []): boolean {
         if (typeof permission === "string") {
             const permStr = permission;
             permission = this.findPermission(permission);
@@ -66,7 +67,7 @@ export default class PermissionSystem extends System {
         try {
             if (chatter.checkPermission(permission) === PermissionStatus.GRANTED) return true;
 
-            return getMaxRole(roles) >= this.getPermissionRole(permission, chatter.channel);
+            return getMaxRole(roles) >= this.getPermissionRole(permission, channel);
         } catch (e) {
             logError(this.logger, e, "Unable to check permission");
         }

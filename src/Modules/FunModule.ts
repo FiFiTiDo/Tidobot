@@ -3,7 +3,7 @@ import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Command from "../Systems/Commands/Command";
 import Adapter from "../Adapters/Adapter";
-import {ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
+import {ChannelArg, ResponseArg, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import {randomFloat} from "../Utilities/RandomUtils";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
@@ -15,10 +15,11 @@ import { AdapterToken } from "../symbols";
 import { Chatter } from "../Database/Entities/Chatter";
 import Event from "../Systems/Event/Event";
 import _ from "lodash";
+import { Channel } from "../Database/Entities/Channel";
 
 export const MODULE_INFO = {
     name: "Fun",
-    version: "1.2.0",
+    version: "1.2.1",
     description: "Just a bunch of fun things that don't fit in their own module"
 };
 
@@ -30,14 +31,14 @@ class RouletteCommand extends Command {
 
     @CommandHandler("roulette", "roulette")
     @CheckPermission(() => FunModule.permissions.playRoulette)
-    async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
+    async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel): Promise<void> {
         await response.action("fun:roulette.lead_up", {username: sender.user.name});
         await wait(TimeUnit.Seconds(1));
         if (randomFloat() > 1 / 6) {
             await response.message("fun:roulette.safe", {username: sender.user.name});
         } else {
             await response.message("fun:roulette.hit", {username: sender.user.name});
-            await this.adapter.tempbanChatter(sender, 60, await response.translate("fun:roulette.reason"));
+            await this.adapter.tempbanChatter(sender.user, channel, 60, await response.translate("fun:roulette.reason"));
         }
     }
 }
@@ -50,8 +51,8 @@ class SeppukuCommand extends Command {
 
     @CommandHandler("seppuku", "seppuku")
     @CheckPermission(() => FunModule.permissions.playSeppuku)
-    async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter): Promise<void> {
-        const successful = await this.adapter.tempbanChatter(sender, 30, await response.translate("fun:seppuku.reason"));
+    async handleCommand(event: Event, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel): Promise<void> {
+        const successful = await this.adapter.tempbanChatter(sender.user, channel, 30, await response.translate("fun:seppuku.reason"));
         if (!successful) await response.message("error.bot-not-permitted");
     }
 }

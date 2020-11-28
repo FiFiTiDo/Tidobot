@@ -36,7 +36,7 @@ import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Filter",
-    version: "1.3.0",
+    version: "1.3.1",
     description: "Manage the filtering system used to filter out unwanted messages automatically"
 };
 
@@ -63,8 +63,8 @@ class NukeCommand extends Command {
         for (const message of cached) {
             if (matches(message.getRaw())) {
                 try {
-                    await this.adapter.tempbanChatter(message.getChatter(),
-                        await message.channel.settings.get(FilterModule.settings.purgeLength),
+                    await this.adapter.tempbanChatter(message.chatter.user, message.channel,
+                        message.channel.settings.get(FilterModule.settings.purgeLength),
                         await response.translate("filter:nuke-reason", {username: message.chatter.user.name})
                     );
                     purged++;
@@ -125,7 +125,7 @@ class PurgeCommand extends Command {
         event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
         @Argument(new ChatterArg()) chatter: Chatter
     ): Promise<void> {
-        await this.adapter.tempbanChatter(chatter,
+        await this.adapter.tempbanChatter(chatter.user, channel,
             channel.settings.get(FilterModule.settings.purgeLength),
             await response.translate("filter:purge-reason", {username: sender.user.name})
         );

@@ -17,7 +17,8 @@ export class PermissionRepository extends ConvertingRepository<Permission> {
         return this.findOne({ token, channel });
     }
 
-    removeByChannel(channel: Channel): Promise<Permission[]> {
-        return this.find({ channel }).then(permissions => this.remove(permissions));
+    async removeByChannel(channel: Channel): Promise<Permission[]> {
+        const permissions = await this.find({ channel });
+        return await this.remove(permissions);
     }
 }

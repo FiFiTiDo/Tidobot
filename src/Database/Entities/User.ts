@@ -4,7 +4,7 @@ import CustomBaseEntity from "./CustomBaseEntity";
 import { Service } from "./Service";
 
 @Entity()
-@Unique("UQ_User_NativeId_ServiceId", ["nativeId", "serviceId"])
+@Unique("UQ_User_NativeId_Service", ["nativeId", "service"])
 export class User extends CustomBaseEntity {
     @Column()
     name: string;

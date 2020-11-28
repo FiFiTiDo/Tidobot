@@ -1,14 +1,15 @@
 import { Column, Entity, ManyToMany, ManyToOne, OneToMany, OneToOne, Unique } from "typeorm";
-import Permission, { PermissionStatus } from "../../Systems/Permissions/Permission";
+import { PermissionStatus } from "../../Systems/Permissions/Permission";
 import { Channel } from "./Channel";
 import { ChatterPermission } from "./ChatterPermission";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { Group } from "./Group";
 import { Trainer } from "./Trainer";
 import { User } from "./User";
+import { PermissionLike } from "../../Utilities/Interfaces/PermissionLike";
 
 @Entity()
-@Unique("UQ_Chatter_UserId_ChannelId", ["userId", "channelId"])
+@Unique("UQ_Chatter_User_Channel", ["user", "channel"])
 export class Chatter extends CustomBaseEntity {
     @Column({ default: 0 })
     balance: number;
@@ -41,7 +42,7 @@ export class Chatter extends CustomBaseEntity {
         return false;
     }
 
-    checkPermission(permission: Permission): PermissionStatus {
+    checkPermission(permission: PermissionLike): PermissionStatus {
         const permissions = this.permissions || [];
         for (const entity of permissions)
             if (entity.permission.token == permission.token)
@@ -68,7 +69,7 @@ export class Chatter extends CustomBaseEntity {
     }
 
     async withdraw(amount: number): Promise<void> {
-        this.balance -= amount;
+        this.balance = Math.max(this.balance - amount, 0);
         await this.save();   
     }
 

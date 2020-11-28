@@ -29,6 +29,7 @@ import Event from "../Event/Event";
 export default class FilterSystem extends System {
     private readonly permits: EntityStateList<Chatter, moment.Moment> = new EntityStateList<Chatter, moment.Moment>(null);
     private readonly filters: Filter[];
+    private readonly ignoreAllPermission = new Permission("filter.ignore.all", Role.MODERATOR)
 
     constructor(
         private readonly messageCache: MessageCache, private readonly strikeManager: StrikeManager,
@@ -42,7 +43,7 @@ export default class FilterSystem extends System {
             badWordFilter, capsFilter, fakePurgeFilter, longMessageFilter, spamFilter, symbolFilter, urlFilter, repetitionFilter
         ];
 
-        perm.registerPermission(new Permission("filter.ignore.all", Role.MODERATOR));
+        perm.registerPermission(this.ignoreAllPermission);
 
         this.logger.info("System initialized");
     }
@@ -54,7 +55,7 @@ export default class FilterSystem extends System {
         const channel = message.channel;
 
         this.messageCache.add(message);
-        if (await message.checkPermission("filter.ignore.all")) return;
+        if (await message.checkPermission(this.ignoreAllPermission)) return;
         if (this.permits.has(sender)) {
             const timestamp = this.permits.get(sender);
             const expires = timestamp.clone().add(channel.settings.get(FilterModule.settings.permitLength), "seconds");

@@ -10,12 +10,7 @@ export class CommandRepository extends ConvertingRepository<Command> {
     static TYPE = "command"
 
     async make(trigger: string, response: string, channel: Channel): Promise<Command> {
-        const command = new Command();
-        command.trigger = trigger;
-        command.response = response;
-        command.channel = channel;
-        command.commandId = channel.commandIdCounter++;
-
+        const command = this.create({trigger, response, channel, commandId: channel.commandIdCounter++});
         await channel.save();
         return this.save(command);
     }

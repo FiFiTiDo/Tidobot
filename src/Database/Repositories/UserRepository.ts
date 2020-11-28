@@ -1,4 +1,4 @@
-import { Service } from "typedi";
+import Container, { Service } from "typedi";
 import { DeepPartial, EntityRepository, Repository } from "typeorm";
 import Event from "../../Systems/Event/Event";
 import EventSystem from "../../Systems/Event/EventSystem";
@@ -8,8 +8,12 @@ import { NewUserEvent } from "../../Chat/Events/NewUserEvent";
 @Service()
 @EntityRepository(User)
 export class UserRepository extends Repository<User> {
-    constructor(private readonly eventSystem: EventSystem) {
+    private readonly eventSystem: EventSystem;
+
+    constructor() {
         super();
+
+        this.eventSystem = Container.get(EventSystem);
     }
 
     async make(entityLike: DeepPartial<User>): Promise<User> {

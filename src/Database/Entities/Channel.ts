@@ -18,7 +18,7 @@ import { Service } from "./Service";
 import { Trainer } from "./Trainer";
 
 @Entity()
-@Unique("UQ_Channel_NativeId_ServiceId", ["nativeId", "serviceId"])
+@Unique("UQ_Channel_NativeId_ServiceId", ["nativeId", "service"])
 export class Channel extends CustomBaseEntity {
     @Column()
     nativeId: string;

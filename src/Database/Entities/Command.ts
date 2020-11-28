@@ -21,19 +21,19 @@ export class Command extends CustomBaseEntity {
     @Column()
     response: string;
 
-    @Column()
+    @Column({ default: "true" })
     condition: string;
 
-    @Column()
+    @Column({ default: 0 })
     price: number;
 
-    @Column()
+    @Column({ default: 0 })
     userCooldown: number;
 
-    @Column()
+    @Column({ default: 0 })
     globalCooldown: number;
 
-    @Column()
+    @Column({ default: true })
     enabled: boolean;
 
     @CreateDateColumn()

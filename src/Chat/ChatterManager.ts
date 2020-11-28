@@ -1,4 +1,5 @@
 import { Service } from "typedi";
+import { Channel } from "../Database/Entities/Channel";
 import { Chatter } from "../Database/Entities/Chatter";
 import { Role } from "../Systems/Permissions/Role";
 import { MapExt } from "../Utilities/Structures/Map";
@@ -11,6 +12,14 @@ interface ChatterState {
 @Service()
 export class ChatterManager {
     private chatterState: MapExt<number, ChatterState> = new MapExt();
+
+    public getAll(channel: Channel): Chatter[] {
+        return channel.chatters;
+    }
+
+    public getAllActive(channel: Channel): Chatter[] {
+        return this.getAll(channel).filter(chatter => this.isActive(chatter));
+    }
 
     public getState(chatter: Chatter): ChatterState {
         return this.chatterState.getOrSet(chatter.id, {

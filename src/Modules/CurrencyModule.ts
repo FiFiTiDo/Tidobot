@@ -25,10 +25,11 @@ import { ChatterManager } from "../Chat/ChatterManager";
 import { TimeUnit } from "../Systems/Timer/TimerSystem";
 import { CurrencyType } from "../Systems/Currency/CurrencyType";
 import Event from "../Systems/Event/Event";
+import { CurrencySystem } from "../Systems/Currency/CurrencySystem";
 
 export const MODULE_INFO = {
     name: "Currency",
-    version: "1.2.0",
+    version: "1.2.1",
     description: "A points system used for granting the use of certain bot features"
 };
 
@@ -37,6 +38,7 @@ const logger = getLogger(MODULE_INFO.name);
 @Service()
 class BankCommand extends Command {
     constructor(
+        private readonly currencySystem: CurrencySystem,
         private readonly chatterManager: ChatterManager,
         private readonly confirmationModule: ConfirmationModule
     ) {
@@ -63,9 +65,7 @@ class BankCommand extends Command {
         @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
-        let chatters: Chatter[] = channel.chatters;
-        if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
-        return Promise.all(chatters.map(chatter => chatter.deposit(amount)))
+        return this.currencySystem.giveAll(channel, amount, onlyActive)
             .then(async () => response.message("currency:give-all", {
                 amount: CurrencyType.get(channel).formatAmount(amount),
             })).catch(e => response.genericErrorAndLog(e, logger));
@@ -92,9 +92,7 @@ class BankCommand extends Command {
         @Argument(new FloatArg({min: 1})) amount: number,
         @Argument(BooleanArg, "only-active", false) onlyActive: boolean
     ): Promise<void> {
-        let chatters: Chatter[] = channel.chatters;
-        if (onlyActive) chatters = chatters.filter(this.chatterManager.isActive);
-        return Promise.all(chatters.map(chatter => chatter.withdraw(amount)))
+        return this.currencySystem.takeAll(channel, amount, onlyActive)
             .then(async () => response.message("currency:take-all", {
                 amount: CurrencyType.get(channel).formatAmount(amount),
             })).catch(e => response.genericErrorAndLog(e, logger));
@@ -129,7 +127,7 @@ class BankCommand extends Command {
         event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message
     ): Promise<void> {
         const confirmation = await this.confirmationModule.make(msg, await response.translate("currency.reset.all-confirm"), 30);
-        confirmation.addListener(ConfirmedEvent, () => Promise.all(channel.chatters.map(chatter => chatter.resetBalance()))
+        confirmation.addListener(ConfirmedEvent, () => this.currencySystem.resetChannel(channel)
             .then(() => response.message("currency:reset.all"))
             .catch(e => response.genericErrorAndLog(e, logger))
         );
@@ -207,6 +205,7 @@ export default class CurrencyModule extends AbstractModule {
     tickInterval: Timeout;
 
     constructor(
+        private readonly currencySystem: CurrencySystem,
         private readonly channelManager: ChannelManager,
         @Inject(() => BankCommand) bankCommand: BankCommand,
         @Inject(() => BalanceCommand) balanceCommand: BalanceCommand,
@@ -239,7 +238,7 @@ export default class CurrencyModule extends AbstractModule {
                             CurrencyModule.settings.onlineGain : 
                             CurrencyModule.settings.offlineGain
                     );
-                    return Promise.all(channel.chatters.map(chatter => chatter.deposit(amount)));
+                    return this.currencySystem.giveAll(channel, amount, true);
                 })
             ).then(promises => Promise.all(promises));
     }

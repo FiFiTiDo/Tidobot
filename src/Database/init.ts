@@ -39,6 +39,8 @@ export async function setupDatabase(): Promise<void> {
             "password": "test",
             "database": "tidobot",
             "synchronize": true,
+            "logging": "all",
+            "logger": "file",
             "entities": [
                 BadWord, Channel, ChannelSettings, Chatter, ChatterPermission, Command, Counter, DisabledModule, DomainFilter,
                 Group, GroupPermission, List, ListItem, News, Permission, Pokemon, Service, Trainer, User

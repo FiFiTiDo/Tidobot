@@ -14,12 +14,12 @@ import PermissionModule, { PermissionArg } from "./PermissionModule";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { ChatterPermissionRepoistory } from "../Database/Repositories/ChatterPermissionRepository";
 import { Chatter } from "../Database/Entities/Chatter";
-import Permission from "../Systems/Permissions/Permission";
 import Event from "../Systems/Event/Event";
+import { Permission } from "../Database/Entities/Permission";
 
 export const MODULE_INFO = {
     name: "User",
-    version: "1.2.0",
+    version: "1.2.1",
     description: "Managing users in your channel including granting/denying permissions"
 };
 

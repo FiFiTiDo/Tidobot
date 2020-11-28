@@ -25,5 +25,9 @@
         "price": "new price",
         "cooldown": "seconds",
         "type": "type"
+    },
+    "reset": {
+        "confirm": "Are you sure you want to clear all commands?",
+        "successful": "Succesfully cleared all {{count}} commands"
     }
 }

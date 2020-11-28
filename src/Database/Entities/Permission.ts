@@ -1,12 +1,13 @@
 import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
 import { Role } from "../../Systems/Permissions/Role";
+import { PermissionLike } from "../../Utilities/Interfaces/PermissionLike";
 import { Channel } from "./Channel";
 import { ChatterPermission } from "./ChatterPermission";
 import CustomBaseEntity from "./CustomBaseEntity";
 import { GroupPermission } from "./GroupPermission";
 
 @Entity()
-export class Permission extends CustomBaseEntity {
+export class Permission extends CustomBaseEntity implements PermissionLike {
     @Column()
     token: string;
 

@@ -10,7 +10,7 @@ import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, ChannelArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import {EntityArg} from "../Systems/Commands/Validation/Entity";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
@@ -23,10 +23,11 @@ import { Command as CommandEntity, CommandConditionResponse } from "../Database/
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Channel } from "../Database/Entities/Channel";
 import Event from "../Systems/Event/Event";
+import ConfirmationModule, { ConfirmedEvent } from "./ConfirmationModule";
 
 export const MODULE_INFO = {
     name: "CustomCommand",
-    version: "1.4.0",
+    version: "1.4.1",
     description: "Create your own commands with the powerful expression engine."
 };
 
@@ -35,7 +36,11 @@ const CommandConverter = new EntityArg(CommandRepository, {msgKey: "command:erro
 
 @Service()
 class CommandCommand extends Command {
-    constructor(@InjectRepository() private readonly commandRepository: CommandRepository) {
+    constructor(
+        @InjectRepository() 
+        private readonly commandRepository: CommandRepository,
+        private readonly confirmationModule: ConfirmationModule
+    ) {
         super("command", "<add|edit|delete>", ["cmd", "c"]);
     }
 
@@ -47,7 +52,7 @@ class CommandCommand extends Command {
         @RestArguments(true, {join: " "}) resp: string
     ): Promise<void> {
         this.commandRepository.make(trigger, resp, channel)
-            .then(entity => response.message("command:added", {id: entity.id}))
+            .then(entity => response.message("command:added", {id: entity.commandId}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -59,7 +64,7 @@ class CommandCommand extends Command {
     ): Promise<void> {
         command.trigger = value;
         command.save()
-            .then(() => response.message("command:edit.trigger", {id: command.id, value}))
+            .then(() => response.message("command:edit.trigger", {id: command.commandId, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -71,7 +76,7 @@ class CommandCommand extends Command {
     ): Promise<void> {
         command.condition = value;
         command.save()
-            .then(() => response.message("command:edit.condition", {id: command.id, value}))
+            .then(() => response.message("command:edit.condition", {id: command.commandId, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -83,7 +88,7 @@ class CommandCommand extends Command {
     ): Promise<void> {
         command.response = value;
         command.save()
-            .then(() => response.message("command:edit.response", {id: command.id, value}))
+            .then(() => response.message("command:edit.response", {id: command.commandId, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -95,7 +100,7 @@ class CommandCommand extends Command {
     ): Promise<void> {
         command.price = value;
         command.save()
-            .then(() => response.message("command:edit.price", {id: command.id, value}))
+            .then(() => response.message("command:edit.price", {id: command.commandId, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -107,7 +112,7 @@ class CommandCommand extends Command {
     ): Promise<void> {
         command.globalCooldown = value;
         command.save()
-            .then(() => response.message("command:edit.global-cooldown", {id: command.id, value}))
+            .then(() => response.message("command:edit.global-cooldown", {id: command.commandId, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -119,7 +124,7 @@ class CommandCommand extends Command {
     ): Promise<void> {
         command.userCooldown = value;
         command.save()
-            .then(() => response.message("command:edit.user-cooldown", {id: command.id, value}))
+            .then(() => response.message("command:edit.user-cooldown", {id: command.commandId, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -131,7 +136,7 @@ class CommandCommand extends Command {
     ): Promise<void> {
         command.enabled = value;
         command.save()
-            .then(() => response.message("command:edit.user-cooldown", {id: command.id, value}))
+            .then(() => response.message("command:edit.user-cooldown", {id: command.commandId, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 
@@ -140,9 +145,27 @@ class CommandCommand extends Command {
     async delete(
         event: Event, @ResponseArg response: Response, @Argument(CommandConverter) command: CommandEntity
     ): Promise<void> {
+        const id = command.commandId;
         command.remove()
-            .then(() => response.message("command:deleted", {id: command.id}))
+            .then(() => response.message("command:deleted", {id}))
             .catch(e => response.genericErrorAndLog(e, logger));
+    }
+
+    @CommandHandler(/^(c|cmd|command) (reset)$/, "command reset", 1)
+    @CheckPermission(() => CustomCommandModule.permissions.resetCommands)
+    async reset(event: Event, @MessageArg message: Message, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+        const confirmation = await this.confirmationModule.make(message, await response.translate("command:reset.confirm"), 10);
+        confirmation.addListener(ConfirmedEvent, async () => {
+            try {
+                const count = channel.commands.length;
+                await this.commandRepository.remove(channel.commands);
+                channel.commandIdCounter = 1;
+                await channel.save();
+                return response.message("command:reset.successful", {count});
+            } catch (e) {
+                return response.genericErrorAndLog(e, logger, "Failed to reset commands");
+            }
+        });
     }
 }
 
@@ -154,6 +177,7 @@ export default class CustomCommandModule extends AbstractModule {
         addCommand: new Permission("command.add", Role.MODERATOR),
         editCommand: new Permission("command.edit", Role.MODERATOR),
         deleteCommand: new Permission("command.delete", Role.MODERATOR),
+        resetCommands: new Permission("command.reset", Role.MODERATOR),
         freeUsage: new Permission("command.free", Role.MODERATOR),
         ignoreCooldown: new Permission("command.ignore-cooldown", Role.MODERATOR),
     }

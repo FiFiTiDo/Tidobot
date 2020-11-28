@@ -12,7 +12,7 @@ class BettingGame {
     private readonly bets: Map<string, EntityStateList<Chatter, number>>;
     private open: boolean;
 
-    constructor(private readonly title: string, options: string[]) {
+    constructor(private readonly title: string, options: string[], private readonly channel: Channel) {
 
         this.bets = new Map();
         this.open = true;
@@ -44,8 +44,8 @@ class BettingGame {
         if (bets.has(chatter)) value = bets.get(chatter);
         value += amount;
 
-        const min = chatter.channel.settings.get(BettingModule.settings.minimumBet);
-        const max = chatter.channel.settings.get(BettingModule.settings.maximumBet);
+        const min = this.channel.settings.get(BettingModule.settings.minimumBet);
+        const max = this.channel.settings.get(BettingModule.settings.maximumBet);
         if (value < min && min >= 0 && min <= max) return PlaceBetResponse.TOO_LOW;
         if (value > max && max > 0) return PlaceBetResponse.TOO_HIGH;
 
@@ -93,8 +93,8 @@ export class BetService {
         return this.betInstances.get(channel);
     }
 
-    public placeBet(chatter: Chatter, option: string, amount: number): Promise<PlaceBetResponse | null> {
-        const game = this.getGame(chatter.channel);
+    public placeBet(chatter: Chatter, channel: Channel, option: string, amount: number): Promise<PlaceBetResponse | null> {
+        const game = this.getGame(channel);
         if (!game?.isOpen()) return null;
         return game.place(option, amount, chatter);
     }
@@ -102,7 +102,7 @@ export class BetService {
     public openBet(title: string, options: string[], channel: Channel): boolean {
         let game = this.getGame(channel);
         if (game !== null && game.isOpen()) return null;
-        game = new BettingGame(title, options);
+        game = new BettingGame(title, options, channel);
         this.betInstances.set(channel, game);
         return true;
     }

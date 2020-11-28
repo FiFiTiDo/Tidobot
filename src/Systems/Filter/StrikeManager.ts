@@ -35,10 +35,8 @@ export default class StrikeManager extends System {
     }
 
     public async issueStrike(type: string, message: Message): Promise<void> {
-        const chatter = message.getChatter();
-        const channel = message.getChannel();
-        const response = message.getResponse();
-        const adapter = message.getAdapter();
+        const { chatter, channel, response, adapter } = message;
+        const user = chatter.user;
         const strike = (this.strikes.get(chatter) + 1) % 4;
         this.strikes.set(chatter, strike);
         const reason = await response.translate(`filter:reasons.${type}`);
@@ -51,15 +49,15 @@ export default class StrikeManager extends System {
                 const length = channel.settings.get(StrikeManager.STRIKEOUT);
                 const strikeoutReason = await response.translate("filter:strikeout", {reason: banReason});
                 if (length < 0)
-                    await adapter.banChatter(chatter, strikeoutReason);
+                    await adapter.banChatter(user, channel, strikeoutReason);
                 else
-                    await adapter.tempbanChatter(chatter, length, strikeoutReason);
-                this.logger.info(`Final strike issued for the user ${chatter.user.name} in the channel ${chatter.channel.name}, reason: ${banReason}`);
+                    await adapter.tempbanChatter(user, channel, length, strikeoutReason);
+                this.logger.info(`Final strike issued for the user ${user.name} in the channel ${channel.name}, reason: ${banReason}`);
             } else {
-                await response.message("filter:strike", {username: chatter.user.name, reason, number: strike});
-                const length = chatter.channel.settings.get(this.getStrikeSetting(strike));
-                if (length > 0) await adapter.tempbanChatter(chatter, length, banReason);
-                this.logger.info(`Strike ${strike} issued for the user ${chatter.user.name} in the channel ${chatter.channel.name}, reason: ${banReason}`);
+                await response.message("filter:strike", {username: user.name, reason, number: strike});
+                const length = channel.settings.get(this.getStrikeSetting(strike));
+                if (length > 0) await adapter.tempbanChatter(user, channel, length, banReason);
+                this.logger.info(`Strike ${strike} issued for the user ${user.name} in the channel ${channel.name}, reason: ${banReason}`);
             }
         } catch (e) {
             logError(this.logger, e, "Unable to ban user while issuing strike");

@@ -21,7 +21,7 @@ import _ from "lodash";
 
 export const MODULE_INFO = {
     name: "Pokemon",
-    version: "1.2.0",
+    version: "1.2.1",
     description: "Play pokemon using other users as your team's pokemon"
 };
 
@@ -43,7 +43,9 @@ class TrainerDataArg {
         const chatter = await this.chatterArg.convert(input, name, column, event);
         if (chatter.trainer === undefined)
             throw new TranslateMessageInputError("pokemon:error.no-trainer", {username: input});
-        return { chatter, trainer: chatter.trainer, team: chatter.trainer.team };
+        const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+        const channel = message.channel;
+        return { channel, chatter, trainer: chatter.trainer, team: chatter.trainer.team };
     }
 }
 

@@ -1,3 +1,4 @@
+import _ from "lodash";
 import {Logger} from "log4js";
 import {parseRole} from "../Systems/Permissions/Role";
 
@@ -27,6 +28,12 @@ export function validateFunction<ReturnT>(func: Function<ReturnT>, argDfn: strin
                         value = role;
                         break;
                     }
+                    case "array":
+                        if (_.isArray(inputArgs[i]))
+                            value = inputArgs[i];
+                        else
+                            return onFail(`Expected argument #${i} to be of type array`);
+                        break;
                     case "string":
                     case "boolean":
                     case "number":
@@ -84,6 +91,13 @@ export function logErrorOnFail<ReturnT>(logger: Logger, retval: ReturnT): ErrorF
     return function (error: string): ReturnT {
         logger.error(error);
         return retval;
+    };
+}
+
+export function logErrorOnFailAsync<ReturnT>(logger: Logger, retval: ReturnT|Promise<ReturnT>): ErrorFailFunction<Promise<ReturnT>> {
+    return function (error: string): Promise<ReturnT> {
+        logger.error(error);
+        return retval instanceof Promise ? retval : Promise.resolve(retval);
     };
 }
 

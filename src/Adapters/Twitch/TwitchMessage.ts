@@ -57,7 +57,7 @@ export class TwitchMessage extends Message {
         const getChannelProperty = async (key: keyof ChannelInformation): Promise<string> => {
             try {
                 const chanResp = await this.api.getChannel({broadcaster_id: this.channel.nativeId});
-                return chanResp[key];
+                return chanResp.data[0][key];
             } catch (e) {
                 logError(TwitchAdapter.LOGGER, e, "Twitch API Error");
                 return "<<An error has occurred with the Twitch API.>>";
@@ -88,6 +88,7 @@ export class TwitchMessage extends Message {
             },
             sender: {
                 getFollowAge: async (format?: string): Promise<string> => {
+                    if (await this.checkRole(Role.BROADCASTER)) return "Sender is the broadcaster";
                     return this.api.getUserFollow({
                         from_id: this.chatter.user.nativeId,
                         to_id: this.channel.nativeId
@@ -101,6 +102,7 @@ export class TwitchMessage extends Message {
                     });
                 },
                 isFollowing: async (): Promise<boolean> => {
+                    if (await this.checkRole(Role.BROADCASTER)) return true;
                     return this.api.getUserFollow({
                         from_id: this.chatter.user.nativeId,
                         to_id: this.channel.nativeId

@@ -1,10 +1,10 @@
 import { Service } from "typedi";
 import { EntityRepository, Repository } from "typeorm";
 import { InjectRepository } from "typeorm-typedi-extensions";
+import { PermissionLike } from "../../Utilities/Interfaces/PermissionLike";
 import { Channel } from "../Entities/Channel";
 import { Group } from "../Entities/Group";
 import { GroupPermission } from "../Entities/GroupPermission";
-import { Permission } from "../Entities/Permission";
 import { ConvertingRepository } from "./ConvertingRepository";
 
 @Service()
@@ -20,7 +20,7 @@ export class GroupRepository extends ConvertingRepository<Group> {
         return this.findOne({ name: raw, channel });
     }
 
-    async updatePermission(group: Group, permission: Permission, granted: boolean): Promise<GroupPermission> {
+    async updatePermission(group: Group, permission: PermissionLike, granted: boolean): Promise<GroupPermission> {
         for (const groupPermission of group.permissions) {
             if (groupPermission.permission.token === permission.token) {
                 groupPermission.granted = granted;
@@ -31,7 +31,7 @@ export class GroupRepository extends ConvertingRepository<Group> {
         return this.groupPermissionRepository.create({ group, permission, granted }).save();
     }
 
-    async removePermission(group: Group, permission: Permission): Promise<GroupPermission|null> {
+    async removePermission(group: Group, permission: PermissionLike): Promise<GroupPermission|null> {
         for (const groupPermission of group.permissions) {
             if (groupPermission.permission.token === permission.token) {
                 return groupPermission.remove();

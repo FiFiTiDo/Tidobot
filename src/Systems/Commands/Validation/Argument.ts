@@ -5,9 +5,12 @@ import * as minimist from "minimist-string";
 import Event from "../../Event/Event";
 import { CommandEvent } from "../CommandEvent";
 import Message from "../../../Chat/Message";
+import { getLogger, logError } from "../../../Utilities/Logger";
 
 const ARGUMENT_META_KEY = "command:argument";
 const REST_META_KEY = "command:rest_args";
+
+const logger = getLogger("ArgumentValidator");
 
 interface RestSettings {
     join?: string;
@@ -133,11 +136,12 @@ export async function resolveArguments(event: Event, target: any, propertyKey: s
             } catch (err) {
                 if (err instanceof InvalidInputError) {
                     if (!silent)
-                        await message.getResponse().rawMessage(await err.getMessage(message));
+                        await message.response.rawMessage(await err.getMessage(message));
                     return null;
                 } else {
                     if (!silent)
-                        await message.getResponse().genericError();
+                        await message.response.genericError();
+                    logError(logger, err);
                     return null;
                 }
             }
@@ -177,6 +181,7 @@ export async function resolveCliArguments(event: Event, target: any, propertyKey
                 } else {
                     if (!silent)
                         await message.getResponse().genericError();
+                    logError(logger, err);
                     return null;
                 }
             }

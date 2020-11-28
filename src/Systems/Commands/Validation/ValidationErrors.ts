@@ -1,5 +1,5 @@
 import Message from "../../../Chat/Message";
-import {StringMap, TFunctionKeys, TFunctionResult} from "i18next";
+import {StringMap, TFunctionKeys} from "i18next";
 
 export class ValidationError extends Error {
     constructor(message: string) {
@@ -18,8 +18,7 @@ export class InvalidInputError extends ValidationError {
     }
 }
 
-export class TranslateMessageInputError<TResult extends TFunctionResult = string,
-    TKeys extends TFunctionKeys = string,
+export class TranslateMessageInputError<TKeys extends TFunctionKeys = string,
     TInterpolationMap extends object = StringMap> extends InvalidInputError {
 
     constructor(private key: TKeys, private opts?: TInterpolationMap) {
@@ -27,7 +26,7 @@ export class TranslateMessageInputError<TResult extends TFunctionResult = string
     }
 
     async getMessage(message: Message): Promise<string> {
-        return message.getResponse().translate(this.key, this.opts);
+        return message.response.translate(this.key, this.opts);
     }
 }
 
@@ -37,7 +36,7 @@ export class MissingRequiredArgumentError extends InvalidInputError {
     }
 
     async getMessage(message: Message): Promise<string> {
-        return message.getResponse().translate("command:error.expected-argument", {
+        return message.response.translate("command:error.expected-argument", {
             argument: this.argument, type: this.type, column: this.column
         });
     }
@@ -49,7 +48,7 @@ export class MissingRequiredCliArgumentError extends InvalidInputError {
     }
 
     async getMessage(message: Message): Promise<string> {
-        return message.getResponse().translate("command:error.expected-cli-argument", {
+        return message.response.translate("command:error.expected-cli-argument", {
             argument: this.argument, type: this.type
         });
     }
@@ -61,7 +60,7 @@ export class InvalidArgumentError extends InvalidInputError {
     }
 
     async getMessage(message: Message): Promise<string> {
-        return message.getResponse().translate("command:error.expected-argument", {
+        return message.response.translate("command:error.expected-argument", {
             argument: this.argument, type: this.type, given: this.given, column: this.column
         });
     }

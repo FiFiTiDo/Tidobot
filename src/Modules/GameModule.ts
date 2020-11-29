@@ -18,7 +18,7 @@ import AbstractModule, { Symbols } from "./AbstractModule";
 
 export const MODULE_INFO = {
     name: "Game",
-    version: "1.1.0",
+    version: "1.2.0",
     description: "A module that includes fun games that can be played in chat"
 };
 

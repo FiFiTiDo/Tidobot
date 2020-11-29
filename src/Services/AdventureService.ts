@@ -8,10 +8,11 @@ import { Chatter } from "../Database/Entities/Chatter";
 import { EntityStateList } from "../Database/EntityStateList";
 import GameModule from "../Modules/GameModule";
 import TimerSystem, { TimeUnit } from "../Systems/Timer/TimerSystem";
+import Optional from "../Utilities/Patterns/Optional";
 import { randomChance } from "../Utilities/RandomUtils";
 
 enum GameState {
-    WAITING, IN_GAME, ENDED
+    WAITING, IN_GAME, ENDED, CANCELLED
 }
 
 export enum EnterResult {
@@ -62,7 +63,8 @@ export class AdventureGame {
     private readonly entries = new EntityStateList<Chatter, number>(-1);
     private endTime: Moment = null;
     private state = GameState.WAITING;
-    private gameTimer: NodeJS.Timer;
+    private startTimeout: NodeJS.Timeout;
+    private gameTimer: NodeJS.Timer = null;
     private chapter = 0;
 
     constructor(
@@ -72,7 +74,7 @@ export class AdventureGame {
         private readonly response: Response
     ) {
         const waitTime = channel.settings.get(GameModule.settings.ADVENTURE_WAIT_TIME);
-        timerSystem.startTimeout(this.runStory.bind(this), TimeUnit.Seconds(waitTime));
+        this.startTimeout = timerSystem.startTimeout(this.runStory.bind(this), TimeUnit.Seconds(waitTime));
     }
 
     async enter(chatter: Chatter, amount: number): Promise<EnterResult> {
@@ -115,7 +117,7 @@ export class AdventureGame {
     }
 
     hasEnded(): boolean {
-        return this.state === GameState.ENDED;
+        return this.state === GameState.ENDED || this.state === GameState.CANCELLED;
     }
 
     async nextChapter(result: GameResult): Promise<void> {
@@ -172,6 +174,18 @@ export class AdventureGame {
         const cooldownEnd = this.endTime.add(this.channel.settings.get(GameModule.settings.ADVENTURE_COOLDOWN), "seconds");
         return moment().isAfter(cooldownEnd);
     }
+
+    async cancel(): Promise<void> {
+        if (this.state > GameState.IN_GAME) return;
+
+        this.timerSystem.cancelTimeout(this.startTimeout);
+        if (this.gameTimer !== null)
+            this.timerSystem.stopTimer(this.gameTimer);
+        this.state = GameState.CANCELLED;
+        this.endTime = moment();
+        for (const [chatter, amount] of this.entries.entries())
+            await chatter.deposit(amount);
+    }
 }
 
 @Service()
@@ -187,12 +201,18 @@ export class AdventureService {
     public async enterGame(message: Message, amount: number): Promise<EnterResult> {
         let started = false;
         let game = this.games.get(message.channel);
-        if (game !== null && !game.checkCooldown()) return EnterResult.COOLDOWN;
-        if (game === null || game.hasEnded()) {
+        if (game === null || game.hasEnded()) { // Start new game
+            if (game !== null && !game.checkCooldown()) return EnterResult.COOLDOWN;
+
             game = new AdventureGame(message.channel, await this.getStory(message), this.timerSystem, message.response);
+            this.games.set(message.channel, game);
             started = true;
         }
         const result = await game.enter(message.chatter, amount);
         return (result === EnterResult.SUCCESSFUL && started) ? EnterResult.STARTED : result;
+    }
+
+    public getGame(channel: Channel): Optional<AdventureGame> {
+        return Optional.ofNullable(this.games.get(channel));
     }
 }

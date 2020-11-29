@@ -19,6 +19,10 @@
     "run-story": "Starting out on an adventure \"{{title}}\" with {{count}} player",
     "run-story_plural": "Starting out on an adventure \"{{title}}\" with {{count}} players",
     "cooldown-end": "It's time for a new adveture to begin! Use \"{{- usage}}\" to start one!",
+    "cancel": {
+        "successful": "The adventure was ended early and all bets have been returned to the team players",
+        "no-adventure": "There is currently no active adventure to be cancelled"
+    },
     "stories": [
         {
             "title": "Bank Heist",

@@ -18,14 +18,14 @@ import AbstractModule, { Symbols } from "./AbstractModule";
 
 export const MODULE_INFO = {
     name: "Game",
-    version: "1.0.0",
+    version: "1.1.0",
     description: "A module that includes fun games that can be played in chat"
 };
 
 @Service()
 class AdventureCommand extends Command {
     constructor(private readonly adventureService: AdventureService) {
-        super("adventure", "<amount>");
+        super("adventure", "<amount>", ["adv"]);
     }
 
     @CommandHandler(/^adv(enture)?/, "adventure <amount>")
@@ -68,11 +68,29 @@ class AdventureCommand extends Command {
 }
 
 @Service()
+class CancelAdventureCommand extends Command {
+    constructor(private readonly adventureService: AdventureService) {
+        super("canceladventure", null, ["canceladv"]);
+    }
+
+    @CommandHandler(/^canceladv(enture)?/, "canceladventure")
+    @CheckPermission(() => GameModule.permissions.CANCEL_ADVENTURE)
+    async handleCommand(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+        const game = this.adventureService.getGame(channel);
+        if (!game.present || game.value.hasEnded())
+            return response.message("adventure:cancel.no-adventure");
+        await game.value.cancel();
+        await response.message("adventure:cancel.successful");
+    }
+}
+
+@Service()
 export default class GameModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
     static permissions = {
         JOIN_ADVENTURE: new Permission("adventure.play", Role.NORMAL),
-        START_ADVENTURE: new Permission("adventure.start", Role.NORMAL)
+        START_ADVENTURE: new Permission("adventure.start", Role.NORMAL),
+        CANCEL_ADVENTURE: new Permission("adventure.cancel", Role.MODERATOR)
     }
     static settings = {
         ADVENTURE_SURVIVAL_CHANCE: new Setting("adventure.survival-chance", 0.75 as Float, SettingType.FLOAT),
@@ -83,10 +101,10 @@ export default class GameModule extends AbstractModule {
         ADVENTURE_MAX_BET: new Setting("adventure.max-bet", 1000 as Float, SettingType.FLOAT),
     }
 
-    constructor(heistCommand: AdventureCommand) {
+    constructor(adventureCommand: AdventureCommand, cancelAdventureCommand: CancelAdventureCommand) {
         super(GameModule);
 
-        this.registerCommands(heistCommand);
+        this.registerCommands(adventureCommand, cancelAdventureCommand);
         this.registerPermissions(GameModule.permissions);
         this.registerSettings(GameModule.settings);
     }

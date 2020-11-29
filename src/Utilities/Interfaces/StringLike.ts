@@ -1,3 +1,3 @@
-export default interface StringLike {
+export interface StringLike {
     toString(): string;
 }

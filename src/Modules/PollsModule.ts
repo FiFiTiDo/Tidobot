@@ -1,31 +1,29 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {IntegerArg} from "../Systems/Commands/Validation/Integer";
 import {StringArg, StringEnumArg} from "../Systems/Commands/Validation/String";
 import {BooleanArg} from "../Systems/Commands/Validation/Boolean";
 import axios from "axios";
 import {getLogger} from "../Utilities/Logger";
-import {command} from "../Systems/Commands/decorators";
-import {permission} from "../Systems/Permissions/decorators";
-import {setting} from "../Systems/Settings/decorators";
-import EntityStateList from "../Database/EntityStateList";
-import {Argument, Channel, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {PollService} from "../Services/PollService";
 import {wait} from "../Utilities/functions";
+import { Service } from "typedi";
+import { Channel } from "../Database/Entities/Channel";
+import { Chatter } from "../Database/Entities/Chatter";
+import { EntityStateList } from "../Database/EntityStateList";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Poll",
-    version: "1.1.1",
+    version: "1.2.0",
     description: "Run polls to get user input on a question"
 };
 
@@ -48,19 +46,20 @@ interface StrawpollPostResponse {
     captcha: boolean;
 }
 
+@Service()
 class StrawpollCommand extends Command {
-    private lastStrawpoll: EntityStateList<ChannelEntity, number>;
+    private lastStrawpoll: EntityStateList<Channel, number>;
 
-    constructor(private readonly pollsModule: PollsModule) {
+    constructor() {
         super("strawpoll", "<create|check>");
 
-        this.lastStrawpoll = new EntityStateList<ChannelEntity, number>(-1);
+        this.lastStrawpoll = new EntityStateList<Channel, number>(-1);
     }
 
     @CommandHandler(/^(strawpoll|sp) check/, "strawpoll check [poll id]", 1)
-    @CheckPermission("polls.strawpoll.check")
+    @CheckPermission(() => PollsModule.permissions.checkStrawpoll)
     async check(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(new IntegerArg({min: 0}), "poll id") pollId: number = null
     ): Promise<void> {
         if (pollId === null) {
@@ -81,13 +80,13 @@ class StrawpollCommand extends Command {
     }
 
     @CommandHandler("strawpoll create", "strawpoll create --title \"title\" <option 1> <option 2> ... [option n]", 1, false, true)
-    @CheckPermission("polls.strawpoll.create")
+    @CheckPermission(() => PollsModule.permissions.createStrawpoll)
     async create(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(StringArg) title: String,
-        @Argument(BooleanArg, "multi", false) multi: boolean = false,
-        @Argument(new StringEnumArg(["normal", "permissive", "disabled"]), "dupcheck", false) dupcheck: string = "normal",
-        @Argument(BooleanArg, "captcha", false) captcha: boolean = false,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        @Argument(StringArg) title: string,
+        @Argument(BooleanArg, "multi", false) multi = false,
+        @Argument(new StringEnumArg(["normal", "permissive", "disabled"]), "dupcheck", false) dupcheck = "normal",
+        @Argument(BooleanArg, "captcha", false) captcha = false,
         @RestArguments(true, {min: 2}) options: string[]
     ): Promise<void> {
         return axios.request<StrawpollPostResponse>({
@@ -97,29 +96,28 @@ class StrawpollCommand extends Command {
             data: {title, options, multi, dupcheck, captcha}
         }).then(resp => resp.data.id).then(id => {
             this.lastStrawpoll.set(channel, id);
-            return channel.getSetting(this.pollsModule.spamStrawpollLink).then(times => {
-                return isNaN(times) ? 1 as Integer : times;
-            }).then(times => response.spam(
-                "poll:strawpoll.created", {url: `https://www.strawpoll.me/${id}`}, {times, seconds: 1}
-            ));
+            let times = channel.settings.get(PollsModule.settings.spamStrawpollLink);
+            if (isNaN(times)) times = 1 as Integer;
+            response.spam("poll:strawpoll.created", {url: `https://www.strawpoll.me/${id}`}, {times, seconds: 1});
         }).catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
+@Service()
 class VoteCommand extends Command {
-    constructor(private readonly pollsModule: PollsModule) {
+    constructor(private readonly pollService: PollService) {
         super("vote", "<option #>");
     }
 
     @CommandHandler("vote", "vote <option #>", 0, true)
-    @CheckPermission("polls.vote")
+    @CheckPermission(() => PollsModule.permissions.vote)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Sender sender: ChatterEntity,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter,
         @Argument(new IntegerArg({min: 0})) optionNum: number
     ): Promise<void> {
-        const announce = await channel.getSetting(this.pollsModule.announceVotes);
-        const option = this.pollsModule.pollService.getOption(optionNum, channel);
-        const result = this.pollsModule.pollService.addVote(option, sender, channel);
+        const announce = channel.settings.get(PollsModule.settings.announceVotes);
+        const option = this.pollService.getOption(optionNum, channel);
+        const result = this.pollService.addVote(option, sender, channel);
         if (!result.present) return;
         if (announce) return result.value ?
             await response.message("poll:vote-accepted", {option}) :
@@ -127,19 +125,20 @@ class VoteCommand extends Command {
     }
 }
 
+@Service()
 class PollCommand extends Command {
-    constructor(private readonly pollsModule: PollsModule) {
+    constructor(private readonly pollService: PollService) {
         super("poll", "<run|stop|results>");
     }
 
     @CommandHandler("poll run", "poll run <option 1> <option 2> ... <option n>", 1)
-    @CheckPermission("polls.run")
+    @CheckPermission(() => PollsModule.permissions.runPoll)
     async run(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @RestArguments(true, {min: 2}) options: string[]
     ): Promise<void> {
         const prefix = await CommandSystem.getPrefix(channel);
-        const poll = this.pollsModule.pollService.createPoll(options, channel);
+        const poll = this.pollService.createPoll(options, channel);
         if (!poll.present)
             return await response.message("poll:already-running", {prefix});
         await response.message("poll:open", {prefix});
@@ -149,12 +148,12 @@ class PollCommand extends Command {
     }
 
     @CommandHandler("poll stop", "poll stop", 1)
-    @CheckPermission("polls.stop")
+    @CheckPermission(() => PollsModule.permissions.stopPoll)
     async stop(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel
     ): Promise<void> {
-        const prefix = await CommandSystem.getPrefix(channel);
-        const results = this.pollsModule.pollService.closePoll(channel);
+        const prefix = CommandSystem.getPrefix(channel);
+        const results = this.pollService.closePoll(channel);
         if (!results.present)
             return await response.message("poll:error.not-running", {prefix});
         await response.message("poll:closed");
@@ -164,36 +163,39 @@ class PollCommand extends Command {
     }
 
     @CommandHandler(/^poll res(ults)?/, "poll results", 1)
-    @CheckPermission("polls.results")
+    @CheckPermission(() => PollsModule.permissions.viewResults)
     async results(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel
     ): Promise<void> {
-        const prefix = await CommandSystem.getPrefix(channel);
-        const results = this.pollsModule.pollService.getResults(channel);
+        const prefix = CommandSystem.getPrefix(channel);
+        const results = this.pollService.getResults(channel);
         if (!results.present)
             return await response.message("poll:error.no-recent", {prefix});
         await response.message("polls:results", {results});
     }
 }
 
+@Service()
 export default class PollsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    readonly pollService: PollService;
-    @command pollCommand = new PollCommand(this);
-    @command voteCommand = new VoteCommand(this);
-    @command strawpollCommand = new StrawpollCommand(this);
-    @permission vote = new Permission("polls.vote", Role.NORMAL);
-    @permission runPoll = new Permission("polls.run", Role.MODERATOR);
-    @permission stopPoll = new Permission("polls.stop", Role.MODERATOR);
-    @permission viewResults = new Permission("polls.results", Role.MODERATOR);
-    @permission checkStrawpoll = new Permission("polls.strawpoll.check", Role.MODERATOR);
-    @permission createStrawpoll = new Permission("polls.strawpoll.create", Role.MODERATOR);
-    @setting announceVotes = new Setting("polls.announceVotes", true, SettingType.BOOLEAN);
-    @setting spamStrawpollLink = new Setting("polls.spamStrawpollLink", 1 as Integer, SettingType.INTEGER);
+    static permissions = {
+        vote: new Permission("polls.vote", Role.NORMAL),
+        runPoll: new Permission("polls.run", Role.MODERATOR),
+        stopPoll: new Permission("polls.stop", Role.MODERATOR),
+        viewResults: new Permission("polls.results", Role.MODERATOR),
+        checkStrawpoll: new Permission("polls.strawpoll.check", Role.MODERATOR),
+        createStrawpoll: new Permission("polls.strawpoll.create", Role.MODERATOR)
+    }
+    static settings = {
+        announceVotes: new Setting("polls.announceVotes", true, SettingType.BOOLEAN),
+        spamStrawpollLink: new Setting("polls.spamStrawpollLink", 1 as Integer, SettingType.INTEGER)
+    }
 
-    constructor() {
+    constructor(strawpollCommand: StrawpollCommand, voteCommand: VoteCommand, pollCommand: PollCommand) {
         super(PollsModule);
 
-        this.pollService = new PollService();
+        this.registerCommands(strawpollCommand, voteCommand, pollCommand);
+        this.registerPermissions(PollsModule.permissions);
+        this.registerSettings(PollsModule.settings);
     }
 }

@@ -1,10 +1,11 @@
-import {MessageEventArgs} from "../../../Chat/Events/MessageEvent";
 import StrikeManager from "../StrikeManager";
-import FiltersEntity from "../../../Database/Entities/FiltersEntity";
+import { Inject, Service } from "typedi";
+import Message from "../../../Chat/Message";
 
+@Service()
 export default abstract class Filter {
-    protected constructor(protected strikeManager: StrikeManager) {
-    }
+    @Inject()
+    protected strikeManager: StrikeManager;
 
-    abstract handleMessage(lists: FiltersEntity, eventArgs: MessageEventArgs): Promise<boolean>;
+    abstract handleMessage(message: Message): Promise<boolean>;
 }

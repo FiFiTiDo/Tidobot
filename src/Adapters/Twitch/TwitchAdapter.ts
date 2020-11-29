@@ -1,204 +1,178 @@
 import Adapter, {AdapterOptions} from "../Adapter";
 import * as tmi from "tmi.js";
-import {helix, kraken} from "./TwitchApi";
-import Application from "../../Application/Application";
+import {helix} from "./TwitchApi";
 import MessageEvent from "../../Chat/Events/MessageEvent";
-import {TwitchMessageFactory} from "./TwitchMessage";
+import {TwitchMessage} from "./TwitchMessage";
 import ConnectedEvent from "../../Chat/Events/ConnectedEvent";
 import DisconnectedEvent from "../../Chat/Events/DisconnectedEvent";
 import JoinEvent from "../../Chat/Events/JoinEvent";
 import LeaveEvent from "../../Chat/Events/LeaveEvent";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../../Systems/Config/Config";
-import {inject, injectable} from "inversify";
-import symbols from "../../symbols";
 import EventSystem from "../../Systems/Event/EventSystem";
 import ChannelManager from "../../Chat/ChannelManager";
-import {NewChannelEvent} from "../../Chat/Events/NewChannelEvent";
 import TwitchConfig from "../../Systems/Config/ConfigModels/TwitchConfig";
 import {getLogger, logError} from "../../Utilities/Logger";
-import {NewChatterEvent} from "../../Chat/Events/NewChatterEvent";
+import { Channel } from "../../Database/Entities/Channel";
+import { ChatterRepository } from "../../Database/Repositories/ChatterRepository";
+import { InjectRepository } from "typeorm-typedi-extensions";
+import { Service } from "typedi";
+import { ChatterManager } from "../../Chat/ChatterManager";
+import Event from "../../Systems/Event/Event";
+import { TwitchUserAdapter } from "./TwitchUserAdapter";
+import { TwitchChannelAdapter } from "./TwitchChannelAdapter";
+import { User } from "../../Database/Entities/User";
 
-@injectable()
+@Service()
 export default class TwitchAdapter extends Adapter {
+    public static readonly serviceName = "twitch";
     public static readonly LOGGER = getLogger("Twitch");
 
     public client: tmi.Client;
-    public api: helix.Api;
-    public oldApi: kraken.Api;
+    private _connectedChannels: string[] = [];
 
     constructor(
-        @inject(ChannelManager) private channelManager: ChannelManager,
-        @inject(symbols.TwitchMessageFactory) private messageFactory: TwitchMessageFactory
+        private readonly channelManager: ChannelManager,
+        private readonly chatterManager: ChatterManager,
+        private readonly userAdapter: TwitchUserAdapter,
+        private readonly channelAdapter: TwitchChannelAdapter,
+        @InjectRepository()
+        private readonly chatterRepository: ChatterRepository,
+        public readonly api: helix.Api,
+        private readonly config: Config,
+        private readonly eventSystem: EventSystem
     ) {
         super();
     }
 
     async run(options: AdapterOptions): Promise<void> {
-        const config = await Config.getInstance().getConfig(TwitchConfig);
-        this.api = new helix.Api(config.api.clientId, config.api.clientSecret);
-        this.oldApi = new kraken.Api(config.api.clientId);
+        const config = await this.config.getConfig(TwitchConfig);
+        this.api.setCredentials(config.api.clientId, config.api.clientSecret);
         this.client = tmi.Client({
             identity: config.identities[options.identity] || config.identities["default"],
-            channels: options.channels[0] == Application.DEFAULT_CHANNEL ? config.defaultChannels : options.channels
+            channels: config.channels
         });
+        this._connectedChannels = config.channels;
+        this.channelManager.setActive(this.connectedChannels);
 
         this.client.on("message", async (channelName: string, userstate: tmi.ChatUserstate, message: string, self: boolean) => {
             if (self) return;
 
-            const channel = await this.getChannelByName(channelName.substring(1));
-            const chatter = await this.getChatter(userstate, channel);
+            const channel = await this.channelAdapter.getChannel(channelName.substring(1));
+            const user = await this.userAdapter.getUser(userstate);
+            const chatter = await this.chatterRepository.retreiveOrMake(user, channel);
 
-            EventSystem.getInstance().dispatch(new MessageEvent(this.messageFactory(message, chatter, channel, userstate)));
+            const msg = new TwitchMessage(message, chatter, channel, userstate, this);
+            const event = new Event(MessageEvent);
+            event.extra.put(MessageEvent.EXTRA_MESSAGE, msg);
+            this.eventSystem.dispatch(event);
         });
 
         this.client.on("join", async (channelName: string, username: string, self: boolean) => {
             if (self) {
-                await this.getChannelByName(channelName.substring(1));
+                await this.channelAdapter.getChannel(channelName.substring(1));
                 return;
             }
 
-            const channel = await this.getChannelByName(channelName.substring(1));
-            const chatter = await this.getChatter(username, channel);
+            const channel = await this.channelAdapter.getChannel(channelName.substring(1));
+            const user = await this.userAdapter.getUser(username);
+            const chatter = await this.chatterRepository.retreiveOrMake(user, channel);
 
-            channel.addChatter(chatter);
-            EventSystem.getInstance().dispatch(new JoinEvent(chatter, channel));
+            this.chatterManager.setActive(chatter, true);
+            const event = new Event(JoinEvent);
+            event.extra.put(JoinEvent.EXTRA_CHANNEL, channel);
+            event.extra.put(JoinEvent.EXTRA_CHATTER, chatter);
+            this.eventSystem.dispatch(event);
         });
 
         this.client.on("part", async (channelName: string, username: string, self: boolean) => {
             if (self) return;
 
-            const channel = await this.getChannelByName(channelName.substring(1));
-            const chatter = await this.getChatter(username, channel);
+            const channel = await this.channelAdapter.getChannel(channelName.substring(1));
+            const user = await this.userAdapter.getUser(username);
+            const chatter = await this.chatterRepository.retreiveOrMake(user, channel);
 
-            channel.removeChatter(chatter);
-            EventSystem.getInstance().dispatch(new LeaveEvent(chatter, channel));
+            this.chatterManager.setActive(chatter, false);
+            const event = new Event(LeaveEvent);
+            event.extra.put(LeaveEvent.EXTRA_CHANNEL, channel);
+            event.extra.put(LeaveEvent.EXTRA_CHATTER, chatter);
+            this.eventSystem.dispatch(event);
         });
 
-        this.client.on("connected", (server: string, port: number) => {
-            const event = new ConnectedEvent();
-            event.setMetadata({server, port});
-
-            EventSystem.getInstance().dispatch(event);
+        this.client.on("connected", () => {
+            this.eventSystem.dispatch(new Event(ConnectedEvent));
         });
 
         this.client.on("disconnected", (reason: string) => {
-            const event = new DisconnectedEvent();
-            event.setMetadata({reason});
-
-            EventSystem.getInstance().dispatch(event);
+            const event = new Event(DisconnectedEvent);
+            event.extra.put(DisconnectedEvent.EXTRA_REASON, reason);
+            this.eventSystem.dispatch(event);
         });
 
         await this.client.connect();
-        super.run(options);
     }
 
     async stop(): Promise<void> {
         await this.client.disconnect();
     }
 
-    async sendMessage(message: string, channel: ChannelEntity): Promise<[string]> {
-        return this.client.say(channel.name, message);
-    }
-
-    async sendAction(action: string, channel: ChannelEntity): Promise<[string]> {
-        return this.client.action(channel.name, action);
-    }
-
-    async getChatter(user: string | tmi.Userstate, channel: ChannelEntity): Promise<ChatterEntity> {
-        let chatterOptional = typeof user === "string" ? channel.findChatterByName(user) : channel.findChatterById(user.id);
-
-        if (chatterOptional.present) return chatterOptional.value;
-
-        let id: string, name: string;
-        if (typeof user !== "string") {
-            id = user["user-id"];
-            name = user.username;
-        } else {
-            try {
-                const resp = await this.api.getUsers({login: user});
-                id = resp.data[0].id;
-                name = user;
-            } catch (e) {
-                logError(TwitchAdapter.LOGGER, e, "Unable to retrieve user from the API", true);
-                process.exit(1);
-            }
-        }
-
-        let chatter = await ChatterEntity.findById(id, channel); // Try to find by id
-
-        if (chatter === null) { // Brand new chatter
-            chatter = await ChatterEntity.from(id, name, channel);
-            EventSystem.getInstance().dispatch(new NewChatterEvent(chatter));
-        } else { // Returning chatter, change name just in case
-            chatter.name = name;
-            await channel.save();
-        }
-
-        return chatter;
-    }
-
-    async getChannelByName(channelName: string): Promise<ChannelEntity | null> {
-        let channelOptional = this.channelManager.findByName(channelName);
-
-        if (channelOptional.present) return channelOptional.value;
-
-        let channel: ChannelEntity;
-        let resp: helix.Response<helix.User>;
+    async sendMessage(message: string, channel: Channel): Promise<void> {
         try {
-            resp = await this.api.getUsers({login: channelName});
-        } catch (e) {
-            logError(TwitchAdapter.LOGGER, e, "Unable to retrieve user from the API", true);
-            process.exit(1);
+            await this.client.say(channel.name, message);
+        } catch(e) {
+            logError(TwitchAdapter.LOGGER, e, "Unable to send message");
         }
-        const {id, login: name} = resp.data[0];
-
-        channel = await ChannelEntity.findById(id, this.getName());
-
-        if (channel === null) { // New channel, not in database
-            channel = await ChannelEntity.from(id, name, this.getName());
-            EventSystem.getInstance().dispatch(new NewChannelEvent(channel));
-        } else { // Returning channel, change name just in case
-            channel.name = name;
-            await channel.save();
-        }
-
-        this.channelManager.add(channel);
-        return channel;
     }
 
-    async unbanChatter(chatter: ChatterEntity): Promise<boolean> {
+    async broadcastMessage(message: string): Promise<void> {
+        const ops = [];
+        for (const channel of await this.channelManager.getAllActive())
+            ops.push(this.sendMessage(message, channel));
+        await Promise.all(ops);
+    }
+
+    async sendAction(action: string, channel: Channel): Promise<void> {
         try {
-            await this.client.unban(chatter.getChannel().name, chatter.name);
+            await this.client.action(channel.name, action);
+        } catch(e) {
+            logError(TwitchAdapter.LOGGER, e, "Unable to send action");
+        }
+    }
+
+    async unbanChatter(user: User, channel: Channel): Promise<boolean> {
+        try {
+            await this.client.unban(channel.name, user.name);
             return true;
         } catch (e) {
-            logError(TwitchAdapter.LOGGER, e, "Tried to unban chatter " + chatter.name + " but was unable to");
+            logError(TwitchAdapter.LOGGER, e, "Tried to unban chatter " + user.name + " but was unable to");
             return false;
         }
     }
 
-    async banChatter(chatter: ChatterEntity, reason?: string): Promise<boolean> {
+    async banChatter(user: User, channel: Channel, reason?: string): Promise<boolean> {
         try {
-            await this.client.ban(chatter.getChannel().name, chatter.name, reason);
+            await this.client.ban(channel.name,user.name, reason);
             return true;
         } catch (e) {
-            logError(TwitchAdapter.LOGGER, e, "Tried to ban chatter " + chatter.name + " but was unable to");
+            logError(TwitchAdapter.LOGGER, e, "Tried to ban chatter " + user.name + " but was unable to");
             return false;
         }
     }
 
-    async tempbanChatter(chatter: ChatterEntity, length: number, reason?: string): Promise<boolean> {
+    async tempbanChatter(user: User, channel: Channel, length: number, reason?: string): Promise<boolean> {
         try {
-            await this.client.timeout(chatter.getChannel().name, chatter.name, length, reason);
+            await this.client.timeout(channel.name, user.name, length, reason);
             return true;
         } catch (e) {
-            logError(TwitchAdapter.LOGGER, e, "Tried to time out chatter " + chatter.name + " but was unable to");
+            logError(TwitchAdapter.LOGGER, e, "Tried to time out chatter " + user.name + " but was unable to");
             return false;
         }
     }
 
-    getName(): string {
+    get name(): string {
         return "twitch";
+    }
+
+    get connectedChannels(): string[] {
+        return this._connectedChannels;
     }
 }

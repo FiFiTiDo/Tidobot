@@ -1,20 +1,9 @@
-import Event, {EventArguments} from "../../Systems/Event/Event";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { ExtraKey } from "../../Systems/Event/EventExtra";
 
-export class NewChatterEvent extends Event<NewChatterEvent> {
-    public static readonly NAME = "chatter:new";
-
-    constructor(private readonly chatter: ChatterEntity) {
-        super(NewChatterEvent);
-    }
-
-    getEventArgs(): NewChatterEventArgs {
-        return Object.assign(super.getEventArgs(), {
-            chatter: this.chatter
-        });
-    }
-}
-
-export interface NewChatterEventArgs extends EventArguments<NewChatterEvent> {
-    chatter: ChatterEntity
+export class NewChatterEvent {
+    public static readonly EVENT_TYPE = "chat.events.NewChatterEvent";
+    public static readonly EXTRA_CHATTER = new ExtraKey<Chatter>("chat.event.NewChatterEvent:extra.chatter");
+    public static readonly EXTRA_CHANNEL = new ExtraKey<Channel>("chat.event.NewChatterEvent:extra.channel");
 }

@@ -1,11 +1,16 @@
 import {addPropertyMetadata, getPropertyMetadata} from "../../../Utilities/DecoratorUtils";
-import {CommandEvent} from "../CommandEvent";
-import {AsyncResolvable, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
+import {AsyncResolvable, Resolvable, resolve, resolveAsync} from "../../../Utilities/Interfaces/Resolvable";
 import {InvalidInputError, MissingRequiredArgumentError, MissingRequiredCliArgumentError} from "./ValidationErrors";
-import minimist = require("minimist-string");
+import * as minimist from "minimist-string";
+import Event from "../../Event/Event";
+import { CommandEvent } from "../CommandEvent";
+import Message from "../../../Chat/Message";
+import { getLogger, logError } from "../../../Utilities/Logger";
 
 const ARGUMENT_META_KEY = "command:argument";
 const REST_META_KEY = "command:rest_args";
+
+const logger = getLogger("ArgumentValidator");
 
 interface RestSettings {
     join?: string;
@@ -24,58 +29,72 @@ interface ArgumentMeta {
 }
 
 interface ConverterArgument<T> extends ArgumentMeta {
-    converter: ArgumentConverter<T>
+    converter: ArgumentConverter<T>;
     required: boolean;
     name: string;
 }
 
 interface EventReducerArgument<T> extends ArgumentMeta {
-    reducer: AsyncResolvable<CommandEvent, T>;
+    eventReducer: Resolvable<Event, T>;
+}
+
+interface MessageReducerArgument<T> extends ArgumentMeta {
+    messageReducer: Resolvable<Message, T>;
 }
 
 export interface ArgumentConverter<T> {
     type: string;
 
-    convert(input: string, name: string, column: number, event: CommandEvent): AsyncResolvable<void, T>;
+    convert(input: string, name: string, column: number, event: Event): AsyncResolvable<void, T>;
 }
 
-export function Argument<T>(converter: ArgumentConverter<T>, name: string = null, required: boolean = true): ParameterDecorator {
+export function Argument<T>(converter: ArgumentConverter<T>, name: string = null, required = true): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
         addPropertyMetadata<ConverterArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {
             parameterIndex,
             converter,
             name: name ?? propertyKey,
             required
-        })
-    }
+        });
+    };
 }
 
-export function makeEventReducer<T>(reducer: AsyncResolvable<CommandEvent, T>): ParameterDecorator {
+export function makeEventReducer<T>(eventReducer: Resolvable<Event, T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, reducer})
-    }
+        addPropertyMetadata<EventReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, eventReducer});
+    };
 }
 
-export const MessageArg = makeEventReducer(event => event.getMessage());
-export const ResponseArg = makeEventReducer(event => event.getMessage().getResponse());
-export const Sender = makeEventReducer(event => event.getMessage().getChatter());
-export const Channel = makeEventReducer(event => event.getMessage().getChannel());
-
-export function RestArguments(required: boolean = true, settings: RestSettings = {}): ParameterDecorator {
+export function makeMessageReducer<T>(messageReducer: Resolvable<Message, T>): ParameterDecorator {
     return function (target: any, propertyKey: string, parameterIndex: number): void {
-        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, {parameterIndex, required, settings})
-    }
+        addPropertyMetadata<MessageReducerArgument<T>>(ARGUMENT_META_KEY, target, propertyKey, {parameterIndex, messageReducer});
+    };
 }
 
-function isConverter(o: Object): o is ConverterArgument<any> {
+export const MessageArg = makeEventReducer(event => event.extra.get(CommandEvent.EXTRA_MESSAGE));
+export const ResponseArg = makeMessageReducer(message => message.response);
+export const Sender = makeMessageReducer(message => message.chatter);
+export const ChannelArg = makeMessageReducer(message => message.channel);
+
+export function RestArguments(required = true, settings: RestSettings = {}): ParameterDecorator {
+    return function (target: any, propertyKey: string, parameterIndex: number): void {
+        addPropertyMetadata<RestMeta>(REST_META_KEY, target, propertyKey, {parameterIndex, required, settings});
+    };
+}
+
+function isConverter(o: Record<string, any>): o is ConverterArgument<any> {
     return "converter" in o;
 }
 
-function isReducer(o: Object): o is EventReducerArgument<any> {
-    return "reducer" in o;
+function isEventReducer(o: Record<string, any>): o is EventReducerArgument<any> {
+    return "eventReducer" in o;
 }
 
-function handleRestArguments(target: any, propertyKey: string, args: (string | string[])[], restArgs: string[]) {
+function isMessageReducer(o: Record<string, any>): o is MessageReducerArgument<any> {
+    return "messageReducer" in o;
+}
+
+function handleRestArguments(target: any, propertyKey: string, args: (string | string[])[], restArgs: string[]): any {
     const restArgsInfo = getPropertyMetadata<RestMeta[]>(REST_META_KEY, target, propertyKey) || [];
     for (const arg of restArgsInfo) {
         let value: string | string[] = restArgs.slice();
@@ -94,15 +113,15 @@ function handleRestArguments(target: any, propertyKey: string, args: (string | s
     }
 }
 
-export async function resolveArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean) {
-    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Object[];
+export async function resolveArguments(event: Event, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
+    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
-    const message = event.getMessage();
-    const rawArgs = event.getArguments().slice();
+    const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+    const rawArgs = event.extra.get(CommandEvent.EXTRA_ARGUMENTS).slice();
     args[0] = event;
 
-    let column = event.getMessage().getPart(0).length + 1;
+    let column = message.getPart(0).length + 1;
     for (const arg of argumentInfo) {
         if (isConverter(arg)) {
             try {
@@ -117,30 +136,32 @@ export async function resolveArguments(event: CommandEvent, target: any, propert
             } catch (err) {
                 if (err instanceof InvalidInputError) {
                     if (!silent)
-                        await message.getResponse().rawMessage(await err.getMessage(message, usage));
+                        await message.response.rawMessage(await err.getMessage(message));
                     return null;
                 } else {
                     if (!silent)
-                        await message.getResponse().genericError();
+                        await message.response.genericError();
+                    logError(logger, err);
                     return null;
                 }
             }
-        } else if (isReducer(arg)) {
-            args[arg.parameterIndex] = await resolveAsync(arg.reducer, event);
+        } else if (isEventReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.eventReducer, event);
+        } else if (isMessageReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.messageReducer, message);
         }
     }
-
     handleRestArguments(target, propertyKey, args, rawArgs.slice());
     return args;
 }
 
 
-export async function resolveCliArguments(event: CommandEvent, target: any, propertyKey: string, usage: string, silent: boolean) {
-    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Object[];
+export async function resolveCliArguments(event: Event, target: any, propertyKey: string, usage: string, silent: boolean): Promise<any> {
+    const types = Reflect.getMetadata("design:paramtypes", target, propertyKey) as Record<string, any>[];
     const argumentInfo = getPropertyMetadata<ArgumentMeta[]>(ARGUMENT_META_KEY, target, propertyKey) || [];
     const args = [].fill(undefined, types.length);
-    const message = event.getMessage();
-    const rawArgs = minimist(event.getArguments().join(" "));
+    const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+    const rawArgs = minimist(event.extra.get(CommandEvent.EXTRA_ARGUMENTS).join(" "));
     args[0] = event;
 
     for (const arg of argumentInfo) {
@@ -155,16 +176,19 @@ export async function resolveCliArguments(event: CommandEvent, target: any, prop
             } catch (err) {
                 if (err instanceof InvalidInputError) {
                     if (!silent)
-                        await message.getResponse().rawMessage(await err.getMessage(message, usage));
+                        await message.getResponse().rawMessage(await err.getMessage(message));
                     return null;
                 } else {
                     if (!silent)
                         await message.getResponse().genericError();
+                    logError(logger, err);
                     return null;
                 }
             }
-        } else if (isReducer(arg)) {
-            args[arg.parameterIndex] = await resolveAsync(arg.reducer, event);
+        } else if (isEventReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.eventReducer, event);
+        } else if (isMessageReducer(arg)) {
+            args[arg.parameterIndex] = resolve(arg.messageReducer, message);
         }
     }
 

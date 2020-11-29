@@ -1,31 +1,11 @@
-import Event from "../../Systems/Event/Event";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { ExtraKey } from "../../Systems/Event/EventExtra";
 
-export default class BannedEvent extends Event<BannedEvent> {
-    public static readonly NAME = "chat_banned";
-
-    constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity, private readonly duration: number, private readonly reason: string | null) {
-        super(BannedEvent);
-    }
-
-    getChatter(): ChatterEntity {
-        return this.chatter;
-    }
-
-    getChannel(): ChannelEntity {
-        return this.channel;
-    }
-
-    getDuration(): number {
-        return this.duration;
-    }
-
-    getReason(): string | null {
-        return this.reason;
-    }
-
-    isPermanent(): boolean {
-        return this.duration < 0;
-    }
+export default class BannedEvent {
+    public static readonly EVENT_TYPE = "chat.events.BannedEvent";
+    public static readonly EXTRA_CHATTER = new ExtraKey<Chatter>("chat.events.BannedEvent:extra.chatter");
+    public static readonly EXTRA_CHANNEL = new ExtraKey<Channel>("chat.events.BannedEvent:extra.channel");
+    public static readonly EXTRA_DURATION = new ExtraKey<number>("chat.events.BannedEvent:extra.duration");
+    public static readonly EXTRA_REASON = new ExtraKey<string>("chat.events.BannedEvent:extra.reason");
 }

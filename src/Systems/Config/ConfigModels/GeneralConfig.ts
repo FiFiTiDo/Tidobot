@@ -5,8 +5,6 @@ export default class GeneralConfig extends ConfigModel {
     @ConfigOption
     public language: string;
     @ConfigOption
-    public version: string;
-    @ConfigOption
     public service: string;
 
     constructor() {

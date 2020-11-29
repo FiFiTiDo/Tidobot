@@ -1,8 +1,8 @@
-import moment from "moment";
+import moment, { Moment } from "moment";
 import axios from "axios";
 
 export class AccessToken {
-    private readonly timestamp;
+    private readonly timestamp: Moment;
 
     constructor(public token: string, private refreshToken: string, private expiresIn: number, private clientId: string, private clientSecret: string) {
         this.timestamp = moment().add(expiresIn - 300, "seconds");

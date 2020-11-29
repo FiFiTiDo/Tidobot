@@ -1,15 +1,17 @@
-import Adapter from "../Adapters/Adapter";
-import ChannelManager from "./ChannelManager";
 import Message from "./Message";
 import {StringMap, TFunctionKeys, TFunctionResult, TOptions} from "i18next";
-import {arrayRand} from "../Utilities/ArrayUtils";
-import {TranslationProvider} from "../symbols";
+import {TranslationProvider, TranslationProviderToken} from "../symbols";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import {Logger} from "log4js";
 import {logError} from "../Utilities/Logger";
+import Container from "typedi";
+import Adapter from "../Adapters/Adapter";
+import _ from "lodash";
 
 export class Response {
-    constructor(private adapter: Adapter, private translator: TranslationProvider, private channelManager: ChannelManager, private msg: Message) {
+    private translator: TranslationProvider;
+    constructor(private readonly msg: Message, private readonly adapter: Adapter) {
+        this.translator = Container.get(TranslationProviderToken);
     }
 
     rawMessage(message: string): Promise<void> {
@@ -40,10 +42,7 @@ export class Response {
 
     async broadcast<TKeys extends TFunctionKeys = string,
         TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
-        const ops = [];
-        for (const channel of this.channelManager.getAll())
-            ops.push(this.adapter.sendMessage(await this.translate(key, options), channel));
-        await Promise.all(ops);
+        await this.adapter.broadcastMessage(await this.translate(key, options));
     }
 
     async translate<TResult extends TFunctionResult = string,
@@ -62,7 +61,7 @@ export class Response {
 
     async genericError(): Promise<void> {
         const errors: string[] = await this.getTranslation<string[]>("generic-error");
-        const error = arrayRand(errors);
+        const error = _.sample(errors);
         return this.rawMessage(error);
     }
 
@@ -80,7 +79,10 @@ export class Response {
     }
 }
 
+export class ResponseFactory {
+    constructor(private readonly adapter: Adapter) {}
 
-export interface ResponseFactory {
-    (msg: Message): Response;
+    make(message: Message): Response {
+        return new Response(message, this.adapter);
+    }
 }

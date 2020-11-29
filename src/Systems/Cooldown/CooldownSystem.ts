@@ -1,16 +1,18 @@
 import Command from "../Commands/Command";
-import CommandEntity from "../../Database/Entities/CommandEntity";
+import { Command as CommandEntity } from "../../Database/Entities/Command";
 import Message from "../../Chat/Message";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Cooldown from "./Cooldown";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import CooldownList from "./CooldownList";
-import EntityStateList from "../../Database/EntityStateList";
+import { Service } from "typedi";
+import { EntityStateList } from "../../Database/EntityStateList";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
 
+@Service()
 export default class CooldownSystem {
     private static instance: CooldownSystem = null;
-    private globalCooldowns = new EntityStateList<ChannelEntity, CooldownList>(() => new CooldownList());
-    private chatterCooldowns = new EntityStateList<ChatterEntity, CooldownList>(() => new CooldownList());
+    private globalCooldowns = new EntityStateList<Channel, CooldownList>(() => new CooldownList());
+    private chatterCooldowns = new EntityStateList<Chatter, CooldownList>(() => new CooldownList());
 
     public static getInstance(): CooldownSystem {
         if (this.instance === null)

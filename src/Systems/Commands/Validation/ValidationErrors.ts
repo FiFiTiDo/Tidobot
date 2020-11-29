@@ -1,5 +1,5 @@
 import Message from "../../../Chat/Message";
-import {StringMap, TFunctionKeys, TFunctionResult} from "i18next";
+import {StringMap, TFunctionKeys} from "i18next";
 
 export class ValidationError extends Error {
     constructor(message: string) {
@@ -12,21 +12,21 @@ export class InvalidInputError extends ValidationError {
         super(message);
     }
 
-    async getMessage(message: Message, usage: string): Promise<string> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async getMessage(message: Message): Promise<string> {
         return this.message;
     }
 }
 
-export class TranslateMessageInputError<TResult extends TFunctionResult = string,
-    TKeys extends TFunctionKeys = string,
+export class TranslateMessageInputError<TKeys extends TFunctionKeys = string,
     TInterpolationMap extends object = StringMap> extends InvalidInputError {
 
     constructor(private key: TKeys, private opts?: TInterpolationMap) {
         super(`Translated argument, translation key: ${key}`);
     }
 
-    async getMessage(message: Message, usage: string): Promise<string> {
-        return message.getResponse().translate(this.key, this.opts);
+    async getMessage(message: Message): Promise<string> {
+        return message.response.translate(this.key, this.opts);
     }
 }
 
@@ -35,10 +35,10 @@ export class MissingRequiredArgumentError extends InvalidInputError {
         super(`Expected argument ${argument} of type ${type} at column ${column}`);
     }
 
-    async getMessage(message: Message, usage: string): Promise<string> {
-        return message.getResponse().translate("command:error.expected-argument", {
+    async getMessage(message: Message): Promise<string> {
+        return message.response.translate("command:error.expected-argument", {
             argument: this.argument, type: this.type, column: this.column
-        })
+        });
     }
 }
 
@@ -47,10 +47,10 @@ export class MissingRequiredCliArgumentError extends InvalidInputError {
         super(`Expected argument ${argument} of type ${type}`);
     }
 
-    async getMessage(message: Message, usage: string): Promise<string> {
-        return message.getResponse().translate("command:error.expected-cli-argument", {
+    async getMessage(message: Message): Promise<string> {
+        return message.response.translate("command:error.expected-cli-argument", {
             argument: this.argument, type: this.type
-        })
+        });
     }
 }
 
@@ -59,8 +59,8 @@ export class InvalidArgumentError extends InvalidInputError {
         super(`Expected arg ${argument} to be of type ${type} but was given ${given} at ${column}`);
     }
 
-    async getMessage(message: Message, usage: string): Promise<string> {
-        return message.getResponse().translate("command:error.expected-argument", {
+    async getMessage(message: Message): Promise<string> {
+        return message.response.translate("command:error.expected-argument", {
             argument: this.argument, type: this.type, given: this.given, column: this.column
         });
     }

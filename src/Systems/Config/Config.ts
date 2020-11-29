@@ -1,6 +1,8 @@
 import ConfigModel, {ConfigModelConstructor} from "./ConfigModels/ConfigModel";
 import System from "../System";
+import { Service } from "typedi";
 
+@Service()
 export default class Config extends System {
     private static instance: Config = null;
     private models: Map<ConfigModelConstructor<any>, ConfigModel>;

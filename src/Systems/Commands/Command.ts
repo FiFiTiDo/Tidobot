@@ -1,15 +1,24 @@
 import CommandSystem from "./CommandSystem";
-import {CommandEvent, CommandEventArgs} from "./CommandEvent";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import {SubcommandParams} from "./decorators";
+import {CommandEvent} from "./CommandEvent";
 import {CommandHandlerFunction, getCommandHandlers} from "./Validation/CommandHandler";
+import AbstractModule from "../../Modules/AbstractModule";
+import { Channel } from "../../Database/Entities/Channel";
+import Event from "../Event/Event";
 
 export default class Command {
-    private subcommandData: Map<string, SubcommandParams>;
+    private module: AbstractModule = null;
     private readonly commandHandlers: CommandHandlerFunction[];
 
     constructor(protected label: string, protected usage: string | null, protected aliases: string[] = []) {
         this.commandHandlers = getCommandHandlers(this).map(property => this[property]);
+    }
+
+    setModule(module: AbstractModule): void {
+        if (this.module === null) this.module = module;
+    }
+
+    getModule(): AbstractModule {
+        return this.module;
     }
 
     getLabel(): string {
@@ -20,32 +29,21 @@ export default class Command {
         return this.aliases;
     }
 
-    getUserCooldown(subcommand: string): number {
-        const data = this.subcommandData.get(subcommand);
-        if (!data) return 0;
-        return data.userCooldown || 0;
-    }
-
-    getGlobalCooldown(subcommand: string): number {
-        const data = this.subcommandData.get(subcommand);
-        if (!data) return 0;
-        return data.globalCooldown || 0;
-    }
-
-    async formatUsage(channel: ChannelEntity): Promise<string> {
-        let usage = await CommandSystem.getPrefix(channel) + this.label;
+    formatUsage(channel: Channel): string {
+        let usage = CommandSystem.getPrefix(channel) + this.label;
         if (this.usage !== null) usage += ` ${this.usage}`;
         return usage;
     }
 
-    async execute(args: CommandEventArgs): Promise<void> {
-        const {message, response} = args;
+    execute(event: Event): Promise<void> {
+        const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+        const response = message.response;
 
-        if (!this.executeCommandHandlers(args.event))
-            return response.rawMessage(await this.formatUsage(message.getChannel()));
+        if (!this.executeCommandHandlers(event))
+            return response.rawMessage(this.formatUsage(message.channel));
     }
 
-    protected async executeCommandHandlers(event: CommandEvent) {
+    protected executeCommandHandlers(event: Event): boolean {
         let executed = false;
         for (const commandHandler of this.commandHandlers) {
             if (commandHandler.call(this, event)) executed = true;

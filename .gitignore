@@ -4,7 +4,9 @@
 /data/
 /logs/
 /.idea/
+/.vscode/
 /config/
 Tidobot.iml
 package-lock.json
 yarn.lock
+ormlogs.log

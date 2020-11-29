@@ -1,57 +1,53 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import CurrencyModule from "./CurrencyModule";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
 import Permission from "../Systems/Permissions/Permission";
 import {Role} from "../Systems/Permissions/Role";
 import Setting, {Integer, SettingType} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
 import {StringArg} from "../Systems/Commands/Validation/String";
 import {FloatArg} from "../Systems/Commands/Validation/Float";
 import {getLogger} from "../Utilities/Logger";
-import {setting} from "../Systems/Settings/decorators";
-import {permission} from "../Systems/Permissions/decorators";
-import {command} from "../Systems/Commands/decorators";
-import {Argument, Channel, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, ResponseArg, RestArguments, Sender} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import {BetService, PlaceBetResponse} from "../Services/BetService";
+import { Chatter } from "../Database/Entities/Chatter";
+import { Channel } from "../Database/Entities/Channel";
+import { Service } from "typedi";
+import { CurrencyType } from "../Systems/Currency/CurrencyType";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Betting",
-    version: "1.1.2",
+    version: "1.2.1",
     description: "Place bets using points on a specific options, the total points is divided among those who bet for the winning option."
 };
 
 const logger = getLogger(MODULE_INFO.name);
 
+
+@Service()
 class BetCommand extends Command {
-    private betService: BetService;
-
-    constructor(private bettingModule: BettingModule) {
+    constructor(private readonly betService: BetService) {
         super("bet", "<place|open|close|check>");
-
-        this.betService = new BetService(bettingModule);
     }
 
     @CommandHandler("bet place", "bet place <option> <amount>")
-    @CheckPermission("bet.place")
+    @CheckPermission(() => BettingModule.permissions.placeBet)
     async place(
-        event: CommandEvent, @ResponseArg response: Response, @Sender sender: ChatterEntity, @Channel channel: ChannelEntity,
+        event: Event, @ResponseArg response: Response, @Sender sender: Chatter, @ChannelArg channel: Channel,
         @Argument(StringArg) option: string,
         @Argument(new FloatArg({min: 1})) amount: number
     ): Promise<void> {
         try {
-            const resp = await this.betService.placeBet(sender, option, amount, channel);
+            const resp = await this.betService.placeBet(sender, channel, option, amount);
             if (resp === null) return;
             switch (resp) {
                 case PlaceBetResponse.INVALID_OPTION:
                     return await response.message("bet:error.invalid-option");
                 case PlaceBetResponse.LOW_BALANCE:
                     return await response.message("currency:error.low-balance", {
-                        currency_name: await CurrencyModule.getPluralName(channel)
+                        currency_name: CurrencyType.get(channel).plural
                     });
                 case PlaceBetResponse.TOO_LOW:
                     return await response.message("bet:error.too-low");
@@ -59,7 +55,7 @@ class BetCommand extends Command {
                     return await response.message("bet:error.too-high");
                 case PlaceBetResponse.BET_PLACED:
                     return await response.message("bet:placed", {
-                        amount: await CurrencyModule.formatAmount(amount, channel), option
+                        amount: CurrencyType.get(channel).formatAmount(amount), option
                     });
             }
         } catch (e) {
@@ -68,9 +64,9 @@ class BetCommand extends Command {
     }
 
     @CommandHandler("bet open", "bet open \"<title>\" <option 1> <option 2> ... <option n>")
-    @CheckPermission("bet.open")
+    @CheckPermission(() => BettingModule.permissions.openBet)
     async open(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg) title: string,
         @RestArguments() options: string[]
     ): Promise<void> {
@@ -82,25 +78,24 @@ class BetCommand extends Command {
     }
 
     @CommandHandler("bet close", "bet close <winning option>")
-    @CheckPermission("bet.close")
+    @CheckPermission(() => BettingModule.permissions.closeBet)
     async close(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
         @Argument(StringArg, "winning option") option: string
     ): Promise<void> {
         const game = this.betService.getGame(channel);
         if (!game?.isOpen()) return response.message("bet:error.not-open");
         const winnings = await game?.close(option);
-
         if (winnings === null) return response.message("bet:error.invalid-option", {option});
         else return response.message("bet:closed", {
-            title: game.getTitle(), option, winnings: await CurrencyModule.formatAmount(winnings, channel)
+            title: game.getTitle(), option, winnings: CurrencyType.get(channel).formatAmount(winnings)
         });
     }
 
     @CommandHandler("bet check", "bet check")
-    @CheckPermission("bet.check")
+    @CheckPermission(() => BettingModule.permissions.checkBet)
     async check(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel
     ): Promise<void> {
         const parts = [];
         const totals = await this.betService.getTotals(channel);
@@ -109,24 +104,32 @@ class BetCommand extends Command {
         for (const [option, total] of optionTotals)
             parts.push(await response.translate("bet:check.part", {
                 option,
-                amount: await CurrencyModule.formatAmount(total, channel),
+                amount: CurrencyType.get(channel).formatAmount(total),
                 percentage: (total / grandTotal) * 100
             }));
         await response.message("bet:check.full", {options: parts.join("; ")});
     }
 }
 
+@Service()
 export default class BettingModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    @command betCommand = new BetCommand(this);
-    @setting minimumBet = new Setting("bet.minimum", 1 as Integer, SettingType.INTEGER);
-    @setting maximumBet = new Setting("bet.maximum", -1 as Integer, SettingType.INTEGER);
-    @permission placeBet = new Permission("bet.place", Role.NORMAL);
-    @permission openBet = new Permission("bet.open", Role.MODERATOR);
-    @permission closeBet = new Permission("bet.close", Role.MODERATOR);
-    @permission checkBet = new Permission("bet.check", Role.MODERATOR);
+    static settings = {
+        minimumBet: new Setting("bet.minimum", 1 as Integer, SettingType.INTEGER),
+        maximumBet: new Setting("bet.maximum", -1 as Integer, SettingType.INTEGER)
+    }
+    static permissions = {
+        placeBet: new Permission("bet.place", Role.NORMAL),
+        openBet: new Permission("bet.open", Role.MODERATOR),
+        closeBet: new Permission("bet.close", Role.MODERATOR),
+        checkBet: new Permission("bet.check", Role.MODERATOR),
+    }
 
-    constructor() {
+    constructor(betCommand: BetCommand) {
         super(BettingModule);
+
+        this.registerCommand(betCommand);
+        this.registerSettings(BettingModule.settings);
+        this.registerPermissions(BettingModule.permissions);
     }
 }

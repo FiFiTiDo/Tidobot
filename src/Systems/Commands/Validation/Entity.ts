@@ -1,37 +1,34 @@
 import {InvalidArgumentError, TranslateMessageInputError} from "./ValidationErrors";
-import Entity, {EntityConstructor} from "../../../Database/Entities/Entity";
-import ChannelEntity from "../../../Database/Entities/ChannelEntity";
 import {ArgumentConverter} from "./Argument";
 import {CommandEvent} from "../CommandEvent";
-
-interface ConvertibleEntity<T extends Entity<T>> extends EntityConstructor<T> {
-    TYPE: string;
-
-    convert(raw: string, channel: ChannelEntity): Promise<T | null>;
-}
+import { ConvertingRepository, ConvertingRepositoryConstructor } from "../../../Database/Repositories/ConvertingRepository";
+import { BaseEntity, getCustomRepository } from "typeorm";
+import Event from "../../Event/Event";
+import { isUndefined } from "lodash";
 
 interface ErrorInfo {
     msgKey: string;
     optionKey: string;
 }
 
-export class EntityArg<T extends Entity<T>> implements ArgumentConverter<T> {
+export class EntityArg<T extends BaseEntity> implements ArgumentConverter<T> {
     type: string;
+    private repository: ConvertingRepository<T>;
 
-    constructor(private entity: ConvertibleEntity<T>, private error?: ErrorInfo) {
-        this.type = entity.TYPE;
+    constructor(repositoryCtor: ConvertingRepositoryConstructor<T>, private error?: ErrorInfo) {
+        this.type = repositoryCtor.TYPE;
+        this.repository = getCustomRepository(repositoryCtor);
     }
 
-    async convert(input: string, name: string, column: number, event: CommandEvent): Promise<T> {
-        const msg = event.getMessage();
-        const channel = msg.getChannel();
-
-        const entity = await this.entity.convert(input, channel);
-        if (entity === null) {
+    async convert(input: string, name: string, column: number, event: Event): Promise<T> {
+        const message = event.extra.get(CommandEvent.EXTRA_MESSAGE);
+        const channel = message.channel;
+        const entity = await this.repository.convert(input, channel);
+        if (isUndefined(entity)) {
             if (this.error)
                 throw new TranslateMessageInputError(this.error.msgKey, {[this.error.optionKey]: input});
             else
-                throw new InvalidArgumentError(name, this.entity.TYPE, input, column);
+                throw new InvalidArgumentError(name, this.type, input, column);
         }
         return entity;
     }

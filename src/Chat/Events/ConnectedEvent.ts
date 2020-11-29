@@ -1,9 +1,3 @@
-import Event from "../../Systems/Event/Event";
-
-export default class ConnectedEvent extends Event<ConnectedEvent> {
-    public static readonly NAME: string = "chat_connected";
-
-    constructor() {
-        super(ConnectedEvent);
-    }
+export default class ConnectedEvent {
+    public static readonly EVENT_TYPE = "chat.events.ConnectedEvent";
 }

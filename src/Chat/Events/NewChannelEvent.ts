@@ -1,20 +1,7 @@
-import Event, {EventArguments} from "../../Systems/Event/Event";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import { Channel } from "../../Database/Entities/Channel";
+import { ExtraKey } from "../../Systems/Event/EventExtra";
 
-export class NewChannelEvent extends Event<NewChannelEvent> {
-    public static readonly NAME = "channel:new";
-
-    constructor(private readonly channel: ChannelEntity) {
-        super(NewChannelEvent);
-    }
-
-    getEventArgs(): NewChannelEventArgs {
-        return Object.assign(super.getEventArgs(), {
-            channel: this.channel
-        });
-    }
-}
-
-export interface NewChannelEventArgs extends EventArguments<NewChannelEvent> {
-    channel: ChannelEntity
+export class NewChannelEvent {
+    public static readonly EVENT_TYPE = "chat.events.NewChannelEvent";
+    public static readonly EXTRA_CHANNEL = new ExtraKey<Channel>("chat.event.NewChannelEvent:extra.channel");
 }

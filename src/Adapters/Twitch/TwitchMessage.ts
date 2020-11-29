@@ -1,34 +1,33 @@
 import Message from "../../Chat/Message";
 import * as tmi from "tmi.js";
 import TwitchAdapter from "./TwitchAdapter";
-import deepmerge from "deepmerge";
-import {helix, kraken} from "./TwitchApi";
+import {helix} from "./TwitchApi";
 import moment from "moment-timezone";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import {Role} from "../../Systems/Permissions/Role";
 import {ExpressionContext} from "../../Systems/Expressions/ExpressionSystem";
-import {ResponseFactory} from "../../Chat/Response";
-import {SettingType} from "../../Systems/Settings/Setting";
-import IStream = helix.Stream;
+import Stream = helix.Stream;
+import ChannelInformation = helix.ChannelInformation;
+import { Chatter } from "../../Database/Entities/Chatter";
+import { Channel } from "../../Database/Entities/Channel";
+import { logError } from "../../Utilities/Logger";
+import GeneralModule from "../../Modules/GeneralModule";
+import _ from "lodash";
 
 export class TwitchMessage extends Message {
     private api: helix.Api;
-    private oldApi: kraken.Api;
 
     constructor(
-        message: string, chatter: ChatterEntity, channel: ChannelEntity, private readonly userstate: tmi.ChatUserstate,
-        adapter: TwitchAdapter, responseFactory: ResponseFactory
+        message: string, chatter: Chatter, channel: Channel, private readonly userstate: tmi.ChatUserstate,
+        adapter: TwitchAdapter
     ) {
-        super(message, chatter, channel, adapter, responseFactory);
+        super(message, chatter, channel, adapter);
 
         this.api = adapter.api;
-        this.oldApi = adapter.oldApi;
 
         if (userstate.emotes) {
             let stripped = message;
             for (const emote of Object.keys(userstate.emotes))
-                stripped.replace(emote, '');
+                stripped = stripped.replace(emote, "");
             this.stripped = stripped;
         }
     }
@@ -55,82 +54,66 @@ export class TwitchMessage extends Message {
     }
 
     public async getExpressionContext(): Promise<ExpressionContext> {
-        const getStreamProperty = async (key: keyof IStream): Promise<string | number | string[]> => {
+        const getChannelProperty = async (key: keyof ChannelInformation): Promise<string> => {
             try {
-                const chanResp = await this.api.getStreams({user_id: this.getChannel().channelId});
+                const chanResp = await this.api.getChannel({broadcaster_id: this.channel.nativeId});
+                return chanResp.data[0][key];
+            } catch (e) {
+                logError(TwitchAdapter.LOGGER, e, "Twitch API Error");
+                return "<<An error has occurred with the Twitch API.>>";
+            }
+        };
+
+        const getStreamProperty = async (key: keyof Stream, defVal: string|number|string[] = "Channel is not live."): Promise<string | number | string[]> => {
+            try {
+                const chanResp = await this.api.getStreams({user_id: this.channel.nativeId});
                 if (chanResp.data.length > 0) {
                     const chanData = chanResp.data[0];
 
                     return chanData[key];
                 } else {
-                    return "Channel is not live.";
+                    return defVal;
                 }
             } catch (e) {
-                TwitchAdapter.LOGGER.error("Twitch API error");
-                TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                TwitchAdapter.LOGGER.error(e.stack);
+                logError(TwitchAdapter.LOGGER, e, "Twitch API Error");
                 return "<<An error has occurred with the Twitch API.>>";
             }
         };
 
         const ctx: ExpressionContext = {
             channel: {
-                getTitle: (): Promise<string> => getStreamProperty("title") as Promise<string>,
-                getGame: async (): Promise<string> => {
-                    try {
-                        const chanResp = await this.api.getStreams({user_id: this.getChannel().channelId});
-                        if (chanResp.data.length > 0) {
-                            const chanData = chanResp.data[0];
-                            const gameResp = await this.api.getGames({id: chanData.game_id});
-                            const gameData = gameResp.data[0];
-
-                            return gameData.name;
-                        } else {
-                            return "Channel is not live.";
-                        }
-                    } catch (e) {
-                        TwitchAdapter.LOGGER.error("Twitch API error");
-                        TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                        TwitchAdapter.LOGGER.error(e.stack);
-                        return "<<An error has occurred with the Twitch API.>>";
-                    }
-                },
+                getTitle: (): Promise<string> => getChannelProperty("title") as Promise<string>,
+                getGame: async (): Promise<string> => getChannelProperty("game_name") as Promise<string>,
                 getViewerCount: (): Promise<number> => getStreamProperty("viewer_count") as Promise<number>
             },
             sender: {
                 getFollowAge: async (format?: string): Promise<string> => {
+                    if (await this.checkRole(Role.BROADCASTER)) return "Sender is the broadcaster";
                     return this.api.getUserFollow({
-                        from_id: this.getChatter().userId,
-                        to_id: this.getChannel().channelId
+                        from_id: this.chatter.user.nativeId,
+                        to_id: this.channel.nativeId
                     }).then(async resp => {
                         if (resp.total < 1) return "Sender is not following the channel.";
-                        const timezone = await this.getChannel().getSetting<SettingType.TIMEZONE>("timezone");
+                        const timezone = this.channel.settings.get(GeneralModule.settings.timezone);
                         return moment.parseZone(resp.data[0].followed_at, timezone.name).format(format ? format : "Y-m-d h:i:s");
                     }).catch(e => {
-                        TwitchAdapter.LOGGER.error("Unable to determine follow age");
-                        TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                        TwitchAdapter.LOGGER.error(e.stack);
+                        logError(TwitchAdapter.LOGGER, e, "Unable to determine follow age");
                         return "Cannot determine follow age.";
                     });
                 },
                 isFollowing: async (): Promise<boolean> => {
+                    if (await this.checkRole(Role.BROADCASTER)) return true;
                     return this.api.getUserFollow({
-                        from_id: this.getChatter().userId,
-                        to_id: this.getChannel().channelId
-                    }).then(async resp => resp.total > 0).catch(e => {
-                        TwitchAdapter.LOGGER.error("Unable to determine if the user is following");
-                        TwitchAdapter.LOGGER.error("Caused by: " + e.message);
-                        TwitchAdapter.LOGGER.error(e.stack);
+                        from_id: this.chatter.user.nativeId,
+                        to_id: this.channel.nativeId
+                    }).then(resp => resp.total > 0).catch(e => {
+                        logError(TwitchAdapter.LOGGER, e, "Unable to determine if the user is following");
                         return false;
                     });
                 }
             }
         };
 
-        return deepmerge(await super.getExpressionContext(), ctx);
+        return _.merge(await super.getExpressionContext(), ctx);
     }
-}
-
-export interface TwitchMessageFactory {
-    (message: string, chatter: ChatterEntity, channel: ChannelEntity, userstate: tmi.ChatUserstate): TwitchMessage;
 }

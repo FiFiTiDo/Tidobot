@@ -1,43 +1,32 @@
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import leven from "leven";
 import Message from "../../Chat/Message";
 import Setting, {Integer, SettingType} from "../Settings/Setting";
 import SettingsSystem from "../Settings/SettingsSystem";
-import EntityStateList from "../../Database/EntityStateList";
 import SpamFilter from "./Filters/SpamFilter";
+import { Service } from "typedi";
+import { Channel } from "../../Database/Entities/Channel";
+import { EntityStateList } from "../../Database/EntityStateList";
 
+@Service()
 export default class MessageCache {
     private static MAX_CACHE = new Setting("filter.cache.amount", 30 as Integer, SettingType.INTEGER);
 
-    private messages: EntityStateList<ChannelEntity, Message[]> = new EntityStateList<ChannelEntity, Message[]>([]);
+    private messages: EntityStateList<Channel, Message[]> = new EntityStateList<Channel, Message[]>([]);
 
-    constructor() {
-        const settings = SettingsSystem.getInstance();
+    constructor(settings: SettingsSystem) {
         settings.registerSetting(MessageCache.MAX_CACHE);
     }
 
-    async add(message: Message): Promise<void> {
+    add(message: Message): void {
         const channel = message.getChannel();
         const messages = this.messages.get(channel);
-        const maxMessages = await this.getMaxMessages(channel);
+        const maxMessages = channel.settings.get(MessageCache.MAX_CACHE);
         messages.push(message);
         messages.slice(Math.max(0, messages.length - maxMessages), Math.min(messages.length, maxMessages));
         this.messages.set(channel, messages);
     }
 
-    async getMaxPercentage(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting(SpamFilter.SIMILARITY);
-    }
-
-    async getMaxMessages(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting(MessageCache.MAX_CACHE);
-    }
-
-    async getMaxMatches(channel: ChannelEntity): Promise<number> {
-        return channel.getSetting(SpamFilter.AMOUNT);
-    }
-
-    getAll(channel: ChannelEntity): Message[] {
+    getAll(channel: Channel): Message[] {
         return this.messages.get(channel);
     }
 
@@ -46,7 +35,7 @@ export default class MessageCache {
         const messageRaw = message.getRaw();
         let matches = 0;
         const messages = this.messages.get(channel);
-        const maxPercentage = await this.getMaxPercentage(channel);
+        const maxPercentage = channel.settings.get(SpamFilter.SIMILARITY);
         for (const cached of messages) {
             const cachedRaw = cached.getRaw();
             const distance = leven(messageRaw, cachedRaw);
@@ -54,10 +43,10 @@ export default class MessageCache {
             const percentage = ((1 - distance) / bigger) * 100;
             if (percentage >= maxPercentage) matches++;
         }
-        return matches < await this.getMaxMatches(channel);
+        return matches >= channel.settings.get(SpamFilter.AMOUNT);
     }
 
     purge(): void {
-        this.messages.clear()
+        this.messages.clear();
     }
 }

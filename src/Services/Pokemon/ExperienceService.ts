@@ -1,29 +1,30 @@
-import PokemonEntity from "../../Database/Entities/PokemonEntity";
 import {MapExt} from "../../Utilities/Structures/Map";
 import ChannelManager from "../../Chat/ChannelManager";
-import TrainerEntity from "../../Database/Entities/TrainerEntity";
 import {getLogger} from "../../Utilities/Logger";
 import TimerSystem, {TimeUnit} from "../../Systems/Timer/TimerSystem";
+import { Service } from "typedi";
+import { Pokemon } from "../../Database/Entities/Pokemon";
 
 const logger = getLogger("Pokemon");
 
+@Service()
 export class ExperienceService {
     private map: MapExt<number, number> = new MapExt<number, number>();
 
-    constructor(channelManager: ChannelManager) {
-        TimerSystem.getInstance().startTimer(this.decayAllMonLevels, TimeUnit.Days(1) / 2, channelManager);
+    constructor(channelManager: ChannelManager, timerSystem: TimerSystem) {
+        timerSystem.startTimer(this.decayAllMonLevels, TimeUnit.Days(1) / 2, channelManager);
     }
 
-    calculateExpForLevel(level: number) {
+    calculateExpForLevel(level: number): number {
         const actualLevel = level + 1;
         return actualLevel > 100 ? NaN : Math.pow(actualLevel, 0.75) * 10;
     }
 
-    getExperience(mon: PokemonEntity): number {
+    getExperience(mon: Pokemon): number {
         return this.map.getOrSet(mon.id, 0);
     }
 
-    async addExperience(mon: PokemonEntity, amount: number): Promise<number> {
+    async addExperience(mon: Pokemon, amount: number): Promise<number> {
         const startingLevel = mon.level;
         let total = this.getExperience(mon) + amount;
         let currentLevel = mon.level;
@@ -38,21 +39,21 @@ export class ExperienceService {
         return currentLevel - startingLevel;
     }
 
-    async decayLevel(mon: PokemonEntity): Promise<boolean> {
+    async decayLevel(mon: Pokemon): Promise<boolean> {
         if (mon.level > 1) {
             mon.level--;
             await mon.save();
             return true;
         } else {
-            await mon.delete();
+            await mon.remove();
             return false;
         }
     }
 
-    async decayAllMonLevels(channelManager: ChannelManager) {
-        logger.debug("Decaying pokemon levels");
-        for (const channel of channelManager.getAll())
-            for await (const trainerData of await TrainerEntity.getAllTrainers(channel))
-                await Promise.all(trainerData.team.map(pkmn => this.decayLevel(pkmn)));
+    async decayAllMonLevels(channelManager: ChannelManager): Promise<void> {
+        logger.debug("Decaying pokemon levels");/* TODO: Fix
+        for (const channel of await channelManager.getAllActive())
+            for await (const trainerData of channel.trainers)
+                await Promise.all(trainerData.team.map(pkmn => this.decayLevel(pkmn)));*/
     }
 }

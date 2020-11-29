@@ -1,37 +1,35 @@
-import Listener, {ListenerWrapper} from "./Listener";
-import Event, {EventArguments, EventConstructor} from "./Event";
+import {Listener, ListenerWrapper} from "./Listener";
+import Event, { EventType } from "./Event";
 import {EventPriority} from "./EventPriority";
 import PriorityList from "../../Utilities/Structures/PriorityList";
-import {injectable} from "inversify";
 
-type ListenerType<T extends Event<T>> = Listener<T, EventArguments<T>> | ListenerWrapper<T, EventArguments<T>>;
+type ListenerType = Listener | ListenerWrapper;
 
-@injectable()
 export default class Dispatcher {
-    private listeners: Map<string, PriorityList<ListenerType<any>>> = new Map();
+    private listeners: Map<string, PriorityList<ListenerType>> = new Map();
 
-    public addListener<T extends Event<T>>(event: EventConstructor<T>, listener: ListenerType<T>, priority = EventPriority.NORMAL): void {
-        if (!this.listeners.has(event.NAME))
-            this.listeners.set(event.NAME, new PriorityList());
-        this.listeners.get(event.NAME).push(listener, priority);
+    public addListener(type: EventType, listener: ListenerType, priority = EventPriority.NORMAL): void {
+        if (!this.listeners.has(type.EVENT_TYPE))
+            this.listeners.set(type.EVENT_TYPE, new PriorityList());
+        this.listeners.get(type.EVENT_TYPE).push(listener, priority);
     }
 
-    public removeListener<T extends Event<T>>(event: EventConstructor<T>, listener: ListenerType<T>): void {
-        if (!this.listeners.has(event.NAME)) return;
-        this.listeners.get(event.NAME).remove(listener);
+    public removeListener(type: EventType, listener: ListenerType): void {
+        if (!this.listeners.has(type.EVENT_TYPE)) return;
+        this.listeners.get(type.EVENT_TYPE).remove(listener);
     }
 
-    public async dispatch<T extends Event<T>>(event: Event<T>): Promise<void> {
-        if (!this.listeners.has(event.getName())) return;
+    public async dispatch(event: Event): Promise<void> {
+        if (!this.listeners.has(event.name)) return;
 
-        for (const listener of this.listeners.get(event.getName())) {
+        for (const listener of this.listeners.get(event.name)) {
             let value;
             if (typeof listener === "function")
-                value = listener.call(null, event.getEventArgs());
+                value = listener.call(null, event);
             else
-                value = listener.func.call(listener.thisArg, event.getEventArgs());
+                value = listener.func.call(listener.thisArg, event);
             if (value instanceof Promise) value = await value;
-            if (event.isCancelled()) break;
+            if (event.cancelled) break;
         }
     }
 }

@@ -1,27 +1,29 @@
 import MessageParser from "./MessageParser";
 import Adapter from "../Adapters/Adapter";
-import ChatterEntity from "../Database/Entities/ChatterEntity";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {Role} from "../Systems/Permissions/Role";
+import {getMaxRole, Role} from "../Systems/Permissions/Role";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import ExpressionSystem, {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {Response, ResponseFactory} from "./Response";
-import Permission from "../Systems/Permissions/Permission";
+import {Response} from "./Response";
 import {returnError, validateFunction} from "../Utilities/ValidateFunction";
+import { Chatter } from "../Database/Entities/Chatter";
+import { Channel } from "../Database/Entities/Channel";
+import Container from "typedi";
+import ChannelManager from "./ChannelManager";
+import { PermissionLike } from "../Utilities/Interfaces/PermissionLike";
+import { ChatterManager } from "./ChatterManager";
 
 export default class Message {
-    protected stripped: string;
-    private readonly parts: string[];
-    private readonly response: Response;
+    public stripped: string;
+    public readonly parts: string[];
+    public readonly response: Response;
     private loopProtection: string[];
 
     constructor(
-        private readonly raw: string, private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity,
-        private readonly adapter: Adapter, private readonly responseFactory: ResponseFactory
+        public readonly raw: string, public readonly chatter: Chatter, public readonly channel: Channel, public readonly adapter: Adapter
     ) {
         this.parts = MessageParser.parse(raw);
         this.loopProtection = [];
-        this.response = responseFactory(this);
+        this.response = new Response(this, adapter);
         this.stripped = raw;
     }
 
@@ -35,36 +37,45 @@ export default class Message {
     }
 
     public async getExpressionContext(): Promise<ExpressionContext> {
+        const chatterManager = Container.get(ChatterManager);
+
         return {
             sender: {
-                id: this.getChatter().id,
-                name: this.getChatter().name,
+                id: this.chatter.id,
+                name: this.chatter.user.name,
             },
             channel: {
                 id: this.getChannel().id,
                 name: this.getChannel().name,
-                chatters: (await this.channel.chatters()).map(chatter => chatter.name),
-                isLive: (): boolean => this.getChannel().online.get()
+                chatters: this.channel.chatters.map(chatter => chatter.user.name),
+                activeChatters: this.channel.chatters.filter(chatter => chatterManager.isActive(chatter)).map(chatter => chatter.user.name),
+                isLive: (): boolean => Container.get(ChannelManager).isOnline(this.channel)
             },
             raw_arguments: this.parts.slice(1).join(" "),
             arguments: this.parts.slice(1),
-            to_user: validateFunction((prepend?: string, append?: string): string => {
+            to_user: validateFunction((defaultSender = true, prepend?: string, append?: string): string => {
+                const doDefault = this.parts.length < 2;
+                if (doDefault && !defaultSender) return "";
                 let resp = "";
                 if (prepend) resp += prepend;
-                const name = this.parts.length < 2 ? this.chatter.name : this.parts[1];
+                const name = doDefault ? this.chatter.user.name : this.parts[1];
                 resp += name.startsWith("@") ? name.substring(1) : name;
                 if (append) resp += append;
                 return resp;
-            }, ["string", "string"], returnError()),
+            }, ["boolean", "string", "string"], returnError()),
         };
     }
 
     public async evaluateExpression(expression: string): Promise<string> {
-        return ExpressionSystem.getInstance().evaluate(expression, this);
+        return Container.get(ExpressionSystem).evaluate(expression, this);
     }
 
-    public async checkPermission(permission: string | Permission): Promise<boolean> {
-        return PermissionSystem.getInstance().check(permission, this.chatter, await this.getUserRoles());
+    public async checkPermission(permission: string | PermissionLike): Promise<boolean> {
+        return Container.get(PermissionSystem).check(permission, this.chatter, this.channel, await this.getUserRoles());
+    }
+
+    public async checkRole(role: Role): Promise<boolean> {
+        return getMaxRole(await this.getUserRoles()) >= role;
     }
 
     public getRaw(): string {
@@ -83,11 +94,11 @@ export default class Message {
         return this.parts;
     }
 
-    public getChatter(): ChatterEntity {
+    public getChatter(): Chatter {
         return this.chatter;
     }
 
-    public getChannel(): ChannelEntity {
+    public getChannel(): Channel {
         return this.channel;
     }
 
@@ -108,20 +119,20 @@ export default class Message {
     }
 
     public extend(newRaw: string, onReply: (message: string) => void): Message {
-        const msg = this;
+        const { getUserRoles, getExpressionContext, chatter, channel, adapter, loopProtection } = this;
         return new class extends Message {
             constructor() {
-                super(newRaw, msg.getChatter(), msg.getChannel(), msg.adapter, msg.responseFactory);
+                super(newRaw, chatter, channel, adapter);
 
-                this.loopProtection = msg.loopProtection.slice();
+                this.loopProtection = loopProtection.slice();
             }
 
             async getUserRoles(): Promise<Role[]> {
-                return msg.getUserRoles();
+                return getUserRoles();
             }
 
             async getExpressionContext(): Promise<ExpressionContext> {
-                return msg.getExpressionContext();
+                return getExpressionContext();
             }
 
             async reply(message: string): Promise<void> {

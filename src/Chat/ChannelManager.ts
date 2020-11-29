@@ -1,25 +1,53 @@
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {provide} from "inversify-binding-decorators";
-import {MapExt} from "../Utilities/Structures/Map";
-import Optional from "../Utilities/Patterns/Optional";
+import { Inject, Service } from "typedi";
+import { Channel } from "../Database/Entities/Channel";
+import { InjectRepository } from "typeorm-typedi-extensions";
+import { Service as ServiceEntity } from "../Database/Entities/Service";
+import { ChannelRepository } from "../Database/Repositories/ChannelRepository";
+import { In } from "typeorm";
+import { MapExt } from "../Utilities/Structures/Map";
+import { ServiceToken } from "../symbols";
 
-@provide(ChannelManager)
+interface ChannelState {
+    id: number;
+    nativeId: string;
+    name: string;
+    online: boolean;
+}
+
+@Service()
 export default class ChannelManager {
-    private readonly channels: MapExt<string, ChannelEntity>;
+    private channels: string[] = [];
+    private channelState: MapExt<string, ChannelState>;
 
-    constructor() {
-        this.channels = new MapExt();
+    constructor(
+        @InjectRepository() private readonly repository: ChannelRepository,
+        @Inject(ServiceToken) private readonly service: ServiceEntity
+    ) {
+        this.channelState = new MapExt();
     }
 
-    getAll(): ChannelEntity[] {
-        return [...this.channels.values()];
+    setActive(channels: string[]): void {
+        this.channels = channels;
     }
 
-    add(channel: ChannelEntity): void {
-        this.channels.setNew(channel.channelId, channel);
+    getAllActive(): Promise<Channel[]> {
+        return this.repository.find({ name: In(this.channels), service: this.service });
     }
 
-    findByName(name: string): Optional<ChannelEntity> {
-        return Optional.ofUndefable(this.getAll().filter(channel => channel.name === name)[0]);
+    getState(channel: Channel): ChannelState {
+        return this.channelState.getOrSet(channel.name, {
+            id: channel.id,
+            nativeId: channel.nativeId,
+            name: channel.name,
+            online: false
+        });
+    }
+
+    isOnline(channel: Channel): boolean {
+        return this.getState(channel).online;
+    }
+
+    setOnline(channel: Channel, online: boolean): void {
+        this.getState(channel).online = online;
     }
 }

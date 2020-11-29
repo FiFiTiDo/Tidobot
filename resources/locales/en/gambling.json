@@ -3,6 +3,11 @@
         "emotes": "{{username}}: [ {{emote1}} {{emote2}} {{emote3}} ]",
         "win": "+{{amount}}"
     },
+    "gamble": {
+        "win": "{{username}}: {{message}} || You have earned {{amount}}, your balance is now {{balance}}",
+        "loss": "{{username}}: {{message}} || You have lost {{amount}}, your balance is now {{balance}}",
+        "lostAll": "{{username}} decided to risk it all by going all in and ended up losing it all"
+    },
     "win": [
         "You\\'re a winner baby",
         "Literally hacking!",

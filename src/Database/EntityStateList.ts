@@ -1,63 +1,63 @@
-import Entity from "./Entities/Entity";
-import {Resolvable, resolve} from "../Utilities/Interfaces/Resolvable";
+import { Resolvable, resolve } from "../Utilities/Interfaces/Resolvable";
+import CustomBaseEntity from "./Entities/CustomBaseEntity";
 
-export default class EntityStateList<TEntity extends Entity<TEntity>, TValue> {
-    private state: { [key: number]: TValue } = {};
-    private entityMap: { [key: number]: TEntity } = {};
+export class EntityStateList<EntityT extends CustomBaseEntity, ValueT> {
+    private readonly entityMap: { [key: number]: EntityT } = {};
+    private valueMap: { [key: number]: ValueT } = {};
 
-    constructor(private defVal: Resolvable<TEntity, TValue>) {
+    constructor(private defVal: Resolvable<EntityT, ValueT>) {
     }
 
-    public has(entity: TEntity): boolean {
-        return Object.prototype.hasOwnProperty.call(this.state, entity.id);
+    public has(entity: EntityT): boolean {
+        return Object.prototype.hasOwnProperty.call(this.valueMap, entity.id);
     }
 
-    public get(entity: TEntity): TValue {
+    public get(entity: EntityT): ValueT {
         if (!this.has(entity)) this.set(entity, resolve(this.defVal));
-        return this.state[entity.id];
+        return this.valueMap[entity.id];
     }
 
-    public set(entity: TEntity, value: TValue): void {
-        this.state[entity.id] = value;
+    public set(entity: EntityT, value: ValueT): void {
+        this.valueMap[entity.id] = value;
         this.entityMap[entity.id] = entity;
     }
 
-    public delete(entity: TEntity) {
-        delete this.state[entity.id];
+    public delete(entity: EntityT): void {
+        delete this.valueMap[entity.id];
         delete this.entityMap[entity.id];
     }
 
-    public entities(): TEntity[] {
+    public entities(): EntityT[] {
         return Object.values(this.entityMap);
     }
 
-    public values(): TValue[] {
-        return Object.values(this.state);
+    public values(): ValueT[] {
+        return Object.values(this.valueMap);
     }
 
-    public entries(): [TEntity, TValue][] {
-        return Object.entries(this.state).map(([id, value]) => [this.entityMap[id], value]);
+    public entries(): [EntityT, ValueT][] {
+        return Object.entries(this.valueMap).map(([id, value]) => [this.entityMap[id], value]);
     }
 
     public clear(): void {
-        this.state = {};
+        this.valueMap = {};
     }
 
-    public filter(f: (id: number, entity: TEntity, value: TValue) => boolean) {
-        const ids = Object.keys(this.entityMap) as number[];
+    public filter(f: (id: number, entity: EntityT, value: ValueT) => boolean): void {
+        const ids = Object.keys(this.entityMap) as unknown as number[];
         for (const id of ids) {
-            if (!f(id, this.entityMap[id], this.state[id])) {
-                delete this.state[id];
+            if (!f(id, this.entityMap[id], this.valueMap[id])) {
+                delete this.valueMap[id];
                 delete this.entityMap[id];
             }
         }
     }
 
-    public getAll(filter: (entry?: [TEntity, TValue], index?: number) => boolean = () => true): [TEntity, TValue][] {
-        return this.entries().filter(filter)
+    public getAll(filter: (entry?: [EntityT, ValueT], index?: number) => boolean = (): boolean => true): [EntityT, ValueT][] {
+        return this.entries().filter(filter);
     }
 
-    size(filter: (entry?: [TEntity, TValue], index?: number) => boolean = () => true) {
+    size(filter: (entry?: [EntityT, ValueT], index?: number) => boolean = (): boolean => true): number {
         return this.getAll(filter).length;
     }
 }

@@ -4,91 +4,81 @@ import SpamFilter from "./Filters/SpamFilter";
 import LongMessageFilter from "./Filters/LongMessageFilter";
 import BadWordFilter from "./Filters/BadWordFilter";
 import CapsFilter from "./Filters/CapsFilter";
-import EmoteFilter from "./Filters/EmoteFilter";
 import FakePurgeFilter from "./Filters/FakePurgeFilter";
 import SymbolFilter from "./Filters/SymbolFilter";
 import UrlFilter from "./Filters/UrlFilter";
 import {EventHandler, HandlesEvents} from "../Event/decorators";
-import MessageEvent, {MessageEventArgs} from "../../Chat/Events/MessageEvent";
-import PermissionSystem from "../Permissions/PermissionSystem";
+import MessageEvent from "../../Chat/Events/MessageEvent";
 import Permission from "../Permissions/Permission";
 import {Role} from "../Permissions/Role";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
 import moment from "moment";
 import System from "../System";
 import MessageCache from "./MessageCache";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
-import EntityStateList from "../../Database/EntityStateList";
-import {SettingType} from "../Settings/Setting";
 import RepetitionFilter from "./Filters/RepetitionFilter";
+import { Service } from "typedi";
+import { EntityStateList } from "../../Database/EntityStateList";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import PermissionSystem from "../Permissions/PermissionSystem";
+import FilterModule from "../../Modules/FilterModule";
+import Message from "../../Chat/Message";
+import Event from "../Event/Event";
 
 @HandlesEvents()
+@Service()
 export default class FilterSystem extends System {
-    private static instance: FilterSystem = null;
-    private readonly strikeManager: StrikeManager = new StrikeManager();
-    private readonly permits: EntityStateList<ChatterEntity, moment.Moment> = new EntityStateList<ChatterEntity, moment.Moment>(null);
+    private readonly permits: EntityStateList<Chatter, moment.Moment> = new EntityStateList<Chatter, moment.Moment>(null);
     private readonly filters: Filter[];
-    private readonly messageCache: MessageCache = new MessageCache();
+    private readonly ignoreAllPermission = new Permission("filter.ignore.all", Role.MODERATOR)
 
-    constructor() {
+    constructor(
+        private readonly messageCache: MessageCache, private readonly strikeManager: StrikeManager,
+        badWordFilter: BadWordFilter, capsFilter: CapsFilter, fakePurgeFilter: FakePurgeFilter,
+        longMessageFilter: LongMessageFilter, spamFilter: SpamFilter, symbolFilter: SymbolFilter, urlFilter: UrlFilter,
+        repetitionFilter: RepetitionFilter, perm: PermissionSystem
+    ) {
         super("Filter");
 
         this.filters = [
-            new BadWordFilter(this.strikeManager),
-            new CapsFilter(this.strikeManager),
-            new EmoteFilter(this.strikeManager),
-            new FakePurgeFilter(this.strikeManager),
-            new LongMessageFilter(this.strikeManager),
-            new SpamFilter(this.strikeManager, this.messageCache),
-            new SymbolFilter(this.strikeManager),
-            new UrlFilter(this.strikeManager),
-            new RepetitionFilter(this.strikeManager)
+            badWordFilter, capsFilter, fakePurgeFilter, longMessageFilter, spamFilter, symbolFilter, urlFilter, repetitionFilter
         ];
 
-        const perm = PermissionSystem.getInstance();
-        perm.registerPermission(new Permission("filter.ignore.all", Role.MODERATOR));
+        perm.registerPermission(this.ignoreAllPermission);
 
         this.logger.info("System initialized");
     }
 
-    public static getInstance(): FilterSystem {
-        if (this.instance === null)
-            this.instance = new FilterSystem();
-
-        return this.instance;
-    }
-
     @EventHandler(MessageEvent)
-    async onMessage(eventArgs: MessageEventArgs): Promise<void> {
-        const {sender, channel, message} = eventArgs;
-        await this.messageCache.add(message);
-        if (await message.checkPermission("filter.ignore.all")) return;
+    async onMessage(event: Event): Promise<void> {
+        const message = event.extra.get(MessageEvent.EXTRA_MESSAGE);
+        const sender = message.chatter;
+        const channel = message.channel;
+
+        this.messageCache.add(message);
+        if (await message.checkPermission(this.ignoreAllPermission)) return;
         if (this.permits.has(sender)) {
             const timestamp = this.permits.get(sender);
-            const expires = timestamp.clone().add(await channel.getSetting<SettingType.STRING>("filter.permit-length"), "seconds");
+            const expires = timestamp.clone().add(channel.settings.get(FilterModule.settings.permitLength), "seconds");
             if (moment().isBefore(expires))
                 return;
             else
                 this.permits.delete(sender);
         }
 
-
-        const lists = await eventArgs.channel.getFilters();
-
         for (const filter of this.filters)
-            if (await filter.handleMessage(lists, eventArgs))
+            if (await filter.handleMessage(message))
                 break;
     }
 
-    pardonUser(chatter: ChatterEntity) {
+    pardonUser(chatter: Chatter): void {
         this.strikeManager.pardonUser(chatter);
     }
 
-    permitUser(chatter: ChatterEntity) {
+    permitUser(chatter: Chatter): void {
         this.permits.set(chatter, moment());
     }
 
-    getCachedMessages(channel: ChannelEntity) {
+    getCachedMessages(channel: Channel): Message[] {
         return this.messageCache.getAll(channel);
     }
 }

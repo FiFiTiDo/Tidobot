@@ -1,17 +1,19 @@
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import TrainerEntity from "../../Database/Entities/TrainerEntity";
-import PokemonEntity, {NATURES, PokemonStats, PokemonTeam} from "../../Database/Entities/PokemonEntity";
 import Optional from "../../Utilities/Patterns/Optional";
-import {arrayContains, arrayRand} from "../../Utilities/ArrayUtils";
-import {SettingType} from "../../Systems/Settings/Setting";
 import {randomChance, randomInt} from "../../Utilities/RandomUtils";
 import {ExperienceService} from "./ExperienceService";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import { Service } from "typedi";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { Trainer } from "../../Database/Entities/Trainer";
+import { NATURES, Pokemon, PokemonTeam } from "../../Database/Entities/Pokemon";
+import PokemonModule from "../../Modules/PokemonModule";
+import _ from "lodash";
 
 export interface TrainerData {
-    chatter: ChatterEntity;
-    trainer: TrainerEntity;
-    team: PokemonEntity[];
+    channel: Channel;
+    chatter: Chatter;
+    trainer: Trainer;
+    team: Pokemon[];
 }
 
 export enum WinState {
@@ -21,8 +23,8 @@ export enum WinState {
 export interface GameResults {
     leveledUp: string[];
     winner: WinState;
-    selfMon: PokemonEntity;
-    targetMon: PokemonEntity;
+    selfMon: Pokemon;
+    targetMon: Pokemon;
 }
 
 export interface TrainerStats {
@@ -30,62 +32,62 @@ export interface TrainerStats {
     teamLevel: number;
 }
 
+@Service()
 export class GameService {
-    constructor(private experienceService: ExperienceService) {
-    }
+    constructor(
+        private experienceService: ExperienceService
+    ) {}
 
-    public async getTrainerData(chatter: ChatterEntity): Promise<Optional<TrainerData>> {
-        const trainer = await TrainerEntity.getByChatter(chatter);
+    public getTrainerData(chatter: Chatter, channel: Channel): Optional<TrainerData> {
+        const trainer = chatter.trainer;
         if (trainer === null) return Optional.empty();
-        const team = await trainer.team();
-        return Optional.of({chatter, trainer, team});
+        const team = trainer.team;
+        return Optional.of({channel, chatter, trainer, team});
     }
 
-    public findMonByName(name: string, team: PokemonTeam): Optional<PokemonEntity> {
+    public findMonByName(name: string, team: PokemonTeam): Optional<Pokemon> {
         return Optional.ofUndefable(team.find(pkmn => pkmn.name === name));
     }
 
-    public getRandomMon(team: PokemonTeam): Optional<PokemonEntity> {
-        return team.length < 1 ? Optional.empty() : Optional.of(arrayRand(team));
+    public getRandomMon(team: PokemonTeam): Optional<Pokemon> {
+        return team.length < 1 ? Optional.empty() : Optional.of(_.sample(team));
     }
 
     public async releaseTeam(team: PokemonTeam): Promise<void> {
-        await Promise.all(team.map(pkmn => pkmn.delete()));
+        await Promise.all(team.map(pkmn => pkmn.remove()));
     }
 
-    public async generateRandomStats(data: TrainerData): Promise<Optional<PokemonStats>> {
-        const channel = data.trainer.getChannel();
-        const current = [data.chatter.name, ...data.team.map(pkmn => pkmn.name)];
-        const chatters = channel.getChatters().filter(chatter => arrayContains(chatter.name, current));
-        const name = arrayRand(chatters).name || PokemonEntity.GENERIC_NAME;
-        return this.generateStats(name, data);
+    public generateRandom(data: TrainerData): Optional<Pokemon> {
+        const { channel, chatter, team } = data;
+        const current = [chatter.user.name, ...team.map(pkmn => pkmn.name)];
+        const chatters = channel.chatters.filter(chatter => _.includes(current, chatter.user.name));
+        const name = _.sample(chatters).user.name || Pokemon.GENERIC_NAME;
+        return this.generate(name, data);
     }
 
-    public async generateStats(name: string, {trainer, team}: TrainerData): Promise<Optional<PokemonStats>> {
-        if (name !== PokemonEntity.GENERIC_NAME && team.some(pkmn => pkmn.name === name)) return Optional.empty();
+    public generate(name: string, {team, channel}: TrainerData): Optional<Pokemon> {
+        if (name !== Pokemon.GENERIC_NAME && team.some(pkmn => pkmn.name === name)) return Optional.empty();
 
-        const channel = trainer.getChannel();
-        const nature = arrayRand(NATURES);
-        const shiny = randomChance(0.05) ? 1 : 0;
-        const rus = randomChance(0.01) ? 1 : 0;
-
-        const minLevel = await channel.getSetting<SettingType.INTEGER>("pokemon.level.min");
-        const maxLevel = await channel.getSetting<SettingType.INTEGER>("pokemon.level.max");
+        const minLevel = channel.settings.get(PokemonModule.settings.minLevel);
+        const maxLevel = channel.settings.get(PokemonModule.settings.maxLevel);
         const level = randomInt(minLevel, maxLevel);
 
-        return Optional.of({trainer_id: trainer.id, name, level, nature, shiny, rus});
+        const pokemon = new Pokemon();
+        pokemon.name = name;
+        pokemon.level = level;
+        pokemon.nature = _.sample(NATURES);
+        pokemon.shiny = randomChance(0.05);
+        pokemon.rus = randomChance(0.01);
+
+        return Optional.of(pokemon);
     }
 
-    public async createMonFromStats(trainer: TrainerEntity, stats: PokemonStats): Promise<PokemonEntity> {
-        return PokemonEntity.make({channel: trainer.getChannel()}, stats);
-    }
-
-    public async getAllTrainerStats(channel: ChannelEntity): Promise<TrainerStats[]> {
+    public async getAllTrainerStats(channel: Channel): Promise<TrainerStats[]> {
         const trainers: TrainerStats[] = [];
-        for await (const trainerData of await TrainerEntity.getAllTrainers(channel)) {
-            const chatter = await trainerData.trainer.chatter();
+        for await (const trainerData of channel.trainers) {
+            const chatter = trainerData.chatter;
             trainers.push({
-                name: chatter.name,
+                name: chatter.user.name,
                 teamLevel: trainerData.team.reduce((prev, pkmn) => prev + pkmn.level, 0)
             });
         }
@@ -93,9 +95,9 @@ export class GameService {
     }
 
     public async attemptFight(self: TrainerData, target: TrainerData): Promise<GameResults> {
-        const channel = self.chatter.getChannel();
-        const selfMon = arrayRand(self.team);
-        const targetMon = arrayRand(target.team);
+        const channel = self.channel;
+        const selfMon = _.sample(self.team);
+        const targetMon = _.sample(target.team);
 
         const win = (Math.random() * 100) - ((targetMon.level - selfMon.level) / 2.1);
 
@@ -103,7 +105,7 @@ export class GameService {
         let targetExp = 0;
         let winner: WinState;
 
-        const draw_chance = await channel.getSetting<SettingType.INTEGER>("pokemon.chance.draw");
+        const draw_chance = channel.settings.get(PokemonModule.settings.drawChance);
         const MIN_WIN = 50 + draw_chance / 2;
         const MAX_LOSS = 50 - draw_chance / 2;
 
@@ -135,8 +137,8 @@ export class GameService {
         return {leveledUp, winner, selfMon, targetMon};
     }
 
-    public async attemptCatch(channel: ChannelEntity, stats: PokemonStats): Promise<boolean> {
-        const baseChance = await channel.getSetting<SettingType.INTEGER>("pokemon.chance.base-catch");
-        return randomChance(baseChance - (stats.level / 1000.0));
+    public async attemptCatch(channel: Channel, pokemon: Pokemon): Promise<boolean> {
+        const baseChance = channel.settings.get(PokemonModule.settings.baseCatchChance);
+        return randomChance(baseChance - (pokemon.level / 1000.0));
     }
 }

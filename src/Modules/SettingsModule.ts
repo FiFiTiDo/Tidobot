@@ -1,130 +1,127 @@
 import AbstractModule, {Symbols} from "./AbstractModule";
-import {ConfirmationFactory, ConfirmedEvent} from "./ConfirmationModule";
+import ConfirmationModule, {ConfirmedEvent} from "./ConfirmationModule";
 import {Role} from "../Systems/Permissions/Role";
 import Permission from "../Systems/Permissions/Permission";
-import SettingsEntity from "../Database/Entities/SettingsEntity";
-import SettingsSystem from "../Systems/Settings/SettingsSystem";
-import {ConvertedSetting, SettingType} from "../Systems/Settings/Setting";
-import {EventHandler, HandlesEvents} from "../Systems/Event/decorators";
-import {NewChannelEvent, NewChannelEventArgs} from "../Chat/Events/NewChannelEvent";
-import {inject} from "inversify";
-import symbols from "../symbols";
+import Setting, {ConvertedSetting} from "../Systems/Settings/Setting";
 import Command from "../Systems/Commands/Command";
-import {CommandEvent} from "../Systems/Commands/CommandEvent";
-import {StringArg} from "../Systems/Commands/Validation/String";
 import {getLogger} from "../Utilities/Logger";
-import {command} from "../Systems/Commands/decorators";
-import {permission} from "../Systems/Permissions/decorators";
 import Message from "../Chat/Message";
 import {ExpressionContext} from "../Systems/Expressions/ExpressionSystem";
-import {ExpressionContextResolver} from "../Systems/Expressions/decorators";
 import {logErrorOnFail, validateFunction} from "../Utilities/ValidateFunction";
 import {CommandHandler} from "../Systems/Commands/Validation/CommandHandler";
 import CheckPermission from "../Systems/Commands/Validation/CheckPermission";
-import {Argument, Channel, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
+import {Argument, ChannelArg, MessageArg, ResponseArg, RestArguments} from "../Systems/Commands/Validation/Argument";
 import {Response} from "../Chat/Response";
-import ChannelEntity from "../Database/Entities/ChannelEntity";
+import Container, { Service } from "typedi";
+import SettingsSystem from "../Systems/Settings/SettingsSystem";
+import { Channel } from "../Database/Entities/Channel";
+import { InvalidArgumentError } from "../Systems/Commands/Validation/ValidationErrors";
+import Event from "../Systems/Event/Event";
 
 export const MODULE_INFO = {
     name: "Settings",
-    version: "1.1.0",
+    version: "1.2.0",
     description: "Manage the channel's settings to change the functionality of the bot"
 };
 
 const logger = getLogger(MODULE_INFO.name);
+class SettingArg {
+    static type = "setting";
 
+    static convert(input: string, name: string, column: number): Setting<any> {
+        const setting = Container.get(SettingsSystem).getSetting(input);
+        if (setting === null)
+            throw new InvalidArgumentError(name, "setting", input, column);
+        return setting;
+    }
+}
+
+@Service()
 class SetCommand extends Command {
     constructor() {
         super("set", "<setting> <value>");
     }
 
     @CommandHandler("set", "set <key> <value>")
-    @CheckPermission("settings.set")
+    @CheckPermission(() => SettingsModule.permissions.setSetting)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity,
-        @Argument(StringArg) key: string, @RestArguments(true, {join: " "}) value: string
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel,
+        @Argument(SettingArg) setting: Setting<any>, @RestArguments(true, {join: " "}) value: string
     ): Promise<void> {
-        return channel.setSetting(key, value)
-            .then(() => response.message("setting:set", {setting: key, value}))
+        channel.settings.set(setting, value);
+        return channel.settings.save()
+            .then(() => response.message("setting:set", {setting: setting.key, value}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
+@Service()
 class UnsetCommand extends Command {
     constructor() {
         super("unset", "<setting>");
     }
 
     @CommandHandler("unset", "unset <key>")
-    @CheckPermission("settings.reset")
+    @CheckPermission(() => SettingsModule.permissions.resetSetting)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @Argument(StringArg) key: string
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Argument(SettingArg) setting: Setting<any>
     ): Promise<void> {
-        return channel.getSettings().unset(key)
-            .then(() => response.message("setting:unset", {setting: key}))
+        channel.settings.unset(setting);
+        return channel.settings.save()
+            .then(() => response.message("setting:unset", {setting: setting.key}))
             .catch(e => response.genericErrorAndLog(e, logger));
     }
 }
 
+@Service()
 class ResetCommand extends Command {
-    constructor(private readonly settingsModule: SettingsModule) {
+    constructor(private readonly confirmationModule: ConfirmationModule, private readonly settingsSystem: SettingsSystem) {
         super("reset", "");
     }
 
     @CommandHandler("reset", "reset")
-    @CheckPermission("settings.reset.all")
+    @CheckPermission(() => SettingsModule.permissions.resetAllSettings)
     async handleCommand(
-        event: CommandEvent, @ResponseArg response: Response, @Channel channel: ChannelEntity, @MessageArg msg: Message
+        event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @MessageArg msg: Message
     ): Promise<void> {
         const confirmMsg = await response.translate("setting:confirm-reset");
-        const confirm = await this.settingsModule.makeConfirmation(msg, confirmMsg, 30);
-        confirm.addListener(ConfirmedEvent, () => channel.getSettings().reset()
-            .then(() => response.message("setting:reset"))
-            .catch(e => response.genericErrorAndLog(e, logger))
-        );
+        const confirm = await this.confirmationModule.make(msg, confirmMsg, 30);
+        confirm.addListener(ConfirmedEvent, () => {
+            return this.settingsSystem.resetSettings(channel)
+                .then(() => response.message("setting:reset"))
+                .catch(e => response.genericErrorAndLog(e, logger));
+        });
         confirm.run();
     }
 }
 
-@HandlesEvents()
+@Service()
 export default class SettingsModule extends AbstractModule {
     static [Symbols.ModuleInfo] = MODULE_INFO;
-    @command setCommand = new SetCommand();
-    @command unsetCommand = new UnsetCommand();
-    @command resetCommand = new ResetCommand(this);
-    @permission setSetting = new Permission("settings.set", Role.MODERATOR);
-    @permission resetSetting = new Permission("settings.reset", Role.BROADCASTER);
-    @permission resetAllSettings = new Permission("settings.reset.all", Role.BROADCASTER);
+    static permissions = {
+        setSetting: new Permission("settings.set", Role.MODERATOR),
+        resetSetting: new Permission("settings.reset", Role.BROADCASTER),
+        resetAllSettings: new Permission("settings.reset.all", Role.BROADCASTER)
+    }
 
-    constructor(@inject(symbols.ConfirmationFactory) public makeConfirmation: ConfirmationFactory) {
+    constructor(setCommand: SetCommand, unsetCommand: UnsetCommand, resetCommand: ResetCommand, private readonly settingsSystem: SettingsSystem) {
         super(SettingsModule);
 
         this.coreModule = true;
+        this.registerCommands(setCommand, unsetCommand, resetCommand);
+        this.registerPermissions(SettingsModule.permissions);
+        this.registerExpressionContextResolver(this.expressionContextResolver);
     }
 
-    @ExpressionContextResolver
     expressionContextResolver(msg: Message): ExpressionContext {
         return {
             settings: {
                 get: validateFunction(async <T>(key: string, defVal: T = null): Promise<ConvertedSetting | T | null> => {
-                    return msg.getChannel().getSetting(key) ?? defVal;
+                    const setting = this.settingsSystem.getSetting(key);
+                    if (setting === null) return defVal;
+                    return msg.channel.settings.get(setting) ?? defVal;
                 }, ["string|required", ""], logErrorOnFail(logger, Promise.resolve(null)))
             }
-        }
-    }
-
-    @EventHandler(NewChannelEvent)
-    async onNewChannel({channel}: NewChannelEventArgs): Promise<void> {
-        await SettingsEntity.createTable({channel});
-        await SettingsEntity.make({channel},
-            SettingsSystem.getInstance().getAll().map(setting => {
-                return {
-                    key: setting.getKey(),
-                    value: setting.getDefaultValue(),
-                    type: SettingType[setting.getType()],
-                    default_value: setting.getDefaultValue()
-                }
-            })
-        );
+        };
     }
 }

@@ -1,15 +1,16 @@
-import Event, {EventArguments, EventConstructor} from "./Event";
-import Listener from "./Listener";
+import { Listener } from "./Listener";
 import EventSystem from "./EventSystem";
 import {EventPriority} from "./EventPriority";
 import {addMetadata, getMetadata} from "../../Utilities/DecoratorUtils";
+import Container from "typedi";
+import { EventType } from "./Event";
 
 const EVENT_META_KEY = "handler:events";
 
-interface EventHandler<T extends Event<T>> {
-    event: EventConstructor<T>;
+interface EventHandler {
+    type: EventType;
     priority: EventPriority;
-    func: Listener<T, EventArguments<T>>;
+    func: Listener;
 }
 
 export function HandlesEvents() {
@@ -17,19 +18,20 @@ export function HandlesEvents() {
         return class extends constructor {
             constructor(...args: any[]) {
                 super(...args);
-                for (const handler of getMetadata<EventHandler<any>[]>(EVENT_META_KEY, this.constructor)) {
-                    EventSystem.getInstance().addListener(handler.event, {
+                const handlers = getMetadata<EventHandler[]>(EVENT_META_KEY, this.constructor) || [];
+                for (const handler of handlers) {
+                    Container.get(EventSystem).addListener(handler.type, {
                         thisArg: this,
                         func: handler.func
                     }, handler.priority);
                 }
             }
-        }
-    }
+        };
+    };
 }
 
-export function EventHandler<T extends Event<T>, TArgs extends EventArguments<T>>(event: EventConstructor<T>, priority = EventPriority.NORMAL): Function {
-    return function (target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<Listener<T, TArgs>>): void {
-        addMetadata<EventHandler<T>>(EVENT_META_KEY, target.constructor, {event, priority, func: descriptor.value});
+export function EventHandler(type: EventType, priority = EventPriority.NORMAL): Function {
+    return function (target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<Listener>): void {
+        addMetadata<EventHandler>(EVENT_META_KEY, target.constructor, {type, priority, func: descriptor.value});
     };
 }

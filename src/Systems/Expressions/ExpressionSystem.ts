@@ -1,7 +1,6 @@
 import ExpressionParser from "./Parser";
 import ExpressionInterpreter from "./Interpreter";
 import Message from "../../Chat/Message";
-import rp from "request-promise-native";
 import cheerio from "cheerio";
 import moment from "moment";
 import {formatDuration} from "../../Utilities/TimeUtils";
@@ -13,6 +12,13 @@ import deepmerge from "deepmerge";
 import chrono from "chrono-node";
 import {IllegalStateError, OutOfBoundsError, UnknownKeyError} from "./InterpreterErrors";
 import System from "../System";
+import { Service } from "typedi";
+import Axios from "axios";
+import { logErrorOnFail, logErrorOnFailAsync, returnError, returnErrorAsync, validateFunction } from "../../Utilities/ValidateFunction";
+import _ from "lodash";
+import { logError } from "../../Utilities/Logger";
+import { randomFloat } from "../../Utilities/RandomUtils";
+import { randomInt } from "crypto";
 
 export interface ExpressionContext {
     [key: string]: any;
@@ -22,8 +28,8 @@ export interface ExpressionContextResolver {
     (msg: Message): ExpressionContext;
 }
 
+@Service()
 export default class ExpressionSystem extends System {
-    private static instance: ExpressionSystem = null;
     private readonly resolvers: ExpressionContextResolver[] = [];
     private parser: ExpressionParser;
     private interpreter: ExpressionInterpreter;
@@ -35,14 +41,6 @@ export default class ExpressionSystem extends System {
         this.logger.info("System initialized");
     }
 
-    static getInstance(): ExpressionSystem {
-        if (this.instance == null) {
-            this.instance = new ExpressionSystem();
-        }
-
-        return this.instance;
-    }
-
     registerResolver(resolver: ExpressionContextResolver): void {
         this.resolvers.push(resolver);
     }
@@ -50,103 +48,54 @@ export default class ExpressionSystem extends System {
     async evaluate(expr: string, msg: Message): Promise<string> {
         const objects = [];
         objects.push({
-            pick: async (array: unknown): Promise<any> => {
-                if (!Array.isArray(array)) return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.array")
-                });
-
-                const i = Math.floor(Math.random() * (array.length - 1));
-                return array[i];
-            },
-            getText: async (url: unknown): Promise<string> => {
-                if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.url")
-                });
-
+            pick: validateFunction((array: any[]) => _.sample(array), ["array|required"], returnError()),
+            getText: validateFunction(async (url: string): Promise<string> => {
                 try {
-                    return await rp(url);
+                    return await Axios({ url, responseType: "text" }).then(resp => resp.data);
                 } catch (e) {
-                    this.logger.error("Web request error");
-                    this.logger.error("Caused by: " + e.message);
-                    this.logger.error(e.stack);
-                    return await msg.getResponse().translate("expression:error.network");
+                    logError(this.logger, e, "Web request error");
+                    return await msg.response.translate("expression:error.network");
                 }
-            },
-            getJson: async (url: unknown): Promise<string> => {
-                if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.url")
-                });
-
+            }, ["string|required"], returnErrorAsync()),
+            getJson: validateFunction(async (url: string): Promise<object> => {
                 try {
-                    return await rp({
-                        uri: url,
-                        json: true
-                    });
+                    return await Axios({url, responseType: "json"}).then(resp => resp.data);
                 } catch (e) {
-                    this.logger.error("Web request error");
-                    this.logger.error("Caused by: " + e.message);
-                    this.logger.error(e.stack);
-                    return await msg.getResponse().translate("expression:error.network");
+                    logError(this.logger, e, "Web request error");
+                    return await msg.response.translate("expression:error.network");
                 }
-            },
-            getHtml: async (url: unknown, selector: unknown): Promise<string> => {
-                if (typeof url !== "string") return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.url")
-                });
-
-                if (typeof selector !== "string") return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.css-selector")
-                });
-
+            }, ["string|required"], logErrorOnFailAsync(this.logger, {})),
+            getHtml: validateFunction(async (url: string, selector: string): Promise<string> => {
                 try {
-                    return await rp(url).then((html: string) => {
-                        const $ = cheerio.load(html);
+                    return await Axios({url, responseType: "document"}).then(resp => {
+                        const $ = cheerio.load(resp.data);
                         return $(selector).text();
                     });
                 } catch (e) {
-                    this.logger.error("Web request error");
-                    this.logger.error("Caused by: " + e.message);
-                    this.logger.error(e.stack);
+                    logError(this.logger, e, "Web request error");
                     return await msg.getResponse().translate("expression:error.network");
                 }
-            },
-            random: async (min: number, max = NaN): Promise<number | string> => {
-                if (typeof min !== "number") return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.number")
-                }) as string;
-
-                if (isNaN(max)) {
-                    max = min;
-                    min = 0;
-                }
-
-                return Math.floor(Math.random() * (max - min) + min);
-            },
-            timeuntil: async (timestring: unknown, longFormat = false): Promise<string> => {
-                if (typeof timestring !== "string") return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.time")
-                });
-
+            }, ["string|required", "string|required"], returnErrorAsync()),
+            random: validateFunction((min?: number, max?: number, integer = false): number => {
+                return integer ? randomInt(min, max) : randomFloat(min, max);
+            }, ["number", "number", "boolean"], logErrorOnFail(this.logger, -1)),
+            timeuntil: validateFunction((timestring: string, longFormat = false): string => {
                 const parsed = chrono.parseDate(timestring, Date.now(), {forwardDate: true});
                 const datetime = moment(parsed);
                 const dur = moment.duration(datetime.diff(moment()));
                 return longFormat ? formatDuration(dur) : dur.humanize();
-            },
-            timesince: async (timestring: unknown, longFormat = false): Promise<string> => {
-                if (typeof timestring !== "string") return await msg.getResponse().translate("expression:error.argument", {
-                    expected: await msg.getResponse().translate("expression:types.time")
-                });
-
+            }, ["string|required", "boolean"], returnError()),
+            timesince: validateFunction((timestring: string, longFormat = false): string => {
                 const parsed = chrono.parseDate(timestring, Date.now(), {forwardDate: false});
                 const datetime = moment(parsed);
                 const dur = moment.duration(moment().diff(datetime));
                 return longFormat ? formatDuration(dur) : dur.humanize();
-            },
+            }, ["string|required", "boolean"], returnError()),
             process: {
                 exit: async (): Promise<string> => await msg.getResponse().translate("expression:error.shutdown")
             },
             bot: {
-                getUptime: () => prettyMilliseconds(Application.getUptime().asMilliseconds()),
+                getUptime: (): string => prettyMilliseconds(Application.getUptime().asMilliseconds()),
             },
             urlencode: (input: any) => encodeURIComponent(input)
         });

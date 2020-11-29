@@ -1,19 +1,9 @@
-import Event from "../../Systems/Event/Event";
-import ChatterEntity from "../../Database/Entities/ChatterEntity";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
+import { Channel } from "../../Database/Entities/Channel";
+import { Chatter } from "../../Database/Entities/Chatter";
+import { ExtraKey } from "../../Systems/Event/EventExtra";
 
-export default class LeaveEvent extends Event<LeaveEvent> {
-    public static readonly NAME = "chat_leave";
-
-    constructor(private readonly chatter: ChatterEntity, private readonly channel: ChannelEntity) {
-        super(LeaveEvent);
-    }
-
-    getChatter(): ChatterEntity {
-        return this.chatter;
-    }
-
-    getChannel(): ChannelEntity {
-        return this.channel;
-    }
+export default class LeaveEvent {
+    public static readonly EVENT_TYPE = "chat.events.LeaveEvent";
+    public static readonly EXTRA_CHATTER = new ExtraKey<Chatter>("chat.events.LeaveEvent:extra.chatter");
+    public static readonly EXTRA_CHANNEL = new ExtraKey<Channel>("chat.events.LeaveEvent:extra.channel");
 }

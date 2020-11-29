@@ -1,5 +1,5 @@
 import Command from "../Commands/Command";
-import CommandEntity from "../../Database/Entities/CommandEntity";
+import { Command as CommandEntity } from "../../Database/Entities/Command";
 import moment from "moment";
 
 export default class Cooldown {
@@ -39,7 +39,7 @@ export default class Cooldown {
         if (command instanceof Command && this.command instanceof Command) {
             return command.getLabel() === this.command.getLabel();
         } else if (command instanceof CommandEntity && this.command instanceof CommandEntity) {
-            return command.is(this.command)
+            return command.is(this.command);
         }
         return false;
     }
@@ -51,13 +51,9 @@ export default class Cooldown {
      */
     private getCooldown(): number {
         if (this.user) {
-            return this.command instanceof Command ?
-                this.command.getUserCooldown(this.subcommand) :
-                this.command.userCooldown;
+            return this.command instanceof Command ? 0 : this.command.userCooldown;
         } else {
-            return this.command instanceof Command ?
-                this.command.getGlobalCooldown(this.subcommand) :
-                this.command.globalCooldown;
+            return this.command instanceof Command ? 0 : this.command.globalCooldown;
         }
     }
 }

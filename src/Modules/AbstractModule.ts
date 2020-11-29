@@ -1,16 +1,15 @@
-import ChannelEntity from "../Database/Entities/ChannelEntity";
-import {arrayContains, arrayRemove} from "../Utilities/ArrayUtils";
 import CommandSystem from "../Systems/Commands/CommandSystem";
 import PermissionSystem from "../Systems/Permissions/PermissionSystem";
 import SettingsSystem from "../Systems/Settings/SettingsSystem";
-import ExpressionSystem from "../Systems/Expressions/ExpressionSystem";
-import {getSettings} from "../Systems/Settings/decorators";
+import ExpressionSystem, { ExpressionContextResolver } from "../Systems/Expressions/ExpressionSystem";
 import Setting from "../Systems/Settings/Setting";
-import {getResolvers} from "../Systems/Expressions/decorators";
-import {getPermissions} from "../Systems/Permissions/decorators";
 import Permission from "../Systems/Permissions/Permission";
-import {getCommands} from "../Systems/Commands/decorators";
 import Command from "../Systems/Commands/Command";
+import { Channel } from "../Database/Entities/Channel";
+import { DisabledModule } from "../Database/Entities/DisabledModule";
+import Container, { Inject, Service } from "typedi";
+import { Repository } from "typeorm";
+import { InjectRepository } from "typeorm-typedi-extensions";
 
 export interface ModuleInfo {
     name: string;
@@ -28,7 +27,7 @@ export interface Systems {
 export const Symbols = {
     ModuleInfo: Symbol("Module Information")
 } as {
-    readonly ModuleInfo: unique symbol
+    readonly ModuleInfo: unique symbol;
 };
 
 export interface ModuleConstructor<T extends AbstractModule> {
@@ -38,45 +37,47 @@ export interface ModuleConstructor<T extends AbstractModule> {
     new(...args: any[]): T;
 }
 
+@Service()
 export default abstract class AbstractModule {
     protected coreModule = false;
     private readonly name: string;
     private readonly info: ModuleInfo;
 
-    protected constructor(constructor: ModuleConstructor<any>) {
-        this.name = constructor.name;
-        this.info = constructor[Symbols.ModuleInfo];
+    @Inject()
+    public readonly expressionSystem: ExpressionSystem;
 
-        const commands = CommandSystem.getInstance();
-        for (const property of getCommands(constructor)) {
-            const command = this[property];
-            if (command instanceof Command)
-                commands.registerCommand(command, this);
-            else
-                throw new Error("Invalid module configuration, property " + property.toString() + " is defined as a command but is not a command");
-        }
+    @InjectRepository(DisabledModule)
+    private readonly disabledModulesRepository: Repository<DisabledModule>;
 
-        const settings = SettingsSystem.getInstance();
-        for (const property of getSettings(constructor)) {
-            const setting = this[property];
-            if (setting instanceof Setting)
-                settings.registerSetting(setting);
-            else
-                throw new Error("Invalid module configuration, property " + property.toString() + " is defined as a setting but is not a setting");
-        }
+    protected constructor(private readonly ctor: ModuleConstructor<any>) {
+        this.name = ctor.name;
+        this.info = ctor[Symbols.ModuleInfo];
+    }
 
-        const expression = ExpressionSystem.getInstance();
-        for (const resolver of getResolvers(constructor))
-            expression.registerResolver(this[resolver].bind(this));
+    registerCommand(command: Command): void {
+        Container.get(CommandSystem).registerCommand(command, this);
+    }
 
-        const permissions = PermissionSystem.getInstance();
-        for (const property of getPermissions(constructor)) {
-            const permission = this[property];
-            if (permission instanceof Permission)
-                permissions.registerPermission(permission);
-            else
-                throw new Error("Invalid module configuration, property " + property.toString() + " is defined as a permission but is not a permission");
-        }
+    registerCommands(...commands: Command[]): void {
+        for (const command of commands) this.registerCommand(command);
+    }
+
+    registerPermissions(permissionsArg: Permission[]|{ [key: string]: Permission }): void {
+        const permissions = permissionsArg instanceof Array ? permissionsArg : Object.values(permissionsArg);
+        const permissionSystem = Container.get(PermissionSystem);
+        for (const permission of permissions)
+            permissionSystem.registerPermission(permission);
+    }
+
+    registerSettings(settingsArg: Setting<any>[]|{ [key: string]: Setting<any> }): void {
+        const settings = settingsArg instanceof Array ? settingsArg : Object.values(settingsArg);
+        const settingsSystem = Container.get(SettingsSystem);
+        for (const setting of settings)
+            settingsSystem.registerSetting(setting);
+    }
+
+    registerExpressionContextResolver(resolver: ExpressionContextResolver): void {
+        Container.get(ExpressionSystem).registerResolver(resolver.bind(this));
     }
 
     getName(): string {
@@ -87,21 +88,31 @@ export default abstract class AbstractModule {
         return this.info;
     }
 
-    async disable(channel: ChannelEntity): Promise<void> {
+    async disable(channel: Channel): Promise<void> {
         if (this.coreModule) return;
         if (this.isDisabled(channel)) return;
-        channel.disabledModules.push(this.getName());
-        return channel.save();
+        const disabledModule = new DisabledModule();
+        disabledModule.channel = channel;
+        disabledModule.moduleName = this.getName();
+        await this.disabledModulesRepository.save(disabledModule);
     }
 
-    async enable(channel: ChannelEntity): Promise<void> {
+    async enable(channel: Channel): Promise<DisabledModule> {
         if (this.coreModule) return;
         if (!this.isDisabled(channel)) return;
-        arrayRemove(this.getName(), channel.disabledModules);
-        return channel.save();
+        
+        for (const disabledModule of channel.disabledModules)
+            if (disabledModule.moduleName === this.getName())
+                return disabledModule.remove();
     }
 
-    isDisabled(channel: ChannelEntity): boolean {
-        return !this.coreModule && arrayContains(this.getName(), channel.disabledModules);
+    isDisabled(channel: Channel): boolean {
+        if (this.coreModule) return false;
+
+        for (const disabledModule of channel.disabledModules)
+            if (disabledModule.moduleName === this.getName())
+                return true;
+
+        return false;
     }
 }

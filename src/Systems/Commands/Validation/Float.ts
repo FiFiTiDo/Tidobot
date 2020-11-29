@@ -1,6 +1,5 @@
 import {InvalidArgumentError, InvalidInputError} from "./ValidationErrors";
 import {ArgumentConverter} from "./Argument";
-import {CommandEvent} from "../CommandEvent";
 
 interface Constraints {
     min?: number;
@@ -13,7 +12,7 @@ export class FloatArg implements ArgumentConverter<number> {
     constructor(private constraints: Constraints = {}) {
     }
 
-    convert(input: string, name: string, column: number, event: CommandEvent): number {
+    convert(input: string, name: string, column: number): number {
         const float = parseFloat(input);
 
         if (isNaN(float))

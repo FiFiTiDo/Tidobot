@@ -1,54 +1,59 @@
 import SettingsSystem from "../Settings/SettingsSystem";
 import Setting, {SettingType} from "../Settings/Setting";
-import LastFMApi from "./LastFMApi";
-import ChannelEntity from "../../Database/Entities/ChannelEntity";
 import Config from "../Config/Config";
 import LastFMConfig from "../Config/ConfigModels/LastFMConfig";
 import System from "../System";
+import { Service } from "typedi";
+import { Channel } from "../../Database/Entities/Channel";
+import { getApi, LastFMApi } from "./Api";
+import { RecentTrack } from "./Api/user/getRecentTracks";
 
+@Service()
 export default class LastFMSystem extends System {
-    private static instance: LastFMSystem;
     private usernameSetting = new Setting("lastfm.username", "", SettingType.STRING);
+    private api: LastFMApi;
 
-    constructor(private readonly api: LastFMApi) {
+    constructor(settings: SettingsSystem, private readonly config: Config) {
         super("LastFM");
-        const settings = SettingsSystem.getInstance();
         settings.registerSetting(this.usernameSetting);
 
         this.logger.info("System initialized");
     }
 
-    public static async getInstance(): Promise<LastFMSystem> {
-        if (this.instance === null) {
-            const config = await Config.getInstance().getConfig(LastFMConfig);
-            this.instance = new LastFMSystem(new LastFMApi(config.apiKey, config.secret));
-        }
-
-        return this.instance;
+    async onInitialize(): Promise<void> {
+        const config = await this.config.getConfig(LastFMConfig);
+        this.api = getApi(config.apiKey);
     }
 
-    public getUsername(channel: ChannelEntity): Promise<string> {
-        return channel.getSetting(this.usernameSetting);
+    public getUsername(channel: Channel): string {
+        return channel.settings.get(this.usernameSetting);
     }
+
+    public async getRecentPlayed(username: string);
+    public async getRecentPlayed(channel: Channel);
+    public async getRecentPlayed(target: Channel | string): Promise<RecentTrack[]> {
+        if (target instanceof Channel)
+            return this.getLastPlayed(this.getUsername(target));
+        const resp = await this.api.user.getRecentTracks({ user: target, limit: 10 });
+        return resp.data.recenttracks.track;
+    }
+    
 
     public async getLastPlayed(username: string);
-    public async getLastPlayed(channel: ChannelEntity);
-    public async getLastPlayed(target: ChannelEntity | string) {
-        if (target instanceof ChannelEntity)
-            return this.getLastPlayed(await this.getUsername(target));
-
-        const resp = await this.api.get("user.getRecentTracks", {
-            limit: 1,
-            user: target
-        });
+    public async getLastPlayed(channel: Channel);
+    public async getLastPlayed(target: Channel | string): Promise<RecentTrack> {
+        if (target instanceof Channel)
+            return this.getLastPlayed(this.getUsername(target));
+        const resp = await this.api.user.getRecentTracks({ user: target, limit: 1 });
+        return resp.data.recenttracks.track[0];
     }
 
     public async getCurrentPlaying(username: string);
-    public async getCurrentPlaying(channel: ChannelEntity);
-    public async getCurrentPlaying(target: ChannelEntity | string) {
-        if (target instanceof ChannelEntity)
-            return this.getCurrentPlaying(await this.getUsername(target));
-
-
+    public async getCurrentPlaying(channel: Channel);
+    public async getCurrentPlaying(target: Channel | string): Promise<RecentTrack> {
+        if (target instanceof Channel)
+            return this.getCurrentPlaying(this.getUsername(target));
+        const resp = await this.api.user.getRecentTracks({ user: target, nowplaying: true, limit: 1 });
+        return resp.data.recenttracks.track[0];
     }
 }

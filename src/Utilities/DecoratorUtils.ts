@@ -1,4 +1,4 @@
-import {objectHasProperties} from "./ObjectUtils";
+import _ from "lodash";
 
 export function getMetadata<T>(key: string, target: any): T {
     return Reflect.getMetadata(key, target) as T;
@@ -23,7 +23,7 @@ interface KeyValuePair<T> {
 
 function isKeyValuePair<T>(obj: unknown): obj is KeyValuePair<T> {
     if (typeof obj !== "object") return false;
-    return objectHasProperties(obj, "key", "value");
+    return _.has(obj, ["key", "value"]);
 }
 
 export function addMetadata<T>(metaKey: string, target: any, value: T | KeyValuePair<T>): void {

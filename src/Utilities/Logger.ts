@@ -15,10 +15,10 @@ export function logError(logger: Logger, error: Error, message?: string, fatal =
     const func = fatal ? logger.fatal : logger.error;
 
     if (message) {
-        func(message);
-        func("Caused by: " + error.message);
+        func.call(logger, message);
+        func.call(logger, "Caused by: " + error.message);
     } else {
-        func(error.message);
+        func.call(logger, error.message);
     }
-    func(error.stack);
+    func.call(logger, error.stack);
 }

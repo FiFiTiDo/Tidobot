@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import ExpressionParser from "./Parser";
 import {tokenMatcher} from "chevrotain";
 import Dictionary from "../../Utilities/Structures/Dictionary";

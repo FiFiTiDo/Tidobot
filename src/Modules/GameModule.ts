@@ -28,9 +28,9 @@ class AdventureCommand extends Command {
         super("adventure", "<amount>", ["adv"]);
     }
 
-    @CommandHandler(/^adv(enture)?/, "adventure <amount>")
+    @CommandHandler(/^adv(enture)? [0-9]+$/, "adventure <amount>")
     @CheckPermission(() => GameModule.permissions.JOIN_ADVENTURE)
-    async handleCommand(
+    async joinAdventure(
         event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel, @Sender sender: Chatter, @MessageArg message: Message,
         @Argument(new FloatArg({ min: 1 })) amount: number
     ): Promise<void> {
@@ -65,22 +65,24 @@ class AdventureCommand extends Command {
                 return response.message("adventure:enter.cooldown");
         }
     }
-}
 
-@Service()
-class CancelAdventureCommand extends Command {
-    constructor(private readonly adventureService: AdventureService) {
-        super("canceladventure", null, ["canceladv"]);
-    }
-
-    @CommandHandler(/^canceladv(enture)?/, "canceladventure")
+    @CommandHandler(/^adv(enture)? cancel$/, "adventure cancel")
     @CheckPermission(() => GameModule.permissions.CANCEL_ADVENTURE)
-    async handleCommand(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+    async cancelAdventure(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
         const game = this.adventureService.getGame(channel);
         if (!game.present || game.value.hasEnded())
             return response.message("adventure:cancel.no-adventure");
         await game.value.cancel();
         await response.message("adventure:cancel.successful");
+    }
+
+    @CommandHandler(/^adv(enture)? clear?/, "adventure clear")
+    @CheckPermission(() => GameModule.permissions.CANCEL_ADVENTURE)
+    async clearAdventure(event: Event, @ResponseArg response: Response, @ChannelArg channel: Channel): Promise<void> {
+        if (this.adventureService.clearLast(channel))
+            await response.message("adventure:clear.successful");
+        else
+            await response.message("adventure:clear.no-adventure");
     }
 }
 
@@ -101,10 +103,10 @@ export default class GameModule extends AbstractModule {
         ADVENTURE_MAX_BET: new Setting("adventure.max-bet", 1000 as Float, SettingType.FLOAT),
     }
 
-    constructor(adventureCommand: AdventureCommand, cancelAdventureCommand: CancelAdventureCommand) {
+    constructor(adventureCommand: AdventureCommand) {
         super(GameModule);
 
-        this.registerCommands(adventureCommand, cancelAdventureCommand);
+        this.registerCommands(adventureCommand);
         this.registerPermissions(GameModule.permissions);
         this.registerSettings(GameModule.settings);
     }

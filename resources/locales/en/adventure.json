@@ -23,6 +23,10 @@
         "successful": "The adventure was ended early and all bets have been returned to the team players",
         "no-adventure": "There is currently no active adventure to be cancelled"
     },
+    "clear": {
+        "successful": "Cleared the last adventure, a new adventure can now begin!",
+        "no-adventure": "There has not been a recent adventure to clear!"
+    },
     "stories": [
         {
             "title": "Bank Heist",

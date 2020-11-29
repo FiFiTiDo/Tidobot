@@ -215,4 +215,10 @@ export class AdventureService {
     public getGame(channel: Channel): Optional<AdventureGame> {
         return Optional.ofNullable(this.games.get(channel));
     }
+
+    clearLast(channel: Channel): boolean {
+        if (this.games.get(channel) === null) return false;
+        this.games.delete(channel);
+        return true;
+    }
 }

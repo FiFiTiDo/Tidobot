@@ -1,11 +1,14 @@
 import Timer = NodeJS.Timer;
+import Timeout = NodeJS.Timeout;
 import System from "../System";
 import { Service } from "typedi";
+import { setTimeout } from "timers";
 
 @Service()
 export default class TimerSystem extends System {
     private static instance: TimerSystem = null;
     private readonly timers: Timer[] = [];
+    private readonly timeouts: Timeout[] = [];
 
     private constructor() {
         super("Timer");
@@ -15,6 +18,16 @@ export default class TimerSystem extends System {
         if (this.instance === null)
             this.instance = new TimerSystem();
         return this.instance;
+    }
+
+    public startTimeout<T extends any[]>(fun: (...args: T) => void, ms: number, ...args: T): Timeout {
+        const timeout = setTimeout(() => fun(...args), ms);
+        this.timeouts.push(timeout);
+        return timeout;
+    }
+
+    public cancelTimeout(timeout: Timeout): void {
+        clearTimeout(timeout);
     }
 
     public startTimer<T extends any[]>(fun: (...args: T) => void, ms: number, ...args: T): Timer {
@@ -29,6 +42,7 @@ export default class TimerSystem extends System {
 
     public shutdown(): void {
         this.timers.forEach(this.stopTimer);
+        this.timeouts.forEach(this.cancelTimeout);
     }
 }
 

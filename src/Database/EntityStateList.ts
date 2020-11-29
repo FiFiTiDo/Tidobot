@@ -8,6 +8,10 @@ export class EntityStateList<EntityT extends CustomBaseEntity, ValueT> {
     constructor(private defVal: Resolvable<EntityT, ValueT>) {
     }
 
+    public count(): number {
+        return this.entities().length;
+    }
+
     public has(entity: EntityT): boolean {
         return Object.prototype.hasOwnProperty.call(this.valueMap, entity.id);
     }

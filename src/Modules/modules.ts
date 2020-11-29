@@ -20,6 +20,7 @@ import QueueModule from "./QueueModule";
 import PokemonModule from "./PokemonModule";
 import GamblingModule from "./GamblingModule";
 import Container from "typedi";
+import GameModule from "./GameModule";
 
 export function getAllModules(): AbstractModule[] {
     return [
@@ -27,6 +28,7 @@ export function getAllModules(): AbstractModule[] {
         Container.get(GeneralModule), Container.get(CustomCommandModule), Container.get(ListModule), Container.get(PollsModule), 
         Container.get(CounterModule), Container.get(FunModule), Container.get(NewsModule), Container.get(RaffleModule), 
         Container.get(CurrencyModule), Container.get(FilterModule), Container.get(BettingModule), Container.get(TidobotModule), 
-        Container.get(UserModule), Container.get(QueueModule), Container.get(PokemonModule), Container.get(GamblingModule)
+        Container.get(UserModule), Container.get(QueueModule), Container.get(PokemonModule), Container.get(GamblingModule),
+        Container.get(GameModule)
     ];
 }

@@ -1,0 +1,41 @@
+{
+    "start": "{{username}} is trying to put a team together for an adventure! Use \"{{- usage}}\" to join in!",
+    "enter": {
+        "successful": "{{username}}: You have joined the adventure! Best of luck to you.",
+        "cannot-start": "{{username}}: You are not skilled enough to start your own adventure!",
+        "too-low": "{{username}}: You cannot join the adventure with {{amount}}, you need to bet a minimum of {{min}}",
+        "too-high": "{{username}}: You cannot join the adventure with {{amount}}, you cannot bit more than {{max}}",
+        "not-enough": "{{username}}: You do not have enough for that bet, maybe next time",
+        "already-started": "{{username}}: The team has already left without you! Maybe next time",
+        "already-entered": "{{username}}: You have already joined this adventure",
+        "cooldown": "An adventure has happened recently, maybe try again later"
+    },
+    "completed": {
+        "all-survivors": "The adventure has ended and everyone was able to come out alive!",
+        "some-survivors": "The adventure has ended with {{survivors}} survivor(s) and {{caught}} caught.",
+        "no-survivors": "Oh no! This adventure did not go very well and everyone perished!"
+    },
+    "payout": "For surviving, you have been awarded {{amount}} with your new balance being {{balance}}",
+    "run-story": "Starting out on an adventure \"{{title}}\" with {{count}} player",
+    "run-story_plural": "Starting out on an adventure \"{{title}}\" with {{count}} players",
+    "cooldown-end": "It's time for a new adveture to begin! Use \"{{- usage}}\" to start one!",
+    "stories": [
+        {
+            "title": "Bank Heist",
+            "chapters": [
+                "The mob boss has tasked your team to obtain an ultra-rare statue housed at one of the most secure banks in the country.",
+                "(caught) had their leg cut off by an invisible laser guarding the statue!",
+                "Once the statue is removed from its pedestal the bank's alarms are sounded causing guards to chase after us.",
+                "We narrowly escape the guards as we slip out the back door unscathed. For your bravory, the mob boss gave (survivors) a bonus."
+            ]
+        },
+        {
+            "title": "Princess Rescue",
+            "chapters": [
+                "Princess Peach has been abducted by Bowser once again! You must go and defeat him to save the princess!",
+                "A mob of Goombas attacks and manages to get (caught)",
+                "We break into the castle and (hero) hits the axe, causing Bowser to fall into the lava. (survivors) escape(s) with Peach."
+            ]
+        }
+    ]
+}

@@ -120,6 +120,7 @@ export default class TwitchAdapter extends Adapter {
             await this.client.say(channel.name, message);
         } catch(e) {
             logError(TwitchAdapter.LOGGER, e, "Unable to send message");
+            console.trace(message);
         }
     }
 

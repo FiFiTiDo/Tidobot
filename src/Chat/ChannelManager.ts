@@ -6,6 +6,9 @@ import { ChannelRepository } from "../Database/Repositories/ChannelRepository";
 import { In } from "typeorm";
 import { MapExt } from "../Utilities/Structures/Map";
 import { ServiceToken } from "../symbols";
+import EventSystem from "../Systems/Event/EventSystem";
+import {StartStreamEvent} from "../Companion/Events/StartStreamEvent";
+import {StopStreamEvent} from "../Companion/Events/StopStreamEvent";
 
 interface ChannelState {
     id: number;
@@ -21,9 +24,18 @@ export default class ChannelManager {
 
     constructor(
         @InjectRepository() private readonly repository: ChannelRepository,
-        @Inject(ServiceToken) private readonly service: ServiceEntity
+        @Inject(ServiceToken) private readonly service: ServiceEntity,
+        eventSystem: EventSystem
     ) {
         this.channelState = new MapExt();
+
+        eventSystem.addListener(StartStreamEvent, event => {
+            this.setOnline(event.extra.get(StartStreamEvent.EXTRA_CHANNEL), true)
+        });
+
+        eventSystem.addListener(StopStreamEvent, event => {
+            this.setOnline(event.extra.get(StartStreamEvent.EXTRA_CHANNEL), false)
+        });
     }
 
     setActive(channels: string[]): void {

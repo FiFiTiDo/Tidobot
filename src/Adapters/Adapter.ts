@@ -1,5 +1,4 @@
 import { Channel } from "../Database/Entities/Channel";
-import { Chatter } from "../Database/Entities/Chatter";
 import { Service } from "typedi";
 import { InjectRepository } from "typeorm-typedi-extensions";
 import { Repository } from "typeorm";
@@ -7,6 +6,10 @@ import { Service as ServiceEntity } from "../Database/Entities/Service";
 import { PG_UNIQUE_CONSTRAINT_VIOLATION } from "../symbols";
 import { getLogger, logError } from "../Utilities/Logger";
 import { User } from "../Database/Entities/User";
+import { ChannelAdapter } from "./ChannelAdapter";
+import { UserAdapter } from "./UserAdapter";
+import { ChatterRepository } from "../Database/Repositories/ChatterRepository";
+import {Chatter} from "../Database/Entities/Chatter";
 
 const logger = getLogger("Adapter");
 
@@ -32,7 +35,15 @@ export default abstract class Adapter {
 
     public abstract get connectedChannels(): string[];
 
+    public abstract get channelAdapter(): ChannelAdapter<any>;
+
+    public abstract get userAdapter(): UserAdapter<any>;
+
+    public abstract get chatterRepository(): ChatterRepository;
+
     public abstract async sendMessage(message: string, channel: Channel): Promise<void>;
+
+    public abstract async sendPrivateMessage(message: string, chatter: Chatter): Promise<void>;
 
     public abstract async sendAction(action: string, channel: Channel): Promise<void>;
 

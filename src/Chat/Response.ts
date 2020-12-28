@@ -9,13 +9,21 @@ import Adapter from "../Adapters/Adapter";
 import _ from "lodash";
 
 export class Response {
-    private translator: TranslationProvider;
+    private readonly translator: TranslationProvider;
     constructor(private readonly msg: Message, private readonly adapter: Adapter) {
         this.translator = Container.get(TranslationProviderToken);
     }
 
     rawMessage(message: string): Promise<void> {
-        return this.adapter.sendMessage(message, this.msg.getChannel());
+        return this.adapter.sendMessage(message, this.msg.channel);
+    }
+
+    rawPrivate(message: string): Promise<void> {
+        return this.adapter.sendPrivateMessage(message, this.msg.chatter);
+    }
+
+    rawAction(action: string): Promise<void> {
+        return this.adapter.sendAction(action, this.msg.channel);
     }
 
     async message<TKeys extends TFunctionKeys = string,
@@ -23,9 +31,14 @@ export class Response {
         return this.rawMessage(await this.translate(key, options));
     }
 
+    async pm<TKeys extends TFunctionKeys = string,
+        TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
+        return this.rawPrivate(await this.translate(key, options));
+    }
+
     async action<TKeys extends TFunctionKeys = string,
         TInterpolationMap extends object = StringMap>(key: TKeys | TKeys[], options?: TOptions<TInterpolationMap>): Promise<void> {
-        return this.adapter.sendAction(await this.translate(key, options), this.msg.getChannel());
+        return this.rawAction(await this.translate(key, options));
     }
 
     async spam<TKeys extends TFunctionKeys = string,

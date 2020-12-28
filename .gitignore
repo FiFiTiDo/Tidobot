@@ -9,3 +9,4 @@ Tidobot.iml
 package-lock.json
 yarn.lock
 ormlogs.log
+JWT_SECRET

@@ -21,22 +21,24 @@ import Event from "../../Systems/Event/Event";
 import { TwitchUserAdapter } from "./TwitchUserAdapter";
 import { TwitchChannelAdapter } from "./TwitchChannelAdapter";
 import { User } from "../../Database/Entities/User";
+import {Chatter} from "../../Database/Entities/Chatter";
 
 @Service()
 export default class TwitchAdapter extends Adapter {
     public static readonly serviceName = "twitch";
     public static readonly LOGGER = getLogger("Twitch");
 
+    public readonly name = "twitch";
+    public readonly connectedChannels: string[] = [];
     public client: tmi.Client;
-    private _connectedChannels: string[] = [];
 
     constructor(
         private readonly channelManager: ChannelManager,
         private readonly chatterManager: ChatterManager,
-        private readonly userAdapter: TwitchUserAdapter,
-        private readonly channelAdapter: TwitchChannelAdapter,
+        public readonly userAdapter: TwitchUserAdapter,
+        public readonly channelAdapter: TwitchChannelAdapter,
         @InjectRepository()
-        private readonly chatterRepository: ChatterRepository,
+        public readonly chatterRepository: ChatterRepository,
         public readonly api: helix.Api,
         private readonly config: Config,
         private readonly eventSystem: EventSystem
@@ -51,7 +53,7 @@ export default class TwitchAdapter extends Adapter {
             identity: config.identities[options.identity] || config.identities["default"],
             channels: config.channels
         });
-        this._connectedChannels = config.channels;
+        this.connectedChannels.push(...config.channels);
         this.channelManager.setActive(this.connectedChannels);
 
         this.client.on("message", async (channelName: string, userstate: tmi.ChatUserstate, message: string, self: boolean) => {
@@ -64,7 +66,7 @@ export default class TwitchAdapter extends Adapter {
             const msg = new TwitchMessage(message, chatter, channel, userstate, this);
             const event = new Event(MessageEvent);
             event.extra.put(MessageEvent.EXTRA_MESSAGE, msg);
-            this.eventSystem.dispatch(event);
+            await this.eventSystem.dispatch(event);
         });
 
         this.client.on("join", async (channelName: string, username: string, self: boolean) => {
@@ -81,7 +83,7 @@ export default class TwitchAdapter extends Adapter {
             const event = new Event(JoinEvent);
             event.extra.put(JoinEvent.EXTRA_CHANNEL, channel);
             event.extra.put(JoinEvent.EXTRA_CHATTER, chatter);
-            this.eventSystem.dispatch(event);
+            await this.eventSystem.dispatch(event);
         });
 
         this.client.on("part", async (channelName: string, username: string, self: boolean) => {
@@ -95,7 +97,7 @@ export default class TwitchAdapter extends Adapter {
             const event = new Event(LeaveEvent);
             event.extra.put(LeaveEvent.EXTRA_CHANNEL, channel);
             event.extra.put(LeaveEvent.EXTRA_CHATTER, chatter);
-            this.eventSystem.dispatch(event);
+            await this.eventSystem.dispatch(event);
         });
 
         this.client.on("connected", () => {
@@ -120,6 +122,15 @@ export default class TwitchAdapter extends Adapter {
             await this.client.say(channel.name, message);
         } catch(e) {
             logError(TwitchAdapter.LOGGER, e, "Unable to send message");
+            console.trace(message);
+        }
+    }
+
+    async sendPrivateMessage(message: string, chatter: Chatter): Promise<void> {
+        try {
+            await this.client.whisper(chatter.user.name, message);
+        } catch(e) {
+            logError(TwitchAdapter.LOGGER, e, "Unable to send private message");
             console.trace(message);
         }
     }
@@ -167,13 +178,5 @@ export default class TwitchAdapter extends Adapter {
             logError(TwitchAdapter.LOGGER, e, "Tried to time out chatter " + user.name + " but was unable to");
             return false;
         }
-    }
-
-    get name(): string {
-        return "twitch";
-    }
-
-    get connectedChannels(): string[] {
-        return this._connectedChannels;
     }
 }

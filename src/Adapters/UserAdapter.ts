@@ -13,6 +13,10 @@ export abstract class UserAdapter<ParamT> {
 
     abstract async getUser(param: ParamT): Promise<User>;
 
+    abstract async getUserByNativeId(nativeId: string): Promise<User>;
+
+    abstract async getUserByName(name: string): Promise<User>;
+
     protected async findById(nativeId: string): Promise<Optional<User>> {
         return this.repository.findOne({ nativeId, service: this.service }).then(user => Optional.ofUndefable(user));
     }
@@ -23,5 +27,10 @@ export abstract class UserAdapter<ParamT> {
 
     protected async createUser(name: string, nativeId: string): Promise<User> {
         return this.repository.make({ name, nativeId, service: this.service });
+    }
+
+    public async getOrCreateUser(name: string, nativeId: string): Promise<User> {
+        const optional = await this.findById(nativeId);
+        return await optional.orElseAsync(() => this.createUser(name, nativeId));
     }
 }

@@ -20,6 +20,7 @@ import * as path from "path";
 import { AdapterConstructor, AdapterManager } from "./Adapters/Adapter";
 import TwitchAdapter from "./Adapters/Twitch/TwitchAdapter";
 import { Container } from "typedi";
+import { CompanionServer } from "./Companion/Server";
 
 require("source-map-support").install({ hookRequire: true });
 
@@ -66,6 +67,10 @@ async function initialize(): Promise<void> {
     await Container.get(Config).initialize();
     await Container.get(FilterSystem).initialize();
     await Container.get(LastFMSystem).initialize();
+
+    logger.info("Starting companion server");
+
+    Container.get(CompanionServer);
 
     logger.info("Initializing application");
 
